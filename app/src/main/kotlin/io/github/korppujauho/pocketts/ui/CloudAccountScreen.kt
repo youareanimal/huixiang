@@ -247,6 +247,13 @@ internal fun roomTitle(room: MatrixCloud.Room, ownName: String, ownUserId: Strin
 }
 
 internal fun chatErrorMessage(code: String): String = when (code) {
+    "CHAT_CREDENTIALS_HTTP_502", "CHAT_CREDENTIALS_HTTP_503", "CHAT_CREDENTIALS_HTTP_504", "CHAT_CREDENTIALS_NETWORK" ->
+        "TeamSpeak 账号服务暂时无法提供聊天连接信息，请稍后重试。账号和服务器聊天不受影响。"
+    "CHAT_LOGIN_HTTP_502", "CHAT_LOGIN_HTTP_503", "CHAT_LOGIN_HTTP_504", "CHAT_LOGIN_NETWORK" ->
+        "好友聊天服务暂时无法登录，请稍后重新连接。账号和服务器聊天不受影响。"
+    "CHAT_SYNC_HTTP_502", "CHAT_SYNC_HTTP_503", "CHAT_SYNC_HTTP_504", "CHAT_SYNC_NETWORK" ->
+        "好友聊天服务暂时无法同步消息，请稍后重新连接。账号和服务器聊天不受影响。"
+    "CHAT_DISCOVERY_INVALID" -> "好友聊天服务返回了无效的连接地址，请稍后重试。"
     "CONTACT_NO_CHAT", "CONTACT_UNAVAILABLE" -> "这位好友暂时无法发起聊天，请刷新好友列表后重试。"
     "NOT_DIRECT_ROOM" -> "这不是两人私聊，已停止发送，请重新打开好友会话。"
     "ROOM_NOT_JOINED" -> "请先接受邀请，再开始聊天。"

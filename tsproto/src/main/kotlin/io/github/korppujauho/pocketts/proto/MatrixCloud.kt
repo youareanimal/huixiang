@@ -22,6 +22,12 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
     private var directData = emptyMap<String, Any?>()
     private val createdRooms = mutableMapOf<String, String>()
     private val uncertainCreations = mutableSetOf<String>()
+    private var serverUrl = "https://$domain"
+
+    /** Explicit connection setup; the Matrix user ID and account domain are never rewritten. */
+    fun discoverServer() {
+        serverUrl = MatrixServerDiscovery.resolve(domain, http)
+    }
 
     fun login(account: CloudAccountTransfer, deviceId: String): Session {
         require(account.domain == domain && deviceId.matches(Regex("[A-Za-z0-9_-]{8,100}")))
@@ -251,7 +257,7 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
     private fun requestValue(method: String, path: String, body: Map<String, Any?>? = null, token: String? = null): Any {
         val headers = mutableMapOf("Content-Type" to "application/json")
         if (token != null) headers["Authorization"] = "Bearer $token"
-        val r = http.request(method, "https://$domain/_matrix/client/r0$path", headers, body?.let { Json.write(it).toByteArray() })
+        val r = http.request(method, "$serverUrl/_matrix/client/r0$path", headers, body?.let { Json.write(it).toByteArray() })
         val data = try { Json.parse(r.body.toString(Charsets.UTF_8)) } catch (_: Exception) { null }
         if (r.status !in 200..299) {
             val error = data.obj()["errcode"] as? String

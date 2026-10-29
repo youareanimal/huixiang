@@ -67,6 +67,28 @@ class ChatTest {
     }
 
     @Test
+    fun refusedPrivateSendCannotMisrouteTheNextOutgoingEcho() {
+        val (m, chat) = setup()
+        chat.sendingPrivate(2, "alex=", "failed")
+        chat.cancelPrivateSend("failed")
+        chat.sendingPrivate(3, "sam=", "next")
+        chat.handle(Commands.parse("notifytextmessage targetmode=1 msg=Hey invokerid=1 invokername=Me invokeruid=me="), m)
+        assertEquals("Hey", chat.entries(Key.Private("sam=")).single().text)
+        assertTrue(chat.entries(Key.Private("alex=")).isEmpty())
+    }
+
+    @Test
+    fun explicitEchoTargetConsumesOnlyItsOwnPendingRecipient() {
+        val (m, chat) = setup()
+        chat.sendingPrivate(2, "alex=", "first")
+        chat.sendingPrivate(3, "sam=", "second")
+        chat.handle(Commands.parse("notifytextmessage targetmode=1 target=3 msg=Sam invokerid=1 invokername=Me"), m)
+        chat.handle(Commands.parse("notifytextmessage targetmode=1 msg=Alex invokerid=1 invokername=Me"), m)
+        assertEquals("Sam", chat.entries(Key.Private("sam=")).single().text)
+        assertEquals("Alex", chat.entries(Key.Private("alex=")).single().text)
+    }
+
+    @Test
     fun messageFormatting() {
         assertEquals(
             listOf(Span("See "), Span("https://example.com/a", link = "https://example.com/a"), Span(".")),

@@ -38,7 +38,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
+import io.github.korppujauho.pocketts.ChatDraftStore
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +94,7 @@ import io.github.korppujauho.pocketts.proto.Chat
 import io.github.korppujauho.pocketts.proto.ServerModel
 import kotlin.math.abs
 import io.github.korppujauho.pocketts.proto.MessageText
+import io.github.korppujauho.pocketts.proto.ChatOutbox
 import androidx.compose.ui.text.withLink
 import java.util.Date
 
@@ -107,7 +109,9 @@ fun ChatPanel(
     onPicture: (List<Uri>, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     onPerson: ((ServerModel.Client) -> Unit)? = null,
+    draftStore: ChatDraftStore = Session.chatDrafts,
 ) {
+    val drafts by draftStore.state.collectAsState()
     Panel(modifier, header = {
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -140,12 +144,28 @@ fun ChatPanel(
             key is Chat.Key.Channel -> stringResource(R.string.chat_message_to_channel)
             else -> stringResource(R.string.chat_message_to_them)
         }
-        MessageBox(
+        state.chatDelivery.errors[key]?.let { error ->
+            Text(serverChatErrorMessage(error), color = Ts.amber, modifier = Modifier.padding(horizontal = 14.dp))
+        }
+        if (key in state.chatDelivery.sending) Text("正在发送…", color = Ts.muted, modifier = Modifier.padding(horizontal = 14.dp))
+        androidx.compose.runtime.key(key) { MessageBox(
             placeholder, enabled = state.phase == Session.Phase.CONNECTED,
             pictures = key is Chat.Key.Channel, sendingPicture = state.sendingPicture, progress = state.sendingProgress,
+            text = drafts[ChatDraftStore.Location(state.serverKey, key)]?.text.orEmpty(),
+            onText = { draftStore.edit(state.serverKey, key, it) },
+            sendingText = key in state.chatDelivery.sending,
             onPicture = onPicture,
-        ) { onSend(key, it) }
+        ) { onSend(key, it) } }
     }
+}
+
+internal fun serverChatErrorMessage(code: String): String = when (code) {
+    "CHAT_MESSAGE_TOO_LONG" -> "消息过长，请分段发送（每条最多 ${ChatOutbox.MAX_BYTES} 字节）。草稿已保留。"
+    "CHAT_RECIPIENT_LEFT" -> "对方已离开服务器，暂时无法发送。草稿已保留。"
+    "CHAT_CHANNEL_CHANGED" -> "当前频道已变化，请确认频道后重新发送。草稿已保留。"
+    "CHAT_DELIVERY_UNCONFIRMED" -> "连接已中断，消息是否送达尚未确认。请先查看聊天记录，再决定是否重发。"
+    "CHAT_SERVER_2568" -> "服务器拒绝发送：没有聊天权限。草稿已保留。"
+    else -> "消息未能发送${if (code.startsWith("CHAT_SERVER_")) "（服务器错误 ${code.removePrefix("CHAT_SERVER_")}）" else ""}。草稿已保留。"
 }
 
 @Composable
@@ -400,10 +420,12 @@ private fun MessageBox(
     pictures: Boolean,
     sendingPicture: Boolean,
     progress: Pair<Int, Int>?,
+    text: String,
+    onText: (String) -> Unit,
+    sendingText: Boolean,
     onPicture: (List<Uri>, String) -> Unit,
     onSend: (String) -> Unit,
 ) {
-    var text by rememberSaveable { mutableStateOf("") }
     var pending by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var menu by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -460,17 +482,17 @@ private fun MessageBox(
             }
         }
     }
-    val canSend = enabled && (text.isNotBlank() || (pending.isNotEmpty() && !sendingPicture))
+    val canSend = enabled && !sendingText && (text.isNotBlank() || (pending.isNotEmpty() && !sendingPicture))
     fun send() {
+        if (!canSend) return
         val chosen = pending
         if (chosen.isNotEmpty()) {
             if (sendingPicture) return
             onPicture(chosen, text)
             pending = emptyList()
-            text = ""
+            onText("")
         } else if (text.isNotBlank()) {
             onSend(text)
-            text = ""
         }
     }
     Row(
@@ -481,7 +503,7 @@ private fun MessageBox(
         if (pictures) Box {
             Box(
                 Modifier.size(46.dp).clip(RoundedCornerShape(8.dp)).background(Ts.input)
-                    .clickable(enabled = enabled && !sendingPicture) { menu = true },
+                    .clickable(enabled = enabled && !sendingPicture && !sendingText) { menu = true },
                 contentAlignment = Alignment.Center,
             ) {
                 if (sendingPicture) CircularProgressIndicator(color = Ts.accent, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
@@ -505,7 +527,7 @@ private fun MessageBox(
         ) {
             if (text.isEmpty()) Text(placeholder, color = Color(0xFF8E9297), fontSize = 15.sp, maxLines = 1)
             BasicTextField(
-                value = text, onValueChange = { text = it }, enabled = enabled,
+                value = text, onValueChange = onText, enabled = enabled,
                 textStyle = TextStyle(color = Color.White, fontSize = 15.sp),
                 cursorBrush = SolidColor(Ts.accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
