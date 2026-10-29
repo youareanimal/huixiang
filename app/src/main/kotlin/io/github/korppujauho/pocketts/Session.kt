@@ -204,6 +204,8 @@ object Session : TsClient.Listener {
     // Used on the connection's thread only
     private val model = ServerModel()
     private val chat = Chat()
+    val chatDrafts = ChatDraftStore()
+    private val pendingDrafts = mutableMapOf<String, ChatDraftStore.Draft>()
     private val chatOutbox = ChatOutbox()
 
     // The chat history: the server whose history is loaded (null while none is), and its writes, one at a time
@@ -337,6 +339,7 @@ object Session : TsClient.Listener {
             if (!keepChat) {
                 chat.clear()
                 chatOutbox.clear()
+                pendingDrafts.clear()
                 restoreHistory(address)
             }
             startAudio()
@@ -581,6 +584,7 @@ object Session : TsClient.Listener {
     /** Sends a message to a conversation: our channel, the server, or a person (who must be on the server). */
     fun send(key: Chat.Key, text: String) {
         val c = client ?: return
+        val draft = chatDrafts.capture(_state.value.serverKey, key, text)
         c.post {
             if (client !== c || c.state != TsClient.State.CONNECTED) return@post
             val target = when (key) {
@@ -597,6 +601,7 @@ object Session : TsClient.Listener {
             val item = chatOutbox.begin(key, text)
             publishChatDelivery()
             if (item == null) return@post
+            if (draft != null) pendingDrafts[item.code] = draft
             if (key is Chat.Key.Private) chat.sendingPrivate(target, key.uid, item.code)
             c.sendCommand(Commands.build("sendtextmessage", "targetmode" to if (key is Chat.Key.Channel) 2 else 1,
                 "target" to target, "msg" to text, "return_code" to item.code))
@@ -1128,7 +1133,10 @@ object Session : TsClient.Listener {
             "notifychannelcreated" -> client?.sendCommand(Commands.build("channelsubscribe", "cid" to cmd["cid"]))
             "error" -> {
                 chatOutbox.answer(cmd)?.let { item ->
-                    if (cmd["id"] != "0") chat.cancelPrivateSend(item.code)
+                    val draft = pendingDrafts.remove(item.code)
+                    if (cmd["id"] == "0") {
+                        if (draft != null) chatDrafts.accepted(draft)
+                    } else chat.cancelPrivateSend(item.code)
                     publishChatDelivery()
                 }
                 // Refused while connecting: our identity's security level is under the server's
@@ -1175,7 +1183,10 @@ object Session : TsClient.Listener {
     }
 
     override fun onDisconnected(reason: String?) {
-        chatOutbox.disconnected().forEach { chat.cancelPrivateSend(it.code) }
+        chatOutbox.disconnected().forEach {
+            chat.cancelPrivateSend(it.code)
+            pendingDrafts.remove(it.code)
+        }
         publishChatDelivery()
         AppLog.log("Disconnected" + (reason?.let { ": $it" } ?: ""))
         val text = endText(client, reason)
@@ -1302,7 +1313,10 @@ object Session : TsClient.Listener {
         if (::app.isInitialized) CallWatcher.stop(app)
         endCall()
         val s = _state.value
-        chatOutbox.disconnected().forEach { chat.cancelPrivateSend(it.code) }
+        chatOutbox.disconnected().forEach {
+            chat.cancelPrivateSend(it.code)
+            pendingDrafts.remove(it.code)
+        }
         _state.value = UiState(
             phase = Phase.IDLE, error = if (level > 0) null else reason, address = s.address, inputMuted = s.inputMuted,
             chatDelivery = chatOutbox.state,

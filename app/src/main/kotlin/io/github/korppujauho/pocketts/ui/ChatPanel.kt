@@ -38,7 +38,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.collectAsState
+import io.github.korppujauho.pocketts.ChatDraftStore
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -108,22 +109,9 @@ fun ChatPanel(
     onPicture: (List<Uri>, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
     onPerson: ((ServerModel.Client) -> Unit)? = null,
+    draftStore: ChatDraftStore = Session.chatDrafts,
 ) {
-    var drafts by rememberSaveable(state.address) { mutableStateOf(mapOf<String, String>()) }
-    var handled by rememberSaveable(state.address) { mutableStateOf(mapOf<String, String>()) }
-    fun draftId(key: Chat.Key) = when (key) {
-        is Chat.Key.Channel -> "channel:${key.id}"
-        is Chat.Key.Private -> "private:${key.uid}"
-    }
-    LaunchedEffect(state.chatDelivery.sent) {
-        for ((key, receipt) in state.chatDelivery.accepted) {
-            val id = draftId(key)
-            if (handled[id] != receipt.code) {
-                if (drafts[id] == receipt.text) drafts = drafts - id
-                handled = handled + (id to receipt.code)
-            }
-        }
-    }
+    val drafts by draftStore.state.collectAsState()
     Panel(modifier, header = {
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -163,7 +151,8 @@ fun ChatPanel(
         androidx.compose.runtime.key(key) { MessageBox(
             placeholder, enabled = state.phase == Session.Phase.CONNECTED,
             pictures = key is Chat.Key.Channel, sendingPicture = state.sendingPicture, progress = state.sendingProgress,
-            text = drafts[draftId(key)].orEmpty(), onText = { drafts = drafts + (draftId(key) to it) },
+            text = drafts[ChatDraftStore.Location(state.serverKey, key)]?.text.orEmpty(),
+            onText = { draftStore.edit(state.serverKey, key, it) },
             sendingText = key in state.chatDelivery.sending,
             onPicture = onPicture,
         ) { onSend(key, it) } }
