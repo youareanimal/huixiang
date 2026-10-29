@@ -193,7 +193,7 @@ class CloudAccountControllerTest {
             c.connectCloud()
             assertTrue(c.state.value.hasAccount)
             assertEquals("Fixture", c.state.value.username)
-            assertEquals("HTTP_503", c.state.value.cloudError)
+            assertEquals("CHAT_LOGIN_HTTP_503", c.state.value.cloudError)
             assertNull(c.state.value.error)
             assertFalse(c.state.value.cloudConnected)
             assertEquals("fixture-token", saved.identity()!!.token)
@@ -272,7 +272,7 @@ class CloudAccountControllerTest {
             c.connectCloud()
             val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(3)
             while (c.state.value.cloudError == null && System.nanoTime() < deadline) Thread.sleep(10)
-            assertEquals("HTTP_503", c.state.value.cloudError)
+            assertEquals("CHAT_CREDENTIALS_HTTP_503", c.state.value.cloudError)
             assertTrue(c.state.value.hasAccount)
         } finally { release.countDown(); c.close() }
     }

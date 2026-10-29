@@ -35,7 +35,8 @@ class Chat(private val keep: Int = 300) {
     /** Private conversations: their partner's latest name. */
     val privateNames = LinkedHashMap<String, String>()
     // Private messages we sent, oldest first, until the server echoes them back (it doesn't say to whom)
-    private val sentPrivate = ArrayDeque<Pair<Int, String>>()
+    private data class PrivateSend(val clientId: Int, val uid: String, val code: String)
+    private val sentPrivate = ArrayDeque<PrivateSend>()
 
     var now: () -> Long = { System.currentTimeMillis() }
 
@@ -73,9 +74,13 @@ class Chat(private val keep: Int = 300) {
     }
 
     /** Before a private message goes out: whom it's for (the server's echo doesn't tell). */
-    fun sendingPrivate(clientId: Int, uid: String) {
-        sentPrivate.addLast(clientId to uid)
+    fun sendingPrivate(clientId: Int, uid: String, code: String = "") {
+        sentPrivate.addLast(PrivateSend(clientId, uid, code))
         while (sentPrivate.size > 20) sentPrivate.removeFirst()
+    }
+
+    fun cancelPrivateSend(code: String) {
+        sentPrivate.removeAll { it.code == code }
     }
 
     private fun add(key: Key, entry: Entry): Key {
@@ -109,8 +114,9 @@ class Chat(private val keep: Int = 300) {
                     1 -> {
                         val uid = if (outgoing) {
                             val target = g["target"]?.toIntOrNull()
-                            val sent = sentPrivate.removeFirstOrNull()
-                            target?.let { model.clients[it]?.uid } ?: sent?.second
+                            val index = if (target == null) 0 else sentPrivate.indexOfFirst { it.clientId == target }
+                            val sent = if (index in sentPrivate.indices) sentPrivate.removeAt(index) else null
+                            target?.let { model.clients[it]?.uid } ?: sent?.uid
                         } else {
                             fromUid.ifEmpty { model.clients[from]?.uid.orEmpty() }
                         }

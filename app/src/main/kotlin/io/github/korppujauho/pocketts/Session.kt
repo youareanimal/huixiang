@@ -2,6 +2,7 @@ package io.github.korppujauho.pocketts
 
 import android.content.Context
 import io.github.korppujauho.pocketts.proto.Chat
+import io.github.korppujauho.pocketts.proto.ChatOutbox
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.ChannelEdits
 import io.github.korppujauho.pocketts.proto.Commands
@@ -47,6 +48,7 @@ object Session : TsClient.Listener {
         val inputMuted: Boolean = false,
         val outputMuted: Boolean = false,
         val chat: Map<Chat.Key, List<Chat.Entry>> = emptyMap(),
+        val chatDelivery: ChatOutbox.State = ChatOutbox.State(),
         val privateTabs: List<PrivateTab> = emptyList(),
         val unread: Set<Chat.Key> = emptySet(),
         val pokes: List<Chat.Poke> = emptyList(),
@@ -202,6 +204,7 @@ object Session : TsClient.Listener {
     // Used on the connection's thread only
     private val model = ServerModel()
     private val chat = Chat()
+    private val chatOutbox = ChatOutbox()
 
     // The chat history: the server whose history is loaded (null while none is), and its writes, one at a time
     private val historyLock = Any()
@@ -315,6 +318,7 @@ object Session : TsClient.Listener {
             volumes = Settings(app).volumes(), voice = VoiceSettings.load(app), micAllowed = micPermitted(),
             reconnecting = if (keepChat) retries else 0,
             chat = if (keepChat) prev.chat else emptyMap(), privateTabs = if (keepChat) prev.privateTabs else emptyList(),
+            chatDelivery = if (keepChat) prev.chatDelivery else ChatOutbox.State(),
             pokes = if (keepChat) prev.pokes else emptyList(), away = prev.away && keepChat, awayMessage = prev.awayMessage,
         )
         watchNetwork()
@@ -332,6 +336,7 @@ object Session : TsClient.Listener {
             model.clear()
             if (!keepChat) {
                 chat.clear()
+                chatOutbox.clear()
                 restoreHistory(address)
             }
             startAudio()
@@ -576,20 +581,29 @@ object Session : TsClient.Listener {
     /** Sends a message to a conversation: our channel, the server, or a person (who must be on the server). */
     fun send(key: Chat.Key, text: String) {
         val c = client ?: return
-        val msg = text.trim().take(1024)
-        if (msg.isEmpty()) return
-        when (key) {
-            is Chat.Key.Channel -> c.sendCommand(Commands.build("sendtextmessage", "targetmode" to 2, "target" to key.id, "msg" to msg))
-            is Chat.Key.Private -> c.post {
-                val person = model.clients.values.firstOrNull { it.uid == key.uid && it.id != model.ownClientId } ?: run {
-                    _state.update { it.copy(error = chat.privateNames[key.uid]?.let { n -> app.getString(R.string.private_left, n) } ?: app.getString(R.string.private_left_unknown)) }
-                    return@post
+        c.post {
+            if (client !== c || c.state != TsClient.State.CONNECTED) return@post
+            val target = when (key) {
+                is Chat.Key.Channel -> {
+                    if (key.id <= 0 || key.id != model.ownClient?.channel) {
+                        chatOutbox.reject(key, "CHAT_CHANNEL_CHANGED"); publishChatDelivery(); return@post
+                    }
+                    key.id
                 }
-                chat.sendingPrivate(person.id, key.uid)
-                c.sendCommand(Commands.build("sendtextmessage", "targetmode" to 1, "target" to person.id, "msg" to msg))
+                is Chat.Key.Private -> model.clients.values.firstOrNull { it.uid == key.uid && it.id != model.ownClientId }?.id ?: run {
+                    chatOutbox.reject(key, "CHAT_RECIPIENT_LEFT"); publishChatDelivery(); return@post
+                }
             }
+            val item = chatOutbox.begin(key, text)
+            publishChatDelivery()
+            if (item == null) return@post
+            if (key is Chat.Key.Private) chat.sendingPrivate(target, key.uid, item.code)
+            c.sendCommand(Commands.build("sendtextmessage", "targetmode" to if (key is Chat.Key.Channel) 2 else 1,
+                "target" to target, "msg" to text, "return_code" to item.code))
         }
     }
+
+    private fun publishChatDelivery() = _state.update { it.copy(chatDelivery = chatOutbox.state) }
 
     /** Opens a private conversation with someone (their tab). */
     fun openPrivate(person: ServerModel.Client) {
@@ -1113,6 +1127,10 @@ object Session : TsClient.Listener {
             "channellistfinished" -> client?.sendCommand("channelsubscribeall")
             "notifychannelcreated" -> client?.sendCommand(Commands.build("channelsubscribe", "cid" to cmd["cid"]))
             "error" -> {
+                chatOutbox.answer(cmd)?.let { item ->
+                    if (cmd["id"] != "0") chat.cancelPrivateSend(item.code)
+                    publishChatDelivery()
+                }
                 // Refused while connecting: our identity's security level is under the server's
                 if (cmd["id"] == LEVEL_TOO_LOW && _state.value.phase == Phase.CONNECTING) {
                     neededLevel = cmd["extra_msg"]?.toIntOrNull() ?: 0
@@ -1122,7 +1140,7 @@ object Session : TsClient.Listener {
                     joinAnswered(it, cmd)
                 }
                 cmd["return_code"]?.let { adminAsked.remove(it) }?.let { adminAnswered(it, cmd) }
-                if (cmd["id"] != "0" && cmd["return_code"]?.let { it.startsWith("ft-") || it.startsWith("quiet-") || it.startsWith("admin-") } != true) {
+                if (cmd["id"] != "0" && cmd["return_code"]?.let { it.startsWith("ft-") || it.startsWith("quiet-") || it.startsWith("admin-") || it.startsWith("chat-") } != true) {
                     AppLog.log("Server error ${cmd["id"]}: ${cmd["msg"]}")
                     if (_state.value.phase == Phase.CONNECTED) _state.update { it.copy(error = cmd["msg"]) }
                 }
@@ -1157,6 +1175,8 @@ object Session : TsClient.Listener {
     }
 
     override fun onDisconnected(reason: String?) {
+        chatOutbox.disconnected().forEach { chat.cancelPrivateSend(it.code) }
+        publishChatDelivery()
         AppLog.log("Disconnected" + (reason?.let { ": $it" } ?: ""))
         val text = endText(client, reason)
         // The server still has our old connection, which it drops only after a while (the same identity may be on
@@ -1282,8 +1302,10 @@ object Session : TsClient.Listener {
         if (::app.isInitialized) CallWatcher.stop(app)
         endCall()
         val s = _state.value
+        chatOutbox.disconnected().forEach { chat.cancelPrivateSend(it.code) }
         _state.value = UiState(
             phase = Phase.IDLE, error = if (level > 0) null else reason, address = s.address, inputMuted = s.inputMuted,
+            chatDelivery = chatOutbox.state,
             outputMuted = s.outputMuted, volumes = s.volumes, voice = s.voice, micAllowed = s.micAllowed, neededLevel = level,
         )
         if (::app.isInitialized) ConnectionService.stop(app)
