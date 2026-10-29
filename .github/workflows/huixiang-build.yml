@@ -58,15 +58,32 @@ jobs:
             '-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
           python3 scripts/collect-ci-release.py
 
+      - name: Sign with original upgrade key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HUIXIANG_KEYSTORE_BASE64 }}
+          HUIXIANG_STORE_PASSWORD: ${{ secrets.HUIXIANG_STORE_PASSWORD }}
+          HUIXIANG_KEY_PASSWORD: ${{ secrets.HUIXIANG_KEY_PASSWORD }}
+          HUIXIANG_KEY_ALIAS: ${{ secrets.HUIXIANG_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_DIR=$(mktemp -d "$RUNNER_TEMP/huixiang-key.XXXXXX")
+          trap 'rm -rf "$KEY_DIR"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEY_DIR/original.keystore"
+          docker run --rm \
+            -v "$PWD":/work -v "$KEY_DIR":/keys:ro \
+            -e HUIXIANG_STORE_PASSWORD -e HUIXIANG_KEY_PASSWORD -e HUIXIANG_KEY_ALIAS \
+            huixiang-build python3 scripts/sign-ci-release.py
+
       - name: Archive matching source
         run: git archive --format=zip --prefix=huixiang/ -o "dist/HuiXiang-$VERSION-source.zip" HEAD
 
       - name: Upload build outputs
         uses: actions/upload-artifact@v7
         with:
-          name: HuiXiang-${{ env.VERSION }}-unsigned
+          name: HuiXiang-${{ env.VERSION }}-signed
           path: |
-            dist/unsigned/
+            dist/signed/
             dist/HuiXiang-${{ env.VERSION }}-source.zip
           if-no-files-found: error
           retention-days: 30

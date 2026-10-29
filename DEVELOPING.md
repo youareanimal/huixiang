@@ -2,13 +2,13 @@
 
 ## 回响发布约定
 
-本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。新版推送 `v<版本号>` 标签后使用 `.github/workflows/huixiang-build.yml` 在 GitHub Actions 完成测试及精简 APK 构建，产物为 `HuiXiang-<版本号>-unsigned`。签名私钥保留在发行电脑，不上传到仓库或 Actions Secret；下载 CI 产物后，用原有密钥签名，再把签名安装包、校验清单与 CI 对应源码发布到 GitHub Releases。沿用现有 `app.shengqiao.ts.debug` 包名及证书，确保可覆盖升级。已有 `release.yml` 仅限原作者仓库。
+本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。GitHub Actions 构建未签名 APK 后，使用本机 Agent 写入 GitHub Secrets 的原发行密钥进行 zipalign 对齐与 apksigner 签名，产物名为 `HuiXiang-<版本号>-signed`。密钥只在签名步骤写入 runner 临时目录并在退出时删除，不进入源码、缓存或产物。证书 SHA-256 固定校验为原发行证书，包名沿用 `app.shengqiao.ts.debug`。Secret 包括 HUIXIANG_KEYSTORE_BASE64、HUIXIANG_STORE_PASSWORD、HUIXIANG_KEY_PASSWORD、HUIXIANG_KEY_ALIAS；不得显示其值。此约定取代此前仅本机签名的约定。工作流不自动发布 Release 或同步更新源。
 
 0.5.1 客户端内置 PI 与 Cloudflare 两个 HTTPS 源，每个源的清单与安装包必须保持同主机、同端口、同路径前缀。PI 默认优先，也允许在关于页选择 Cloudflare；失败时尝试备用源，下载切源前必须匹配版本、架构、长度及 SHA-256，继续验证包名和原签名。GitHub Release 的下载会跨域跳转，因此仍将 GitHub 构建并在本机签名的同一 APK 同步到两个源，保留旧版不可变文件。旧客户端继续使用 Cloudflare 清单，不直接替换其中的下载域名。PI 运维说明见 `scripts/pi-mirror/README.md`。
 
 ## The parts
 
-用户要求后续不再进行本地编译或测试。发行统一使用 GitHub Actions 的构建与检查，发行电脑仅下载云端产物、使用原有密钥签名并发布；不要再启动本机 Gradle、Robolectric 或本地截图验证。上游通用构建说明保留作参考，不代表本项目发行时使用本机打包。
+用户要求后续不再进行本地编译或测试。发行统一使用 GitHub Actions 的构建与检查，发行电脑配置 Secrets，后续从云端下载已签名产物；不要再启动本机 Gradle、Robolectric 或本地截图验证。上游通用构建说明保留作参考，不代表本项目发行时使用本机打包。
 
 - `tsproto/`: the TeamSpeak connection in plain Kotlin (no Android): packets, encryption, commands, the channel and
   people model, chat, file transfer and streams. Most of the tests are here.
