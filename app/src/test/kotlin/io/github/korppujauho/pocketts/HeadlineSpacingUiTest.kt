@@ -30,8 +30,13 @@ class HeadlineSpacingUiTest {
             .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
         val layout = results.single()
         assertTrue(layout.lineCount >= 2)
-        for (line in 1 until layout.lineCount)
-            assertTrue("Headline baselines must leave room for the full glyphs", layout.getLineBaseline(line) - layout.getLineBaseline(line-1) >= 29f * fontScale * 1.15f)
+        val style = layout.layoutInput.style
+        assertTrue("Headline needs its own readable line height", style.lineHeight.value >= style.fontSize.value * 1.25f)
+        val glyphHeight = with(layout.layoutInput.density) { style.fontSize.toPx() }
+        for (line in 1 until layout.lineCount) {
+            val gap = layout.getLineBaseline(line) - layout.getLineBaseline(line - 1)
+            assertTrue("Baseline gap $gap must accommodate font height $glyphHeight", gap >= glyphHeight)
+        }
     }
     @Test fun normalChineseHeadlineHasEnoughLineSpacing() = verify(1f)
     @Test fun enlargedChineseHeadlineWrapsWithoutOverlapping() = verify(1.5f)
