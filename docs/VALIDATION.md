@@ -7,6 +7,8 @@
 - 为手动连接页及同类大标题指定独立行高，解决中文多行文字重叠。
 - 更新默认优先 PI，可选择 Cloudflare，显示当前来源；检查或下载失败尝试备用源。切源下载前要求版本、架构、大小和 SHA-256 一致，并继续检查原有包名与签名。
 - 新增字体缩放、镜像切换、跨源跳转拒绝和备用包不匹配的自动化检查，随 GitHub Actions 执行。正式 APK 由 GitHub Actions 构建，本机使用原密钥签名。
+- [GitHub Actions 40845560200](https://github.com/youareanimal/huixiang/actions/runs/40845560200) 已完成全部检查、精简 APK 构建与对应源码归档，提交为 `ffea292bd349e5affc403b27ca7140bb5835d4bf`（`v0.5.1`）。下载云端产物后，仅在发行电脑使用原密钥签名，versionCode 14；没有在本机重新编译安装包。
+- [GitHub Release v0.5.1](https://github.com/youareanimal/huixiang/releases/tag/v0.5.1) 已公开三个安装包、匹配源码 ZIP 与校验清单；PI 镜像已发布 0.5.1-preview，Cloudflare 部署 `73fccb19` 完成。arm64 包为 17,363,535 字节，发布元数据见 `dist/verification/0.5.1-github/artifacts.json`。Cloudflare 旧 OAuth 登录通过 PI 已有代理恢复，没有读取网盘管理员令牌或申请新凭据；后续发布先同步 PI，再发布 Cloudflare。
 - 用户要求停止本地验证。本次完成过源码编译，随后的本地测试已停止；今后不再在本机编译或运行测试，运行结果以 CI 为准。真实手机升级、排版和下载速度由用户体验验收。
 
 ## 0.5.0 GitHub Actions 构建与发行

@@ -21,10 +21,6 @@ try {
         & scp -o BatchMode=yes $file.FullName "${PiHost}:$remoteStage/"
         if ($LASTEXITCODE -ne 0) { throw "Uploading $($file.Name) failed." }
     }
-    # Wrangler uses its existing standard login. It uploads assets before switching the deployed release.
-    $deploy = "cd '$remoteRoot' && node /home/maxin/.npm/_npx/32026684e21afda6/node_modules/wrangler/bin/wrangler.js pages deploy '$remoteStage' --project-name huixiang-updates --branch main --commit-dirty=true"
-    & ssh -o BatchMode=yes $PiHost $deploy
-    if ($LASTEXITCODE -ne 0) { throw 'Publishing update assets failed.' }
     $feed = Get-Content -LiteralPath (Join-Path $stage 'latest.json') -Raw | ConvertFrom-Json
     $arm64 = Split-Path $feed.artifacts.'arm64-v8a'.url -Leaf
     # Keep the familiar private cloud-drive download entry as well.
@@ -33,5 +29,9 @@ try {
     # A configured direct HTTPS mirror receives the same immutable assets, then its own manifest.
     & ssh -o BatchMode=yes $PiHost "if test -x /usr/local/lib/huixiang-mirror/sync-release.py; then sudo -n python3 /usr/local/lib/huixiang-mirror/sync-release.py --stage '$remoteStage'; fi"
     if ($LASTEXITCODE -ne 0) { throw 'PI HTTPS mirror synchronization failed.' }
+    # Publish the primary mirror first. Existing OAuth login/refresh uses the PI's established proxy.
+    $deploy = "cd '$remoteRoot' && HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 node /home/maxin/.npm/_npx/32026684e21afda6/node_modules/wrangler/bin/wrangler.js pages deploy '$remoteStage' --project-name huixiang-updates --branch main --commit-dirty=true"
+    & ssh -o BatchMode=yes $PiHost $deploy
+    if ($LASTEXITCODE -ne 0) { throw 'PI mirror is synchronized, but publishing the Cloudflare fallback failed.' }
     Write-Output 'Published: https://huixiang-updates.pages.dev/latest.json'
 } finally { Pop-Location }

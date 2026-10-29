@@ -8,7 +8,7 @@
 
 ## The parts
 
-Windows 可用内存不足时，可先用 `:app:compileDebugUnitTestKotlin -Pkotlin.compiler.execution.strategy=in-process` 单独编译，再运行受限内存的单进程测试，避免 Kotlin 编译器和 Robolectric 同时占用内存。该编译策略见 [Kotlin 官方说明](https://kotlinlang.org/docs/compiler-execution-strategy.html)。本地调试 JVM 参数仅通过构建命令传入，不影响发布包的功能。
+用户要求后续不再进行本地编译或测试。发行统一使用 GitHub Actions 的构建与检查，发行电脑仅下载云端产物、使用原有密钥签名并发布；不要再启动本机 Gradle、Robolectric 或本地截图验证。上游通用构建说明保留作参考，不代表本项目发行时使用本机打包。
 
 - `tsproto/`: the TeamSpeak connection in plain Kotlin (no Android): packets, encryption, commands, the channel and
   people model, chat, file transfer and streams. Most of the tests are here.
