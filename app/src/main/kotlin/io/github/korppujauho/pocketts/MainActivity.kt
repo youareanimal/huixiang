@@ -414,7 +414,7 @@ private fun App() {
         }) { Text("退出账号") } },
         dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
     if (about) AppUpdateDialog(update, { about = false }, updater::check, updater::download, updater::cancel,
-        { updater.install(ctx) }, updater::automatic)
+        { updater.install(ctx) }, updater::automatic, updater::source)
     notice?.let { message -> AlertDialog(onDismissRequest = { notice = null }, text = { Text(message) }, confirmButton = { TextButton(onClick = { notice = null }) { Text("知道了") } }) }
     pendingLink.value?.takeIf { entered }?.let { link ->
         val nickname = entry.nickname(account, link.nickname.ifBlank { names.first }.ifBlank { "回响访客" }).orEmpty()

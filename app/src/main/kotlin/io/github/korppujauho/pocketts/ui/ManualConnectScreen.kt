@@ -28,7 +28,7 @@ fun ManualConnectScreen(nickname: String, accountUsername: String, address: Stri
     Column(Modifier.fillMaxSize().background(Ts.page).imePadding()) {
         HubTopBar("下一个频道见", "添加服务器 / 粘贴邀请", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("输入地址，\n就能一起开聊。", color = Ts.bright, fontSize = 29.sp, fontWeight = FontWeight.Bold)
+            Text("输入地址，\n就能一起开聊。", color = Ts.bright, fontSize = 29.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold)
             TsField(addr, { addr = it }, "服务器地址或邀请链接", placeholder = "ts.example.com:9987", keyboard = KeyboardType.Uri)
             if (!signedIn) TsField(nick, { nick = it }, "连接昵称")
             else Text(if (accountUsername.isBlank()) "正在读取当前账号信息…" else "使用当前账号：$accountUsername", color = Ts.brand)

@@ -4,7 +4,7 @@
 
 本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。新版推送 `v<版本号>` 标签后使用 `.github/workflows/huixiang-build.yml` 在 GitHub Actions 完成测试及精简 APK 构建，产物为 `HuiXiang-<版本号>-unsigned`。签名私钥保留在发行电脑，不上传到仓库或 Actions Secret；下载 CI 产物后，用原有密钥签名，再把签名安装包、校验清单与 CI 对应源码发布到 GitHub Releases。沿用现有 `app.shengqiao.ts.debug` 包名及证书，确保可覆盖升级。已有 `release.yml` 仅限原作者仓库。
 
-当前客户端仅接受现有更新站点的同源 HTTPS 地址，GitHub Release 资产还会跳转至下载域名。因此迁移构建时应把 GitHub Actions 生成的原始签名 APK 同步到现有更新站点，更新版本清单，保留旧版本下载文件；不要未经客户端适配直接更换清单中的下载域名。
+0.5.1 客户端内置 PI 与 Cloudflare 两个 HTTPS 源，每个源的清单与安装包必须保持同主机、同端口、同路径前缀。PI 默认优先，也允许在关于页选择 Cloudflare；失败时尝试备用源，下载切源前必须匹配版本、架构、长度及 SHA-256，继续验证包名和原签名。GitHub Release 的下载会跨域跳转，因此仍将 GitHub 构建并在本机签名的同一 APK 同步到两个源，保留旧版不可变文件。旧客户端继续使用 Cloudflare 清单，不直接替换其中的下载域名。PI 运维说明见 `scripts/pi-mirror/README.md`。
 
 ## The parts
 

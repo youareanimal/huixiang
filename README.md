@@ -1,6 +1,6 @@
 # 回响 · Android
 
-0.5.0：统一登录后的账号连接入口，增加服务器内账号头像、其他用户头像和用户资料卡，补齐基础好友文字聊天。好友聊天仍需官方云服务可用，已开启端到端加密的会话暂不支持解密或发送。
+0.5.1：修复连接页标题重叠；在线更新优先使用 PI 直连镜像，可切换 Cloudflare，失败时尝试备用源。保留 0.5.0 的账号入口、头像资料卡与基础好友文字聊天。好友聊天仍需官方云服务可用，已开启端到端加密的会话暂不支持解密或发送。
 
 安装包与对应源码见 [GitHub Releases](https://github.com/youareanimal/huixiang/releases)。GitHub Actions 负责测试与构建，现有升级私钥保留在发行电脑，签名后分发；沿用原包名、签名及在线更新源。构建与验收说明见 [验收记录](docs/VALIDATION.md)。
 
@@ -22,9 +22,9 @@
 ## 安装与连接
 
 构建成功后安装对应的预览 APK。要求 Android 10+。优先选择与手机 CPU 对应的
-[`HuiXiang-0.5.0-preview-arm64-v8a.apk`](https://github.com/youareanimal/huixiang/releases/download/v0.5.0/HuiXiang-0.5.0-preview-arm64-v8a.apk)（华为畅享70等近年手机）或
-`HuiXiang-0.5.0-preview-armeabi-v7a.apk`（较旧手机）；不确定时使用较大的
-`HuiXiang-0.5.0-preview.apk`，它同时支持两种 CPU。三个包的包名和功能相同，不要重复安装。
+[`HuiXiang-0.5.1-preview-arm64-v8a.apk`](https://pi.animal26.site:8443/huixiang/HuiXiang-0.5.1-preview-arm64-v8a.apk)（华为畅享70等近年手机）或
+`HuiXiang-0.5.1-preview-armeabi-v7a.apk`（较旧手机）；不确定时使用较大的
+`HuiXiang-0.5.1-preview.apk`，它同时支持两种 CPU。三个包的包名和功能相同，不要重复安装。
 保留旧版的包名和签名，可直接覆盖安装，无需先卸载。
 各文件校验值见 `SHA256SUMS.txt`。
 
@@ -42,7 +42,9 @@
 
 下载自动选择 arm64 或 armeabi-v7a，关闭弹窗后可继续下载，取消可重试。完成后检查文件大小、SHA-256、包名、版本和应用签名；点击“安装新版”交给系统确认。首次可能需要在系统中允许回响安装应用，再返回点击安装。覆盖升级保留账号和设置，但安装会关闭应用并中断语音。应用被系统终止时可重新下载，已完成安装包会在再次打开时恢复。
 
-更新源为独立的 HTTPS 地址 `https://huixiang-updates.pages.dev/latest.json`，不需要网盘或 TeamSpeak 账号；旧网盘仍可手动下载。新版发布：先构建 APK 和对应源代码 ZIP，再运行 `scripts/publish-update.ps1`。它会生成版本清单，通过 PI 已登录的 Cloudflare 官方工具发布，并同步 arm64 包到原网盘共享目录；不会读取管理员令牌。
+0.5.1 默认更新源为 `https://pi.animal26.site:8443/huixiang/latest.json`，关于页可选择 PI 直连或 Cloudflare；连接失败会尝试备用源，当前来源显示在页面中。下载切源只接受同一版本、架构、长度与 SHA-256 的安装包，不需要网盘或 TeamSpeak 账号。0.5.0 及更早版本仍使用 Cloudflare，首次可从上方 PI 链接手动覆盖安装 0.5.1，之后 App 内更新才会优先使用 PI。
+
+新版由 GitHub Actions 构建，下载原始产物在本机签名后，运行 `scripts/publish-update.ps1` 发布同一安装包及源码到 Cloudflare 与 PI 镜像；同时同步 arm64 包到原网盘共享目录，不读取网盘管理员令牌。
 
 ## 账号与服务器
 

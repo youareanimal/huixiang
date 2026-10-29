@@ -22,8 +22,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 /** Public release metadata only. No TeamSpeak or cloud-drive login credentials are used. */
 object UpdateFeed {
+    enum class Source(val label: String, val feedUrl: String) {
+        PI("PI 直连", BuildConfig.UPDATE_FEED_URL),
+        CLOUDFLARE("Cloudflare", BuildConfig.UPDATE_FALLBACK_FEED_URL),
+    }
     data class Artifact(val abi: String, val url: String, val bytes: Long, val sha256: String)
-    data class Release(val code: Long, val name: String, val notes: String, val artifact: Artifact)
+    data class Release(val code: Long, val name: String, val notes: String, val artifact: Artifact,
+        val feedUrl: String = BuildConfig.UPDATE_FEED_URL)
+    fun sameArtifact(a: Release, b: Release) = a.code == b.code && a.artifact.abi == b.artifact.abi &&
+        a.artifact.bytes == b.artifact.bytes && a.artifact.sha256 == b.artifact.sha256
     const val MAX_APK = 100L * 1024 * 1024
     fun allowedUrl(value: String, feed: String = BuildConfig.UPDATE_FEED_URL): Boolean = try {
         val u = URI(value); val base = URI(feed)
@@ -54,7 +61,7 @@ object UpdateFeed {
         val size = number(row["bytes"])
         val hash = (row["sha256"] as? String).orEmpty().lowercase()
         require(allowedUrl(url, feed) && size in 1..MAX_APK && hash.matches(Regex("[0-9a-f]{64}"))) { "安装包信息无效" }
-        return Release(code, name, notes, Artifact(abi, url, size, hash))
+        return Release(code, name, notes, Artifact(abi, url, size, hash), feed)
     }
     fun digest(file: File): String = MessageDigest.getInstance("SHA-256").let { md ->
         file.inputStream().use { input -> val buffer = ByteArray(65536); while (true) {
@@ -75,24 +82,35 @@ object UpdateFeed {
     }
 }
 
-class AppUpdater(context: Context) {
+class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val openConnection: (String) -> HttpURLConnection = { URI(it).toURL().openConnection() as HttpURLConnection }) {
     data class State(val release: UpdateFeed.Release? = null, val checking: Boolean = false, val checked: Boolean = false,
         val downloading: Boolean = false, val received: Long = 0, val ready: Boolean = false,
-        val error: String? = null, val automatic: Boolean = true, val dismissed: Long = 0)
+        val error: String? = null, val automatic: Boolean = true, val dismissed: Long = 0,
+        val source: UpdateFeed.Source = UpdateFeed.Source.PI, val activeSource: UpdateFeed.Source? = null)
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences("huixiang-updates", Context.MODE_PRIVATE)
     private val directory = File(app.cacheDir, "updates")
     private val cachedFeed get() = File(directory, "latest.json")
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val mutex = Mutex()
     private val connection = AtomicReference<HttpURLConnection?>()
     private var job: Job? = null
-    private val mutable = MutableStateFlow(State(automatic = prefs.getBoolean("automatic", true), dismissed = prefs.getLong("dismissed", 0)))
+    private val mutable = MutableStateFlow(State(automatic = prefs.getBoolean("automatic", true), dismissed = prefs.getLong("dismissed", 0),
+        source = UpdateFeed.Source.entries.firstOrNull { it.name == prefs.getString("source", "PI") } ?: UpdateFeed.Source.PI))
     val state = mutable.asStateFlow()
     private fun apk(release: UpdateFeed.Release) = File(directory, "${release.code}-${release.artifact.abi}.apk")
 
     init { run {
-        if (cachedFeed.isFile) try { offer(UpdateFeed.parse(cachedFeed.readText())) } catch (_: Exception) { cachedFeed.delete() }
+        if (cachedFeed.isFile) {
+            val restored = UpdateFeed.Source.entries.firstNotNullOfOrNull { source ->
+                try { UpdateFeed.parse(cachedFeed.readText(), feed = source.feedUrl) } catch (_: Exception) { null }
+            }
+            if (restored == null) cachedFeed.delete() else {
+                offer(restored)
+                mutable.update { it.copy(activeSource = UpdateFeed.Source.entries.first { s -> s.feedUrl == restored.feedUrl }) }
+            }
+        }
     } }
 
     fun start() {
@@ -105,25 +123,41 @@ class AppUpdater(context: Context) {
         }
     }
     fun automatic(value: Boolean) { prefs.edit().putBoolean("automatic", value).apply(); mutable.update { it.copy(automatic = value) } }
+    fun source(value: UpdateFeed.Source) {
+        if (job?.isActive == true || value == mutable.value.source) return
+        prefs.edit().putString("source", value.name).apply()
+        mutable.update { it.copy(source = value, activeSource = null, release = null, checked = false, ready = false, error = null) }
+    }
     fun dismiss() { val code = mutable.value.release?.code ?: return
         prefs.edit().putLong("dismissed", code).apply(); mutable.update { it.copy(dismissed = code) }
     }
     fun check() = run {
         mutable.update { it.copy(checking = true, error = null) }
-        fetch(BuildConfig.UPDATE_FEED_URL) { c ->
-            val text = c.inputStream.use { input ->
-                val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(4096)
-                while (true) { val n = input.read(buffer); if (n < 0) break
-                    require(out.size() + n <= 65536) { "更新信息过大" }; out.write(buffer, 0, n)
-                }; out.toString(Charsets.UTF_8.name())
-            }
-            val release = UpdateFeed.parse(text)
-            directory.mkdirs()
-            val temp = File(directory, "latest.tmp"); temp.writeText(text)
-            check(temp.renameTo(cachedFeed)) { "无法保存更新信息" }
-            offer(release)
-            prefs.edit().putLong("checked", System.currentTimeMillis()).apply()
+        var last: Exception? = null
+        for (source in orderedSources(mutable.value.source)) {
+            try {
+                mutable.update { it.copy(activeSource = source) }
+                val (text, release) = readRelease(source)
+                directory.mkdirs()
+                val temp = File(directory, "latest.tmp"); temp.writeText(text)
+                check(temp.renameTo(cachedFeed)) { "无法保存更新信息" }
+                offer(release)
+                prefs.edit().putLong("checked", System.currentTimeMillis()).apply()
+                return@run
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { last = e }
         }
+        throw last ?: UpdateProblem("更新源暂时不可用。")
+    }
+    private fun orderedSources(first: UpdateFeed.Source) = listOf(first) + UpdateFeed.Source.entries.filter { it != first }
+    private suspend fun readRelease(source: UpdateFeed.Source): Pair<String, UpdateFeed.Release> {
+        val text = fetch(source.feedUrl, source.feedUrl) { c -> c.inputStream.use { input ->
+            val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(4096)
+            while (true) { val n = input.read(buffer); if (n < 0) break
+                require(out.size() + n <= 65536) { "更新信息过大" }; out.write(buffer, 0, n)
+            }; out.toString(Charsets.UTF_8.name())
+        } }
+        return text to UpdateFeed.parse(text, feed = source.feedUrl)
     }
     private fun offer(release: UpdateFeed.Release) {
         if (release.code <= BuildConfig.VERSION_CODE) {
@@ -140,13 +174,27 @@ class AppUpdater(context: Context) {
         val part = File(directory, "download.part.apk")
         try {
             val coroutine = currentCoroutineContext()
-            fetch(release.artifact.url) { c -> c.inputStream.use { input ->
-                UpdateFeed.copy(input, part, release.artifact) { received ->
-                    coroutine.ensureActive()
-                    mutable.update { it.copy(received = received) }
-                }
-            } }
-            validate(part, release)
+            var completed = false
+            var last: Exception? = null
+            val first = UpdateFeed.Source.entries.firstOrNull { it.feedUrl == release.feedUrl }
+                ?: throw UpdateProblem("更新源无效，请重新检查更新。")
+            for (source in orderedSources(first)) {
+                try {
+                    mutable.update { it.copy(activeSource = source, received = 0) }
+                    val candidate = if (source == first) release else readRelease(source).second
+                    if (!UpdateFeed.sameArtifact(release, candidate)) throw UpdateProblem("备用源的版本或安装包不同，请重新检查更新。")
+                    fetch(candidate.artifact.url, source.feedUrl) { c -> c.inputStream.use { input ->
+                        UpdateFeed.copy(input, part, release.artifact) { received ->
+                            coroutine.ensureActive()
+                            mutable.update { it.copy(received = received) }
+                        }
+                    } }
+                    validate(part, release)
+                    completed = true; break
+                } catch (e: CancellationException) { throw e }
+                catch (e: Exception) { part.delete(); last = e }
+            }
+            if (!completed) throw last ?: UpdateProblem("安装包下载失败，请重试。")
             val target = apk(release)
             check(part.renameTo(target)) { "无法保存安装包" }
             directory.listFiles()?.filter { it.extension == "apk" && it != target }?.forEach { it.delete() }
@@ -166,11 +214,11 @@ class AppUpdater(context: Context) {
             finally { mutable.update { it.copy(checking = false, downloading = false) }; mutex.unlock() }
         }
     }
-    private suspend fun fetch(url: String, action: suspend (HttpURLConnection) -> Unit) {
+    private suspend fun <T> fetch(url: String, feed: String, action: suspend (HttpURLConnection) -> T): T {
         var address = url
         repeat(4) {
-            if (!UpdateFeed.allowedUrl(address)) throw UpdateProblem("更新地址无效。")
-            val c = URI(address).toURL().openConnection() as HttpURLConnection
+            if (!UpdateFeed.allowedUrl(address, feed)) throw UpdateProblem("更新地址无效。")
+            val c = openConnection(address)
             connection.set(c)
             c.instanceFollowRedirects = false; c.connectTimeout = 10000; c.readTimeout = 20000
             c.setRequestProperty("User-Agent", "HuiXiang/${BuildConfig.VERSION_NAME}")
@@ -182,7 +230,7 @@ class AppUpdater(context: Context) {
                     address = URI(address).resolve(c.getHeaderField("Location") ?: throw UpdateProblem("下载地址跳转失败。")).toString()
                 } else {
                     if (code != 200) throw UpdateProblem("更新服务暂不可用（HTTP $code），请稍后重试。")
-                    action(c); return
+                    return action(c)
                 }
             } finally { connection.compareAndSet(c, null); c.disconnect() }
         }

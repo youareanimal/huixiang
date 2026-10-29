@@ -9,11 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.korppujauho.pocketts.AppUpdater
 import io.github.korppujauho.pocketts.BuildConfig
+import io.github.korppujauho.pocketts.UpdateFeed
 import java.util.Locale
 
 @Composable
 fun AppUpdateDialog(state: AppUpdater.State, onDismiss: () -> Unit, onCheck: () -> Unit,
-    onDownload: () -> Unit, onCancel: () -> Unit, onInstall: () -> Unit, onAutomatic: (Boolean) -> Unit) {
+    onDownload: () -> Unit, onCancel: () -> Unit, onInstall: () -> Unit, onAutomatic: (Boolean) -> Unit,
+    onSource: (UpdateFeed.Source) -> Unit = {}) {
     AlertDialog(onDismissRequest = onDismiss, title = { Text("关于回响") },
         text = { Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -21,6 +23,15 @@ fun AppUpdateDialog(state: AppUpdater.State, onDismiss: () -> Unit, onCheck: () 
             Desc("让声音有回应。基于 PocketTS，采用 GPL-3.0 许可，与 TeamSpeak 官方无关联。")
             HorizontalDivider(color = Ts.hairline)
             Text("在线更新", color = Ts.bright)
+            Text("优先下载源：${state.source.label}", color = Ts.text)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                UpdateFeed.Source.entries.forEach { source ->
+                    FilterChip(selected = state.source == source, onClick = { onSource(source) },
+                        enabled = !state.checking && !state.downloading, label = { Text(source.label) })
+                }
+            }
+            Desc("切换后点击检查更新。连接失败会尝试备用源，安装包仍校验哈希和签名。")
+            state.activeSource?.let { Text("当前来源：${it.label}", color = Ts.brand) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("自动检查新版本", color = Ts.text)
                 Switch(state.automatic, onCheckedChange = onAutomatic)

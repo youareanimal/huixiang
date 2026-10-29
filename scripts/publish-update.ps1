@@ -30,5 +30,8 @@ try {
     # Keep the familiar private cloud-drive download entry as well.
     & ssh -o BatchMode=yes $PiHost "cp -n '$remoteStage/$arm64' '/srv/openlist/share/$arm64'"
     if ($LASTEXITCODE -ne 0) { throw 'Cloud-drive copy failed.' }
+    # A configured direct HTTPS mirror receives the same immutable assets, then its own manifest.
+    & ssh -o BatchMode=yes $PiHost "if test -x /usr/local/lib/huixiang-mirror/sync-release.py; then sudo -n python3 /usr/local/lib/huixiang-mirror/sync-release.py --stage '$remoteStage'; fi"
+    if ($LASTEXITCODE -ne 0) { throw 'PI HTTPS mirror synchronization failed.' }
     Write-Output 'Published: https://huixiang-updates.pages.dev/latest.json'
 } finally { Pop-Location }
