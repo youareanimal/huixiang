@@ -202,7 +202,7 @@ private fun AccountPasswordForm(busy: Boolean, onLogin: (String, String, String)
         Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("登录 TeamSpeak 账号", color = Ts.bright, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("登录 TeamSpeak 账号", color = Ts.bright, fontSize = 25.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold)
         Text("使用 myTeamSpeak 邮箱和密码。认证成功后即可查看用户名；登录过程不连接云聊天服务器。", color = Ts.text)
         TsField(email, { email = it }, "myTeamSpeak 邮箱", keyboard = KeyboardType.Email)
         TsField(password, { password = it }, "密码", password = true)

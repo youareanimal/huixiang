@@ -83,7 +83,7 @@ fun RaiseLevelDialog(current: Int, needed: Int? = null, onReached: () -> Unit = 
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         PillButton("−", enabled = target > current + 1) { target-- }
                         Text(
-                            "$target", color = Ts.bright, fontWeight = FontWeight.SemiBold, fontSize = 28.sp,
+                            "$target", color = Ts.bright, fontWeight = FontWeight.SemiBold, fontSize = 28.sp, lineHeight = 36.sp,
                             textAlign = TextAlign.Center, modifier = Modifier.width(88.dp),
                         )
                         PillButton("+", enabled = target < MAX_LEVEL) { target++ }

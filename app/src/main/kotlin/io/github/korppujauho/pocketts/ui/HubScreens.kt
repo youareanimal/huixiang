@@ -60,7 +60,7 @@ fun HubTopBar(title: String, subtitle: String = "", onBack: (() -> Unit)? = null
     Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "返回", tint = Ts.text) }
         Column(Modifier.weight(1f).padding(start = if (onBack == null) 8.dp else 0.dp)) {
-            Text(title, color = Ts.bright, fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Ts.bright, fontSize = 26.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotBlank()) Text(subtitle, color = Ts.muted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         actions()
@@ -74,7 +74,7 @@ fun BrandHero(eyebrow: String, title: String, subtitle: String) {
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(eyebrow, color = Color(0xFFE1D2FF), fontSize = 11.sp, letterSpacing = 2.sp)
-            Text(title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Color.White, fontSize = 25.sp, lineHeight = 33.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(subtitle, color = Color(0xFFD5C9E8), fontSize = 13.sp)
         }
         Image(painterResource(R.drawable.huixiang_mascot), null, Modifier.size(80.dp))
@@ -290,7 +290,7 @@ fun HubLogin(state: CloudAccountController.State, onBack: () -> Unit, onLogin: (
         HubTopBar("和好友，再次相遇", "登录 TeamSpeak 账号", onBack)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(22.dp), verticalArrangement = Arrangement.spacedBy(17.dp)) {
             Image(painterResource(R.drawable.huixiang_mascot), null, Modifier.size(96.dp))
-            Text("你的书签和好友\n会一起回来。", color = Ts.bright, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text("你的书签和好友\n会一起回来。", color = Ts.bright, fontSize = 30.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold)
             TsField(email, { email = it }, "myTeamSpeak 邮箱", keyboard = KeyboardType.Email)
             TsField(password, { password = it }, "密码", password = true)
             TextButton(onClick = { otpOpen = !otpOpen }) { Text(if (otpOpen) "收起两步验证码" else "我开启了两步验证", color = Ts.brand) }

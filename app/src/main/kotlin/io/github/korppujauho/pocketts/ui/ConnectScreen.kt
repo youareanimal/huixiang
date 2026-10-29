@@ -91,7 +91,7 @@ fun ConnectScreen(
             verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
             Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.welcome_title), color = Ts.bright, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                Text(stringResource(R.string.welcome_title), color = Ts.bright, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 34.sp)
                 Text(stringResource(R.string.welcome_description), color = Ts.text, fontSize = 14.sp)
                 TextButton(onClick = { help = true }) { Text(stringResource(R.string.connection_help), color = Ts.brand) }
             }
