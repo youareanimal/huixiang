@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Simplified Chinese. TeamSpeak's own words follow the TeamSpeak 5 client's Chinese translation (MIT), see TRANSLATIONS.md. -->
 <resources>
+    <string name="welcome_title">随时回到你的频道</string>
+    <string name="welcome_description">连接 TeamSpeak 3 / 6 服务器，与伙伴语音、聊天。输入服务器地址和昵称即可开始。</string>
+    <string name="connection_help">连接指南</string>
+    <string name="connection_help_body">填写域名或 IP 地址，可在末尾加上 :9987（默认语音端口）。如果管理员配置了其他端口，请填写实际语音端口，不要使用 ServerQuery 或文件传输端口。\n\n也可以在地址栏粘贴 ts3server:// 或 teamspeak:// 邀请链接，确认内容后再加入。\n\n应用在手机上创建本地 TeamSpeak 身份。在“账号与云聊天”中使用 myTeamSpeak 邮箱和密码登录，可同步好友与已有云端会话。发言时需要授予麦克风权限。</string>
+    <string name="fork_attribution">基于 PocketTS 的独立客户端 · GPL-3.0，与 TeamSpeak 官方无关联。</string>
     <!-- Shared -->
     <string name="cancel">取消</string>
     <string name="save">保存</string>
@@ -20,6 +25,7 @@
     <string name="link_use_key_desc">它会给你这个服务器上的权限，例如管理员权限。只有在你信任链接发送者时才使用。</string>
     <string name="disconnect">断开连接</string>
     <string name="nickname">昵称</string>
+    <string name="account_nickname_hint">默认使用账号用户名：%1$s，可为服务器单独修改。</string>
     <string name="server_address">服务器地址或昵称</string>
     <string name="server_password">服务器密码</string>
     <string name="remember_password">记住密码</string>
@@ -39,7 +45,7 @@
     <string name="favourite_file_port">文件传输端口</string>
     <string name="favourite_file_port_hint">服务器自己的端口（通常为 30033）</string>
     <string name="favourite_file_port_desc">仅当服务器的图片和头像无法加载时：它的文件传输使用了其他端口。</string>
-    <string name="update_title">PocketTS %1$s 已发布</string>
+    <string name="update_title">回响 %1$s 已发布</string>
     <string name="update_text">GitHub 上有比当前版本（%1$s）更新的版本。</string>
     <string name="not_now">以后再说</string>
     <string name="download">下载</string>
@@ -181,9 +187,9 @@
     <string name="avatar_change">更换</string>
     <string name="avatar_desc">其他人会在此服务器上看到它。它会被裁剪为 320 × 320。</string>
     <string name="general_floating_ptt">悬浮按键说话按钮</string>
-    <string name="general_floating_ptt_desc">在按键说话模式下，一个圆形按钮会停留在 PocketTS 屏幕底部，让你在滚动聊天时也能说话。显示在其他应用上方的按钮（见下方）是单独的设置。</string>
+    <string name="general_floating_ptt_desc">在按键说话模式下，一个圆形按钮会停留在 回响 屏幕底部，让你在滚动聊天时也能说话。显示在其他应用上方的按钮（见下方）是单独的设置。</string>
     <string name="general_overlay_ptt">在其他应用上方显示说话按钮</string>
-    <string name="general_overlay_ptt_desc">在按键说话模式下，当你切换到其他应用时（PocketTS 本身内不显示）会出现一个圆形按钮。按住它说话，拖动它可移动位置。Android 会询问一次是否允许 PocketTS 显示在其他应用上方。</string>
+    <string name="general_overlay_ptt_desc">在按键说话模式下，当你切换到其他应用时（回响 本身内不显示）会出现一个圆形按钮。按住它说话，拖动它可移动位置。Android 会询问一次是否允许 回响 显示在其他应用上方。</string>
     <string name="general_volume_ptt">音量键用于按键说话</string>
     <string name="general_volume_ptt_desc">在按键说话模式下，当应用显示在屏幕上时，按住音量键即可说话（而不是调节音量）。</string>
     <string name="general_headset_ptt">耳机按钮用于按键说话</string>
@@ -191,7 +197,7 @@
     <string name="general_call_mute">通话时静音</string>
     <string name="general_call_mute_desc">来电响铃或通话开始时，麦克风和声音会关闭（包括你正在观看的直播的声音），通话结束后恢复。你共享的直播会暂停，观众看不到来电。你自己静音的仍保持静音。</string>
     <string name="general_updates">检查更新</string>
-    <string name="general_updates_desc">PocketTS 每天会向 GitHub 询问一次是否有新版本，并在连接界面上提示。不会发送任何关于你的信息。</string>
+    <string name="general_updates_desc">回响 每天会向 GitHub 询问一次是否有新版本，并在连接界面上提示。不会发送任何关于你的信息。</string>
     <string name="general_screen_on">保持屏幕常亮</string>
     <string name="general_screen_on_desc">在你已连接且应用打开时，屏幕不会变暗。在你分享或观看直播时，屏幕总是保持常亮。</string>
     <string name="general_spacers">允许加入间隔频道</string>
@@ -270,7 +276,7 @@
     <string name="identity_export_subtitle">请妥善保密</string>
     <string name="identity_save_file">保存到文件</string>
     <string name="identity_export_what">该文件就是你的身份本身：任何拥有它的人在每个服务器上都会被当作你，拥有你的组和权限，例如服务器管理员的权限。没有人能分辨出区别。</string>
-    <string name="identity_export_where">请将它保存在只有你能访问的地方，例如这部手机或私人存储。不要通过聊天或电子邮件发送，也不要公开发布。TeamSpeak 应用可以打开它，另一部手机上的 PocketTS 也可以。</string>
+    <string name="identity_export_where">请将它保存在只有你能访问的地方，例如这部手机或私人存储。不要通过聊天或电子邮件发送，也不要公开发布。TeamSpeak 应用可以打开它，另一部手机上的 回响 也可以。</string>
     <string name="identity_wipe_title">清除你的身份？</string>
     <string name="identity_wipe_what">这部手机的身份将被删除，下次连接时会创建新身份。对于每个服务器来说，你将成为一个新用户：你的组、权限以及授予旧身份的一切（例如管理员权限）都不会保留。</string>
     <string name="identity_wipe_back">唯一的恢复方法是已导出的副本。如果你以后可能还需要它，请取消并先导出。</string>

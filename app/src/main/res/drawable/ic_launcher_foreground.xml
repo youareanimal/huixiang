@@ -1,25 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  The app icon: a headset peeking out of a pocket (the app's blue), with the pocket's stitching. Drawn at 54 x 64 and
-  scaled into the middle of the 108 x 108 canvas, so launchers that cut icons into circles or other shapes keep it whole.
--->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="54" android:translateY="54">
-        <group android:scaleX="0.74" android:scaleY="0.74">
-            <group android:translateX="-54" android:translateY="-62">
-                <!-- The headset: the band and the two ear cups -->
-                <path android:strokeColor="#FFFFFFFF" android:strokeWidth="5" android:strokeLineCap="round"
-                    android:pathData="M36,60v-12a18,18 0,0 1,36 0v12" />
-                <path android:fillColor="#FFFFFFFF"
-                    android:pathData="M34.5,46h2a4.5,4.5 0,0 1,4.5 4.5v8a4.5,4.5 0,0 1,-4.5 4.5h-2a4.5,4.5 0,0 1,-4.5 -4.5v-8a4.5,4.5 0,0 1,4.5 -4.5zM71.5,46h2a4.5,4.5 0,0 1,4.5 4.5v8a4.5,4.5 0,0 1,-4.5 4.5h-2a4.5,4.5 0,0 1,-4.5 -4.5v-8a4.5,4.5 0,0 1,4.5 -4.5z" />
-                <!-- The pocket, in front -->
-                <path android:fillColor="#FF3B82F6"
-                    android:pathData="M27,61h54v12q0,13 -27,21q-27,-8 -27,-21z" />
-                <!-- Its stitching -->
-                <path android:strokeColor="#8CFFFFFF" android:strokeWidth="1.6" android:strokeLineCap="round"
-                    android:pathData="M32,66h3M38,66h3M44,66h3M50,66h3M56,66h3M62,66h3M68,66h3M73,66h3M76,69v3M75.5,76l-1.5,2.5M71,81l-2.5,1.5M65,84.5l-2.5,1M59,87l-2.5,1M51.5,88l-2.5,-1M45.5,85.5l-2.5,-1M39.5,82.5l-2.5,-1.5M34,78.5l-1.5,-2.5M32,72v-3" />
-            </group>
-        </group>
-    </group>
-</vector>
+<!-- Keep the mascot inside the adaptive icon's central safe area. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="18.5185%" android:insetTop="18.5185%"
+    android:insetRight="18.5185%" android:insetBottom="18.5185%">
+    <bitmap android:src="@drawable/huixiang_mascot" android:gravity="fill" android:filter="true" />
+</inset>

@@ -39,7 +39,7 @@
     <string name="favourite_file_port">Port de transfert de fichiers</string>
     <string name="favourite_file_port_hint">Celui du serveur (en général 30033)</string>
     <string name="favourite_file_port_desc">Seulement si les images et les avatars du serveur ne se chargent pas : son transfert de fichiers est sur un autre port.</string>
-    <string name="update_title">PocketTS %1$s est disponible</string>
+    <string name="update_title">回响 %1$s est disponible</string>
     <string name="update_text">Une version plus récente que celle-ci (%1$s) est sur GitHub.</string>
     <string name="not_now">Pas maintenant</string>
     <string name="download">Télécharger</string>
@@ -183,9 +183,9 @@
     <string name="avatar_change">Changer</string>
     <string name="avatar_desc">Les autres la voient sur ce serveur. Elle est ajustée à 320 × 320.</string>
     <string name="general_floating_ptt">Bouton flottant appuyer pour parler</string>
-    <string name="general_floating_ptt_desc">En mode appuyer pour parler, un bouton rond reste en bas de l’écran de PocketTS, pour parler tout en faisant défiler le chat. Le bouton par-dessus les autres apps (plus bas) est un réglage à part.</string>
+    <string name="general_floating_ptt_desc">En mode appuyer pour parler, un bouton rond reste en bas de l’écran de 回响, pour parler tout en faisant défiler le chat. Le bouton par-dessus les autres apps (plus bas) est un réglage à part.</string>
     <string name="general_overlay_ptt">Bouton pour parler par-dessus les autres apps</string>
-    <string name="general_overlay_ptt_desc">En mode appuyer pour parler, un bouton rond apparaît quand vous allez dans d’autres apps (pas dans PocketTS lui-même). Maintenez-le pour parler, faites-le glisser pour le déplacer. Android demande une fois l’autorisation d’afficher PocketTS par-dessus les autres apps.</string>
+    <string name="general_overlay_ptt_desc">En mode appuyer pour parler, un bouton rond apparaît quand vous allez dans d’autres apps (pas dans 回响 lui-même). Maintenez-le pour parler, faites-le glisser pour le déplacer. Android demande une fois l’autorisation d’afficher 回响 par-dessus les autres apps.</string>
     <string name="general_volume_ptt">Les boutons de volume servent à parler</string>
     <string name="general_volume_ptt_desc">En mode appuyer pour parler, maintenir un bouton de volume transmet votre voix quand l’app est à l’écran (au lieu de changer le volume).</string>
     <string name="general_headset_ptt">Le bouton du casque sert à parler</string>
@@ -193,7 +193,7 @@
     <string name="general_call_mute">Couper pendant les appels</string>
     <string name="general_call_mute_desc">Quand un appel sonne ou commence, le micro et le son se coupent (ainsi que le son du stream que vous regardez), puis reviennent à la fin de l’appel. Le stream que vous partagez se met en pause, pour que les spectateurs ne voient pas l’appel. Ce que vous aviez coupé vous-même le reste.</string>
     <string name="general_updates">Rechercher les mises à jour</string>
-    <string name="general_updates_desc">Une fois par jour, PocketTS demande à GitHub si une version plus récente est sortie et l’indique sur l’écran de connexion. Rien vous concernant n’est envoyé.</string>
+    <string name="general_updates_desc">Une fois par jour, 回响 demande à GitHub si une version plus récente est sortie et l’indique sur l’écran de connexion. Rien vous concernant n’est envoyé.</string>
     <string name="general_screen_on">Garder l’écran allumé</string>
     <string name="general_screen_on_desc">L’écran ne s’éteint pas tant que vous êtes connecté et que l’app est ouverte. Quand vous partagez ou regardez une diffusion, il reste allumé de toute façon.</string>
     <string name="general_spacers">Autoriser à rejoindre les séparateurs</string>
@@ -276,7 +276,7 @@
     <string name="identity_export_subtitle">Gardez-la privée</string>
     <string name="identity_save_file">Enregistrer dans un fichier</string>
     <string name="identity_export_what">Le fichier est votre identité elle-même : quiconque l’a est vous sur chaque serveur, avec vos groupes et permissions, comme ceux d’un administrateur du serveur. Personne ne peut faire la différence.</string>
-    <string name="identity_export_where">Enregistrez-le là où vous seul y avez accès, comme ce téléphone ou un espace de stockage privé. Ne l’envoyez pas dans un chat ou un e-mail, et ne le publiez pas. Une app TeamSpeak peut l’ouvrir, tout comme PocketTS sur un autre téléphone.</string>
+    <string name="identity_export_where">Enregistrez-le là où vous seul y avez accès, comme ce téléphone ou un espace de stockage privé. Ne l’envoyez pas dans un chat ou un e-mail, et ne le publiez pas. Une app TeamSpeak peut l’ouvrir, tout comme 回响 sur un autre téléphone.</string>
     <string name="identity_wipe_title">Effacer votre identité ?</string>
     <string name="identity_wipe_what">L’identité de ce téléphone est supprimée, et une nouvelle est créée à votre prochaine connexion. Pour chaque serveur, vous êtes alors quelqu’un de nouveau : vos groupes, vos permissions et tout ce qui a été donné à votre ancienne identité (comme des droits d’administrateur) ne suivent pas.</string>
     <string name="identity_wipe_back">Le seul moyen de revenir en arrière est une copie exportée. Si vous risquez d’en avoir besoin, annulez et exportez-la d’abord.</string>

@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Warning
@@ -36,12 +37,16 @@ import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.ScreenShare
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -49,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,16 +80,19 @@ fun Modifier.upright(): Modifier = composed { rotate(LocalIconTurn.current) }
 
 /** WebTS's header: the logo and name on the left, an action on the right. */
 @Composable
-fun AppHeader(right: @Composable () -> Unit = {}) {
+fun AppHeader(onBack: (() -> Unit)? = null, right: @Composable () -> Unit = {}) {
     Row(
-        Modifier.fillMaxWidth().height(44.dp).background(Ts.header).padding(start = 16.dp, end = 4.dp),
+        Modifier.fillMaxWidth().height(56.dp).background(Ts.header).padding(start = 8.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The app icon's drawing (its middle part: the 108 dp canvas has room around it for launchers' shapes)
+        if (onBack != null) androidx.compose.material3.IconButton(onClick = onBack) {
+            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "返回服务器", tint = Ts.text)
+        }
+        // Compose reads the raster mascot directly; launcher insets are applied only by Android's launcher.
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
             androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(io.github.korppujauho.pocketts.R.drawable.ic_launcher_foreground),
-                contentDescription = null, modifier = Modifier.requiredSize(58.dp),
+                androidx.compose.ui.res.painterResource(io.github.korppujauho.pocketts.R.drawable.huixiang_mascot),
+                contentDescription = null, modifier = Modifier.requiredSize(32.dp),
             )
         }
         Spacer(Modifier.width(8.dp))
@@ -174,11 +183,11 @@ fun Modifier.holdToTalk(onHold: (Boolean) -> Unit): Modifier = pointerInput(Unit
 fun PttButton(held: Boolean, onHold: (Boolean) -> Unit) {
     val color = if (held) Ts.talking else Ts.text
     Box(
-        Modifier.size(48.dp).clip(CircleShape).background(if (held) Ts.talking.copy(alpha = 0.2f) else Ts.button)
-            .border(1.dp, if (held) Ts.talking else Ts.buttonBorder, CircleShape).holdToTalk(onHold),
+        Modifier.width(112.dp).height(52.dp).clip(RoundedCornerShape(18.dp)).background(if (held) Ts.talking.copy(alpha = 0.2f) else Ts.accent)
+            .holdToTalk(onHold),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.RecordVoiceOver, contentDescription = stringResource(R.string.hold_to_talk), tint = color, modifier = Modifier.upright())
+        Text(if (held) "正在发言" else stringResource(R.string.hold_to_talk), color = if (held) Ts.talking else Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }
 
@@ -237,13 +246,12 @@ fun Panel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(Ts.panel)
-            .border(1.dp, Ts.hairline, RoundedCornerShape(12.dp)),
+        modifier.clip(RoundedCornerShape(22.dp)).background(Ts.panel),
     ) {
         Row(Modifier.fillMaxWidth().background(Ts.card).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             header()
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF111214)))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Ts.hairline))
         content()
     }
 }
@@ -269,11 +277,26 @@ fun TsField(
     imeAction: ImeAction = ImeAction.Next,
     singleLine: Boolean = true,
 ) {
+    var revealed by androidx.compose.runtime.remember(password) { androidx.compose.runtime.mutableStateOf(false) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    if (password) androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE || event == androidx.lifecycle.Lifecycle.Event.ON_STOP) revealed = false
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
     OutlinedTextField(
         value = value, onValueChange = onChange, singleLine = singleLine,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it, color = Ts.faint) } },
-        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        visualTransformation = if (password && !revealed) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        trailingIcon = if (password) ({
+            androidx.compose.material3.IconButton(onClick = { revealed = !revealed }) {
+                Icon(if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                    contentDescription = if (revealed) "隐藏密码" else "显示密码", tint = Ts.brand)
+            }
+        }) else null,
         keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else keyboard, imeAction = imeAction),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Ts.card, unfocusedContainerColor = Ts.card,
@@ -281,8 +304,8 @@ fun TsField(
             focusedTextColor = Ts.bright, unfocusedTextColor = Ts.bright,
             focusedLabelColor = Ts.accent, unfocusedLabelColor = Ts.muted, cursorColor = Ts.accent,
         ),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused) revealed = false },
     )
 }
 
@@ -290,8 +313,8 @@ fun TsField(
 @Composable
 fun PrimaryButton(text: String, enabled: Boolean = true, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier.clip(RoundedCornerShape(8.dp)).background(if (enabled) Ts.accent else Ts.accent.copy(alpha = 0.4f))
-            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 18.dp, vertical = 12.dp),
+        modifier.clip(RoundedCornerShape(18.dp)).background(if (enabled) Ts.accent else Ts.accent.copy(alpha = 0.4f))
+            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 22.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = Color.White.copy(alpha = if (enabled) 1f else 0.6f), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)

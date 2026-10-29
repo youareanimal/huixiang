@@ -1,18 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The notification icon: the app icon's headset and pocket in one colour (Android colours it), filling the canvas -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp" android:viewportWidth="108" android:viewportHeight="108">
-    <group android:translateX="54" android:translateY="54">
-        <group android:scaleX="1.45" android:scaleY="1.45">
-            <group android:translateX="-54" android:translateY="-62">
-                <path android:strokeColor="#FFFFFFFF" android:strokeWidth="6" android:strokeLineCap="round"
-                    android:pathData="M36,56v-8a18,18 0,0 1,36 0v8" />
-                <path android:fillColor="#FFFFFFFF"
-                    android:pathData="M34.5,45h2a4.5,4.5 0,0 1,4.5 4.5v7h-11v-7a4.5,4.5 0,0 1,4.5 -4.5zM71.5,45h2a4.5,4.5 0,0 1,4.5 4.5v7h-11v-7a4.5,4.5 0,0 1,4.5 -4.5z" />
-                <!-- The pocket as an outline (filled, it read as a padlock) -->
-                <path android:strokeColor="#FFFFFFFF" android:strokeWidth="6" android:strokeLineJoin="round"
-                    android:pathData="M29,63h50v10q0,11.5 -25,19q-25,-7.5 -25,-19z" />
-            </group>
-        </group>
+<!-- HuiXiang: one-eyed mascot notification mark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="1.5" android:scaleY="1.5">
+        <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M37,43 C30,43 26,37 29,31 C30,28 34,29 33,33 C36,32 37,27 40,28 C43,29 41,34 38,37 C41,37 44,35 47,35 L51,30 Q54,26 56,32 L58,35 C64,35 68,39 70,43 C76,42 77,38 74,35 Q71,33 74,30 Q77,28 79,33 C83,42 80,49 73,52 C76,61 72,69 68,73 C70,77 74,75 76,78 Q77,80 73,80 C67,81 62,79 61,74 C56,77 50,76 45,73 C42,79 37,81 32,78 Q29,75 33,74 C37,75 39,72 39,69 C32,64 30,58 33,51 C32,48 34,45 37,43 Z M68,53 A11,11 0,1 1,46,53 A11,11 0,1 1,68,53 Z M37,56 Q37,64 44,66 L42,58 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M62,53 A5,5 0,1 1,52,53 A5,5 0,1 1,62,53 Z" />
     </group>
 </vector>

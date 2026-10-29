@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,17 +62,21 @@ import io.github.korppujauho.pocketts.proto.ServerModel
  */
 @Composable
 fun PersonAvatar(person: ServerModel.Client?, server: String, size: Int = 24, talking: Boolean = false) {
+    val account = LocalVoiceAccountProfile.current
+    val models = remember(person, server, account) { personAvatarModels(person, server, account) }
+    var source by remember(models) { mutableIntStateOf(0) }
     val ring = if (talking) Modifier.border(2.dp, Ts.green, CircleShape) else Modifier
     Box(
         Modifier.size(size.dp).then(ring).clip(CircleShape).background(Color(0xFF3F4147)),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Icon(Icons.Filled.Person, contentDescription = null, tint = Color(0xFF8E9297), modifier = Modifier.size((size * 0.95).dp))
-        val model: Any? = person?.let {
-            TsFile.avatar(server, it.uid, it.avatarName, it.avatar) ?: it.myTeamSpeakAvatar.ifEmpty { null }
-        }
+        val model = models.getOrNull(source)
         if (model != null) {
-            AsyncImage(model, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            androidx.compose.runtime.key(model) {
+                AsyncImage(model, contentDescription = "${person?.nickname.orEmpty()}的头像", contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(), onError = { if (models.getOrNull(source) == model) source++ })
+            }
         }
     }
 }

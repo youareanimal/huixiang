@@ -8,8 +8,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="secrets.xml" />
+        <exclude domain="sharedpref" path="cloud-secrets.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="secrets.xml" />
+        <exclude domain="sharedpref" path="cloud-secrets.xml" />
     </device-transfer>
 </data-extraction-rules>

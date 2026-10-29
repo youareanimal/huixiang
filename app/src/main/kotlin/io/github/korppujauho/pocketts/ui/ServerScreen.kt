@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 
 /** What the server screen can ask for. */
 interface ServerActions {
+    fun personDetails(person: ServerModel.Client) {}
     fun join(channel: ServerModel.Channel, password: String = "", remember: Boolean = false, quiet: Boolean = false)
     /** The password remembered for a channel on this server, if any. */
     fun savedPassword(channel: ServerModel.Channel): String? = null
@@ -138,6 +139,8 @@ fun ServerScreen(
     egl: org.webrtc.EglBase? = null,
     canBoth: Boolean = false, // the phone can use both cameras at once
     pip: Boolean = false, // the app is a small picture-in-picture window: the stream player is drawn there instead
+    onBack: (() -> Unit)? = null,
+    onOpenSettings: ((Int) -> Unit)? = null,
 ) {
     var shareDialog by remember { mutableStateOf(false) }
     var serversMenu by remember { mutableStateOf(false) }
@@ -210,7 +213,7 @@ fun ServerScreen(
             Box(Modifier.zIndex(10f).fillMaxSize().border(22.dp, Color.White, RoundedCornerShape(28.dp)))
         }
         Column(Modifier.fillMaxSize()) {
-            AppHeader {
+            AppHeader(onBack = onBack) {
                 ExitButton(stringResource(R.string.disconnect)) { actions.disconnect() }
                 androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp)) // so the star isn't Disconnect by mistake
                 // WebTS's menu: the favourites (one tap switches), and adding the server you're on
@@ -248,7 +251,7 @@ fun ServerScreen(
                             )
                         }                    }
                 }
-                SettingsGear { settings = 0 }
+                SettingsGear { if (onOpenSettings != null) onOpenSettings(0) else settings = 0 }
             }
             Column(Modifier.fillMaxSize().padding(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 val ptt = state.voice.activation == io.github.korppujauho.pocketts.VoiceSettings.Activation.PTT
@@ -342,7 +345,7 @@ fun ServerScreen(
                                         else actions.savedPassword(ch)?.let { actions.join(ch, it, remember = true) }
                                             ?: actions.join(ch, quiet = true)
                                     },
-                                    onPerson = { person = it },
+                                    onPerson = { person = it; actions.personDetails(it) },
                                     modifier = Modifier.fillMaxSize(),
                                     onLongChannel = if (state.phase == Session.Phase.CONNECTED) ({ ch -> actions.channelDescription(ch); infoChannel = ch.id }) else null,
                                 )
@@ -354,6 +357,7 @@ fun ServerScreen(
                             onCloseTab = actions::closePrivate,
                             onSend = actions::send,
                             onPicture = actions::sendPictures,
+                            onPerson = { person = it; actions.personDetails(it) },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -423,7 +427,9 @@ fun ServerScreen(
             }
         }
     }
-    person?.let { p ->
+    person?.let { selected ->
+        // The sheet follows avatar/status changes, and never acts on a reused client ID.
+        val p = state.client(selected.id)?.takeIf { it.uid == selected.uid } ?: return@let
         PersonSheet(
             p, state.serverKey, isSelf = p.id == state.ownId, volume = state.volumes[p.uid] ?: 1f,
             onVolume = { actions.setVolume(p, it) },
@@ -441,6 +447,9 @@ fun ServerScreen(
             onMove = { person = null; moveTarget = p },
             onKick = { person = null; kickTarget = p },
             onBan = { person = null; banTarget = p },
+            channelName = state.channel(p.channel)?.displayName.orEmpty(),
+            serverGroups = p.serverGroups.map { state.serverGroupNames[it] ?: "ID $it" },
+            channelGroup = state.channelGroupNames[p.channelGroup].orEmpty().ifBlank { if (p.channelGroup > 0) "ID ${p.channelGroup}" else "" },
         )
     }
     moveTarget?.let { p ->

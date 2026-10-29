@@ -39,7 +39,7 @@
     <string name="favourite_file_port">Tiedonsiirron portti</string>
     <string name="favourite_file_port_hint">Palvelimen oma (yleensä 30033)</string>
     <string name="favourite_file_port_desc">Vain jos palvelimen kuvat ja profiilikuvat eivät lataudu: sen tiedonsiirto on toisessa portissa.</string>
-    <string name="update_title">PocketTS %1$s on julkaistu</string>
+    <string name="update_title">回响 %1$s on julkaistu</string>
     <string name="update_text">Tätä (%1$s) uudempi versio on GitHubissa.</string>
     <string name="not_now">Ei nyt</string>
     <string name="download">Lataa</string>
@@ -182,9 +182,9 @@
     <string name="avatar_change">Vaihda</string>
     <string name="avatar_desc">Muut näkevät sen tällä palvelimella. Se sovitetaan kokoon 320 × 320.</string>
     <string name="general_floating_ptt">Kelluva puhepainike</string>
-    <string name="general_floating_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike pysyy PocketTS:n näytön alareunassa, joten voit puhua selatessasi keskustelua. Painike muiden sovellusten päällä (alla) on erillinen asetus.</string>
+    <string name="general_floating_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike pysyy 回响:n näytön alareunassa, joten voit puhua selatessasi keskustelua. Painike muiden sovellusten päällä (alla) on erillinen asetus.</string>
     <string name="general_overlay_ptt">Puhepainike muiden sovellusten päällä</string>
-    <string name="general_overlay_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike näkyy, kun siirryt muihin sovelluksiin (ei itse PocketTS:ssä). Pidä sitä pohjassa puhuaksesi, vedä siirtääksesi. Android pyytää kerran luvan näyttää PocketTS muiden sovellusten päällä.</string>
+    <string name="general_overlay_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike näkyy, kun siirryt muihin sovelluksiin (ei itse 回响:ssä). Pidä sitä pohjassa puhuaksesi, vedä siirtääksesi. Android pyytää kerran luvan näyttää 回响 muiden sovellusten päällä.</string>
     <string name="general_volume_ptt">Äänenvoimakkuuspainikkeet ovat puhepainikkeita</string>
     <string name="general_volume_ptt_desc">Paina puhuaksesi -tilassa äänenvoimakkuuspainikkeen pitäminen pohjassa lähettää puhetta, kun sovellus on näytöllä (äänenvoimakkuuden muuttamisen sijaan).</string>
     <string name="general_headset_ptt">Kuulokkeiden painike on puhepainike</string>
@@ -192,7 +192,7 @@
     <string name="general_call_mute">Mykistä puhelun ajaksi</string>
     <string name="general_call_mute_desc">Kun puhelin soi tai puhelu alkaa, mikrofoni ja ääni menevät pois päältä (myös katsomasi striimin ääni) ja palaavat, kun puhelu päättyy. Jakamasi striimi tauotetaan, jotta katsojat eivät näe puhelua. Itse mykistämäsi pysyy mykistettynä.</string>
     <string name="general_updates">Tarkista päivitykset</string>
-    <string name="general_updates_desc">Kerran päivässä PocketTS kysyy GitHubilta, onko uudempi versio julkaistu, ja kertoo siitä yhdistämisnäkymässä. Sinusta ei lähetetä mitään.</string>
+    <string name="general_updates_desc">Kerran päivässä 回响 kysyy GitHubilta, onko uudempi versio julkaistu, ja kertoo siitä yhdistämisnäkymässä. Sinusta ei lähetetä mitään.</string>
     <string name="general_screen_on">Pidä näyttö päällä</string>
     <string name="general_screen_on_desc">Näyttö ei sammu, kun olet yhdistettynä ja sovellus on auki. Kun jaat tai katsot striimiä, se pysyy päällä joka tapauksessa.</string>
     <string name="general_spacers">Salli liittyminen välikappaleisiin</string>
@@ -273,7 +273,7 @@
     <string name="identity_export_subtitle">Pidä se yksityisenä</string>
     <string name="identity_save_file">Tallenna tiedostoon</string>
     <string name="identity_export_what">Tiedosto on itse identiteettisi: kuka tahansa, jolla se on, on sinä jokaisella palvelimella ryhmineen ja käyttöoikeuksineen, kuten palvelimen ylläpitäjän oikeuksineen. Eroa ei voi huomata.</string>
-    <string name="identity_export_where">Tallenna se paikkaan, johon vain sinä pääset, kuten tähän puhelimeen tai yksityiselle asemalle. Älä lähetä sitä keskustelussa tai sähköpostissa äläkä julkaise sitä. TeamSpeak-sovellus voi avata sen, samoin PocketTS toisessa puhelimessa.</string>
+    <string name="identity_export_where">Tallenna se paikkaan, johon vain sinä pääset, kuten tähän puhelimeen tai yksityiselle asemalle. Älä lähetä sitä keskustelussa tai sähköpostissa äläkä julkaise sitä. TeamSpeak-sovellus voi avata sen, samoin 回响 toisessa puhelimessa.</string>
     <string name="identity_wipe_title">Poistetaanko identiteettisi?</string>
     <string name="identity_wipe_what">Tämän puhelimen identiteetti poistetaan, ja uusi luodaan, kun seuraavan kerran yhdistät. Jokaiselle palvelimelle olet silloin uusi henkilö: ryhmäsi, käyttöoikeutesi ja kaikki vanhalle identiteetillesi annettu (kuten ylläpitäjän oikeudet) eivät siirry mukana.</string>
     <string name="identity_wipe_back">Ainoa tie takaisin on viety kopio. Jos saatat tarvita sitä vielä, peruuta ja vie se ensin.</string>

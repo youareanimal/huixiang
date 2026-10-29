@@ -1,6 +1,10 @@
 # Build output
 build/
 .gradle/
+.tooling/
+.ci-gradle/
+out/
+*.tsaccount
 .kotlin/
 dist/
 *.apk

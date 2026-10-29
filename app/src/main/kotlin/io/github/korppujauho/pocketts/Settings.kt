@@ -9,8 +9,34 @@ class Settings(private val context: Context) {
     private val secrets = secretPrefs(context)
 
     var nickname: String
-        get() = prefs.getString("nickname", "").orEmpty()
+        get() = prefs.getString("nickname", "").orEmpty().ifBlank { accountUsername }
         set(v) = prefs.edit().putString("nickname", v).apply()
+
+    val accountUsername: String get() = prefs.getString("account-username", "").orEmpty()
+
+    /** Follow the account name by default; retain a nickname the user subsequently chose for servers. */
+    fun applyAccountUsername(username: String, overwrite: Boolean = false) {
+        val previous = accountUsername
+        val current = prefs.getString("nickname", "").orEmpty()
+        val editor = prefs.edit().putString("account-username", username)
+        if (overwrite || current.isBlank() || current == previous) editor.putString("nickname", username)
+        editor.apply()
+    }
+
+    fun clearAccountUsername() {
+        val previous = accountUsername
+        val editor = prefs.edit().remove("account-username")
+        if (prefs.getString("nickname", "") == previous) editor.remove("nickname")
+        editor.apply()
+    }
+
+    /** Upgrade an already signed-in installation without a new login or any network access. */
+    fun restoreAccountNickname(store: CloudAccountStore = CloudAccountStore(cloudSecretPrefs(context))) {
+        try {
+            val username = store.identity()?.username ?: store.account()?.username
+            if (username != null) applyAccountUsername(username)
+        } catch (_: Exception) { /* Account UI reports unreadable credentials; keep existing voice settings. */ }
+    }
 
     var address: String
         get() = prefs.getString("address", "").orEmpty()

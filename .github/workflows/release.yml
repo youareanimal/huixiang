@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   release:
+    # Upstream reference only. A fork must configure its own signing and publishing workflow.
+    if: github.repository == 'KorppuJauho/pocketts'
     runs-on: ubuntu-24.04
     # The release key is in this environment's secrets, which only v* tags can use
     environment: release

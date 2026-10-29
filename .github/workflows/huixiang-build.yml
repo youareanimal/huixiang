@@ -1,0 +1,81 @@
+name: Build HuiXiang
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: huixiang-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'youareanimal/huixiang'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
+            echo '::error::Tag does not match the app version'
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Prepare Android build environment
+        run: |
+          docker build -f docker/build.Dockerfile -t huixiang-build --build-arg ACCEPT_ANDROID_SDK_LICENSE=yes docker
+          mkdir -p out .ci-gradle dist/unsigned
+
+      - name: Test protocol and Android app
+        run: |
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out \
+            huixiang-build ./gradlew --no-daemon --console=plain \
+            :tsproto:test :app:testDebugUnitTest --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+
+      - name: Build unsigned upgrade APKs
+        run: |
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out -e HUIXIANG_UNSIGNED_BUILD=1 \
+            huixiang-build ./gradlew --no-daemon --console=plain \
+            :app:assembleCompact --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+          python3 scripts/collect-ci-release.py
+
+      - name: Archive matching source
+        run: git archive --format=zip --prefix=huixiang/ -o "dist/HuiXiang-$VERSION-source.zip" HEAD
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-${{ env.VERSION }}-unsigned
+          path: |
+            dist/unsigned/
+            dist/HuiXiang-${{ env.VERSION }}-source.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-test-reports
+          path: |
+            out/tsproto/test-results/
+            out/app/test-results/
+          if-no-files-found: warn
+          retention-days: 30

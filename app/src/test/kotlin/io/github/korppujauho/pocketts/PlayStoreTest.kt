@@ -24,7 +24,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,7 +104,7 @@ class PlayStoreTest {
     @Config(qualifiers = "w512dp-h512dp-mdpi")
     fun icon() = captureRoboImage(path("icon")) {
         Box(Modifier.size(512.dp).background(IconBackground), contentAlignment = Alignment.Center) {
-            Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(512.dp * 108 / 72))
+            Image(androidDrawablePainter(R.drawable.ic_launcher_foreground, 512.dp * 108 / 72), null, Modifier.requiredSize(512.dp * 108 / 72))
         }
     }
 
@@ -119,7 +118,7 @@ class PlayStoreTest {
         ) {
             Row(Modifier.fillMaxSize().padding(horizontal = 96.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(220.dp).clip(RoundedCornerShape(48.dp)).background(IconBackground), contentAlignment = Alignment.Center) {
-                    Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(220.dp * 108 / 72))
+                    Image(androidDrawablePainter(R.drawable.ic_launcher_foreground, 220.dp * 108 / 72), null, Modifier.requiredSize(220.dp * 108 / 72))
                 }
                 Spacer(Modifier.width(64.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -154,7 +153,7 @@ class PlayStoreTest {
         ) {
             Column(Modifier.padding(start = 96.dp).align(Alignment.CenterStart), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.size(150.dp).clip(RoundedCornerShape(33.dp)).background(IconBackground), contentAlignment = Alignment.Center) {
-                    Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.requiredSize(150.dp * 108 / 72))
+                    Image(androidDrawablePainter(R.drawable.ic_launcher_foreground, 150.dp * 108 / 72), null, Modifier.requiredSize(150.dp * 108 / 72))
                 }
                 Spacer(Modifier.size(6.dp))
                 Text("PocketTS", color = Color.White, fontSize = 92.sp, fontWeight = FontWeight.Bold)
@@ -171,6 +170,6 @@ class PlayStoreTest {
     }
 
     private companion object {
-        val IconBackground = Color(0xFF1B1D22) // the launcher icon's background
+        val IconBackground = Color(0xFF24182F) // the launcher icon's background
     }
 }

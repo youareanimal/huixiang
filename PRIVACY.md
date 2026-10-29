@@ -1,71 +1,31 @@
-# Privacy policy
+# 回响 隐私说明
 
-PocketTS is a voice chat app for TeamSpeak servers. It has no account of its own, no ads, no analytics and no crash
-reporting. The developer doesn't run any server for it and receives nothing from the app.
+回响 是基于 PocketTS 的独立修改版，无应用自有账号、广告、分析或崩溃上报。本项目的所有构建均关闭上游 GitHub 自动更新查询。
 
-This policy covers PocketTS from GitHub and from Google Play.
+连接时会向你选择的 TeamSpeak 服务器发送昵称、身份公钥、必要的服务器/频道密码。发言、聊天、文件上传或开启摄像头/屏幕共享时，会向相应服务器和参与者传输这些内容。服务器运营方可以看到连接 IP 等协议所需信息。
 
-## What leaves the phone, and where it goes
+域名解析使用网络 DNS，并可能使用服务器的 TSDNS；输入服务器昵称时可查询 TeamSpeak 昵称服务。频道横幅、头像和聊天图片可能访问其托管网站；配置 TURN 时会连接指定中继服务器。
 
-PocketTS talks to the **TeamSpeak servers you connect to**, and sends them what TeamSpeak needs:
+使用邮箱、密码和可选 OTP 登录账号时，应用向 TeamSpeak 官方账号服务提交凭据并保存返回的用户名和会话，同时在本机派生解密密钥，读取账号中的加密服务器书签。原始密码与密码派生值不会写入应用存储。账号同步密钥、书签缓存及其中的服务器密码由 Android Keystore 加密保存，排除在备份与设备迁移之外。账号书签仅下载读取，不向官方账号上传本机收藏或修改已有书签。登录及恢复账号不会自动连接云聊天。好友列表在登录或恢复后自动读取，也可手动刷新；只有手动连接云聊天、点击好友的“发消息”或导入聊天配置时，才会请求聊天凭据并连接官方云聊天服务。读取已有会话并同步消息，在你点击发送时提交文字。云服务可见的数据受 TeamSpeak 的条款与隐私政策约束。
 
-- your nickname and your TeamSpeak identity's public key, and the server and channel passwords you enter;
-- your voice, while you talk;
-- your chat messages, pokes and the pictures you send, and the files you upload to a channel's files;
-- your camera (with your microphone's sound, if you choose) and your screen (with what the phone plays, if you
-  choose), while you share them.
+待发布的好友聊天功能会在你点击“发消息”且没有可用两人会话时创建私人会话、邀请对应好友，并更新官方账号中的私聊会话映射；不上传本地好友备注。收到的邀请仅在你明确接受或打开该好友私聊时加入。连接云消息后，应用在前台尝试每三秒同步；打开未加密会话并阅读到最新消息会向服务器发送已读回执，不修改在线状态，也不提供后台推送通知。云消息正文、输入草稿与待重试事务仅保存在当前进程内存，不写入本机聊天数据库；退出账号清空会话，进程结束后不恢复草稿。当前只能发送未启用端到端加密的文字消息；加密会话保持禁止发送，不会自动另建未加密替代会话。
 
-Each server is run by someone else, under their own rules. They see what any TeamSpeak app would show them, such as
-your IP address. Choose servers you trust.
+身份、服务器密码、myTeamSpeak 会话、云聊天凭据、聊天会话和 90 天服务器聊天记录通过 Android Keystore 保护。myTeamSpeak 原始密码不会保存；邮箱作为账号资料加密保存在本机。云聊天凭据所在的偏好文件明确排除在 Android 备份与设备迁移之外；应用也关闭了 Android 云备份。登录失败会保留之前可用的账号，并尝试撤销本次新建的 myTeamSpeak 会话；从旧版导入的会话不会被远程撤销。身份需自行导出备份，卸载可能丢失本地数据。保存的图片仍放在上游兼容的 Pictures/PocketTS 目录。
 
-PocketTS also connects to:
+麦克风用于语音及选定的串流音频；摄像头用于主动开启的视频分享；屏幕共享需系统明确确认；通知和前台服务用于维持后台连接；悬浮窗权限仅供你主动开启的悬浮 PTT 使用。
 
-- **Your network's name service (DNS)**, and a server's TeamSpeak name service (TSDNS) when it has one, to find the
-  address you typed.
-- **TeamSpeak's server nickname service (named.myteamspeak.com)**, only when what you type has no dot in it (a
-  server nickname, such as `myclan`), to find the server it stands for. It gets that name and, like any website,
-  your IP address. Normal addresses are never sent there.
-- **Websites that servers and people link to.** A server's banner, avatars from myTeamSpeak, and pictures in the
-  chat are loaded from where they're kept. Those sites see your IP address.
-- **A relay (TURN) server for streams**, only if you set one in the settings.
-- **GitHub, in the GitHub version only:** once a day it asks GitHub whether a newer release is out, unless you turn
-  that off (Settings › General). Nothing about you is sent. The Google Play version doesn't do this, because Play
-  updates it.
+从链接进入时会先显示连接确认，不把完整邀请链接中的密码和权限密钥保存为地址。启用“记住密码”时仅对普通连接填写的密码执行本地加密保存。
 
-## What stays on the phone
+调试构建支持开发日志上传，但只有本地 dev.env 明确配置 DEV_LOG_URL 才启用；本项目未配置该地址。正式构建中该字段恒为空。
 
-- Your TeamSpeak identity and the passwords you save, encrypted with a key in Android's keystore that never leaves
-  the phone.
-- Your settings, favourite servers and per-person volumes.
-- The chat history, encrypted, for 90 days.
-- A cache of pictures from the chat, at most 100 MB, which Android may clear.
+0.4 起，登录或恢复账号会自动读取好友列表，并可通过官方聊天域名上的公开资料接口取得显示名称；此过程不建立云聊天登录。好友名称缓存使用 Android Keystore 密封，并与账号绑定，切换或退出账号时清除。
 
-PocketTS doesn't use Android's cloud backup. When you move to a new phone with Android's own transfer, your settings
-and favourites may come along, but your identity, passwords and chat history don't. To move your identity, export it
-(Settings › Advanced) and import it on the new phone.
+最近连接仅在本机保存最多六条成功连接的地址、服务器名称和使用昵称，不保存密码、完整邀请链接或权限密钥。访客进入选择也仅保存在本机。
 
-Pictures you save go into your gallery (Pictures/PocketTS). Pictures you share go only to the app you pick.
+0.4.1 起，登录或恢复账号会独立请求官方账号资料接口，取得用户名、邮箱和在线头像地址；邮箱与头像地址以 Keystore 密封缓存，并绑定当前会话，切换或退出账号时清除。显示账号头像时会访问 Google Cloud Storage。只有你选择图片并确认上传，或确认移除头像后，才会修改账号在线头像；上传使用官方返回的 HTTPS 存储链接，不把账号令牌发送给存储主机，不跟随重定向。图片通过系统选择器取得并在本机重编码至最大边 320 像素的 sRGB PNG，不保留原图 EXIF。当前服务器头像仍使用该服务器自己的文件服务。其他状态的账号头像保持原样。
 
-Removing the app removes all of this. Settings › Advanced can also let go of your identity.
+密码小眼睛仅临时控制屏幕显示，显隐状态不会跨页面保存，输入框失去焦点或应用进入后台后恢复隐藏。
 
-## Permissions
+0.4.2 起，“关于回响”支持在线更新。默认每天最多访问一次独立 HTTPS 更新站点，可在该页面关闭自动检查；安装包仅在你点击下载后获取，安装另由 Android 系统确认。更新请求不发送 TeamSpeak 账号、网盘凭据、好友或聊天内容；站点可见正常网络连接信息及应用版本 User-Agent。下载文件保存在应用专用缓存，可供系统安装器临时读取。公开更新站点仅发布安装包、版本信息和对应源代码，不公开私人网盘目录。缓存可由系统清理，未完成下载可重试。
 
-- **Microphone:** your voice, and a camera stream's sound. Recording what other apps play during a screen share
-  also needs this permission.
-- **Camera:** only while you share your camera.
-- **Screen sharing:** only after Android asks you, and only while you share.
-- **Notifications:** pokes, private messages, and the notification that keeps the connection going.
-- **Display over other apps:** only if you turn on the talk button that stays on screen.
-- **Foreground service:** so voice keeps working with the screen off or another app open.
-
-## Children
-
-PocketTS isn't meant for children under 13.
-
-## Changes and contact
-
-Changes to this policy are made in this file, and its history shows every change. Questions can be asked in the
-project's [issues](https://github.com/KorppuJauho/pocketts/issues). For something private, use the private reporting
-described in [SECURITY.md](SECURITY.md).
-
-Last updated: 24 October 2026.
+上游原始政策保存于 docs/PRIVACY-upstream.md。更新日期：2026-10-29。

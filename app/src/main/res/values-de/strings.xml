@@ -39,7 +39,7 @@
     <string name="favourite_file_port">Port für Dateiübertragung</string>
     <string name="favourite_file_port_hint">Der des Servers (meist 30033)</string>
     <string name="favourite_file_port_desc">Nur wenn die Bilder und Avatare des Servers nicht laden: Seine Dateiübertragung läuft über einen anderen Port.</string>
-    <string name="update_title">PocketTS %1$s ist erschienen</string>
+    <string name="update_title">回响 %1$s ist erschienen</string>
     <string name="update_text">Eine neuere Version als diese (%1$s) gibt es auf GitHub.</string>
     <string name="not_now">Nicht jetzt</string>
     <string name="download">Herunterladen</string>
@@ -182,9 +182,9 @@
     <string name="avatar_change">Ändern</string>
     <string name="avatar_desc">Andere sehen es auf diesem Server. Es wird auf 320 × 320 zugeschnitten.</string>
     <string name="general_floating_ptt">Schwebende Push-to-Talk-Taste</string>
-    <string name="general_floating_ptt_desc">Im Push-to-Talk-Modus bleibt eine runde Taste unten auf dem Bildschirm von PocketTS, sodass du sprechen kannst, während du im Chat scrollst. Die Taste über anderen Apps (unten) ist eine eigene Einstellung.</string>
+    <string name="general_floating_ptt_desc">Im Push-to-Talk-Modus bleibt eine runde Taste unten auf dem Bildschirm von 回响, sodass du sprechen kannst, während du im Chat scrollst. Die Taste über anderen Apps (unten) ist eine eigene Einstellung.</string>
     <string name="general_overlay_ptt">Sprechtaste über anderen Apps</string>
-    <string name="general_overlay_ptt_desc">Im Push-to-Talk-Modus erscheint eine runde Taste, wenn du zu anderen Apps wechselst (nicht in PocketTS selbst). Halte sie zum Sprechen, zieh sie zum Verschieben. Android fragt einmal, ob PocketTS über anderen Apps angezeigt werden darf.</string>
+    <string name="general_overlay_ptt_desc">Im Push-to-Talk-Modus erscheint eine runde Taste, wenn du zu anderen Apps wechselst (nicht in 回响 selbst). Halte sie zum Sprechen, zieh sie zum Verschieben. Android fragt einmal, ob 回响 über anderen Apps angezeigt werden darf.</string>
     <string name="general_volume_ptt">Lautstärketasten sind Push-to-Talk</string>
     <string name="general_volume_ptt_desc">Im Push-to-Talk-Modus sprichst du, solange du eine Lautstärketaste hältst und die App auf dem Bildschirm ist (statt die Lautstärke zu ändern).</string>
     <string name="general_headset_ptt">Headset-Taste ist Push-to-Talk</string>
@@ -192,7 +192,7 @@
     <string name="general_call_mute">Bei Telefonanrufen stummschalten</string>
     <string name="general_call_mute_desc">Wenn ein Anruf klingelt oder beginnt, werden Mikrofon und Ton ausgeschaltet (auch der Ton eines Streams, den du ansiehst) und nach dem Anruf wieder eingeschaltet. Ein Stream, den du teilst, pausiert, damit Zuschauer den Anruf nicht sehen. Was du selbst stummgeschaltet hast, bleibt stumm.</string>
     <string name="general_updates">Nach Updates suchen</string>
-    <string name="general_updates_desc">Einmal am Tag fragt PocketTS bei GitHub, ob eine neuere Version erschienen ist, und zeigt es auf dem Verbindungsbildschirm. Über dich wird nichts gesendet.</string>
+    <string name="general_updates_desc">Einmal am Tag fragt 回响 bei GitHub, ob eine neuere Version erschienen ist, und zeigt es auf dem Verbindungsbildschirm. Über dich wird nichts gesendet.</string>
     <string name="general_screen_on">Bildschirm anlassen</string>
     <string name="general_screen_on_desc">Der Bildschirm wird nicht dunkel, solange du verbunden bist und die App offen ist. Während du einen Stream teilst oder ansiehst, bleibt er ohnehin an.</string>
     <string name="general_spacers">Abstandshalter betreten erlauben</string>
@@ -273,7 +273,7 @@
     <string name="identity_export_subtitle">Halte sie geheim</string>
     <string name="identity_save_file">In einer Datei speichern</string>
     <string name="identity_export_what">Die Datei ist deine Identität selbst: Wer sie hat, ist auf jedem Server du, mit deinen Gruppen und Berechtigungen, etwa denen eines Server-Admins. Niemand kann den Unterschied erkennen.</string>
-    <string name="identity_export_where">Speichere sie dort, wo nur du hinkommst, etwa auf diesem Handy oder einem privaten Laufwerk. Schick sie nicht in einem Chat oder per E-Mail und veröffentliche sie nicht. Eine TeamSpeak-App kann sie öffnen, ebenso PocketTS auf einem anderen Handy.</string>
+    <string name="identity_export_where">Speichere sie dort, wo nur du hinkommst, etwa auf diesem Handy oder einem privaten Laufwerk. Schick sie nicht in einem Chat oder per E-Mail und veröffentliche sie nicht. Eine TeamSpeak-App kann sie öffnen, ebenso 回响 auf einem anderen Handy.</string>
     <string name="identity_wipe_title">Identität löschen?</string>
     <string name="identity_wipe_what">Die Identität dieses Handys wird gelöscht, und beim nächsten Verbinden wird eine neue erstellt. Für jeden Server bist du dann jemand Neues: Deine Gruppen, Berechtigungen und alles, was deiner alten Identität gegeben wurde (etwa Admin-Rechte), kommen nicht mit.</string>
     <string name="identity_wipe_back">Der einzige Weg zurück ist eine exportierte Kopie. Wenn du sie vielleicht noch brauchst, brich ab und exportiere sie zuerst.</string>

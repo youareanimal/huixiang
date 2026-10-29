@@ -1,5 +1,120 @@
 # Changelog
 
+## 回响 0.5.0 (2026-10-29)
+
+- 登录后所有连接入口采用当前账号昵称，历史记录和邀请昵称不能覆盖账号；最近连接优先采用当前账号书签中的服务器配置。
+- 访客必须从未登录的欢迎页明确选择；登录和退出均清除旧访客授权，退出断开语音并返回登录/访客选择页。
+- 频道列表、聊天与用户资料卡显示当前账号头像；其他用户显示服务器/公开 myTeamSpeak 头像，加载失败逐级回退。
+- 点击频道用户、聊天昵称或头像打开资料卡，按需请求服务器的公开用户字段，展示 UID、频道、身份组、客户端、地区及状态；资料随通知更新，离开服务器或客户端 ID 被复用时关闭旧卡片。
+- 自己的账号邮箱仅出现在自己的资料卡中；显示账号头像不会自动修改服务器头像或语音权限。
+- 好友卡片的“发消息”按需连接云聊天，复用两人会话；没有会话时创建私人聊天并邀请好友，也可明确接受收到的邀请。
+- 普通文字会话支持发送、前台同步、历史分页和阅读回执；发送确认后立即回显，网络失败保留草稿，同一条失败消息重试复用事务编号。其他会话或旧内容的发送结果不会清空当前新草稿。
+- 已开启端到端加密的会话仍无法解密或发送；不会为其新建未加密替代会话。发送前再次读取成员与加密状态，阻止把两人私聊发送到成员已变化的会话。
+- 首次使用独立 GitHub 仓库与 Actions 构建，GitHub Releases 分发安装包与对应源码；现有升级签名留在本机，下载 CI 产物后签名再发布，在线更新源继续兼容旧客户端。
+
+## 回响 0.4.3 (2026-10-29) — 在线更新测试
+
+- 仅将版本提升至 0.4.3-preview（versionCode 12），用于从 0.4.2 验证检查更新、下载及覆盖安装。
+- 应用功能、界面及协议代码与 0.4.2 完全一致。
+
+## 回响 0.4.2 (2026-10-29)
+
+- Add manual update checking under Me / About and an optional once-daily automatic check with a dismissible banner.
+- Download a compatible APK with progress and cancellation, retain completed downloads across restarts, and hand
+  installation to Android after the user taps Install. Handle the system's per-app installation permission.
+- Require the public HTTPS release origin, a matching size/hash/package/version, and the installed signing certificate.
+  Keep TeamSpeak authentication and private cloud-drive credentials out of the update channel.
+- Add a dedicated Cloudflare Pages feed and repeatable publication script, preserving versioned downloads and
+  publishing the matching GPL source archive. Continue copying the arm64 APK to the existing PI cloud-drive folder.
+
+## 回响 0.4.1 (2026-10-27)
+
+- Show the account email and online avatar on Me, with automatic independent profile refresh and an encrypted,
+  account-bound metadata cache. Existing sessions can retrieve their email without signing in again.
+- Add separate account/server avatar management. Preview a selected image before uploading, re-encode it as a
+  bounded sRGB PNG and register it only after a successful signed PUT. Update/remove only the online account avatar;
+  keep away, DND, offline and server avatars unchanged. Require confirmation before removal.
+- Add reveal/hide eye buttons to the common password input, masking again after focus loss or app backgrounding.
+- Account metadata retrieval was verified read-only. Avatar writes were tested with synthetic transport responses;
+  no real account avatar was changed during development, and phone verification is still required.
+
+## 回响 0.4.0 (2026-10-27)
+
+- Rebuild the main shell with Servers, Friends, Messages and Me navigation, dedicated login and connection routes,
+  grouped settings pages and a persistent voice channel bar. Add a youthful violet/mint theme with rounded surfaces.
+- Move account work into an activity ViewModel. Load bookmarks and friends independently of authentication and
+  preserve work across navigation. Slow contact requests no longer hold the account operation lock.
+- Seal the account-bound friend-name cache, preserve it on network failures and clear it when changing accounts.
+  Keep diagnostic codes behind an expandable error detail action.
+- Keep recent successful servers without passwords or invitation URLs, confirm server switches, and preserve voice
+  while browsing other pages. Keep the existing package, certificate, voice identity and encrypted storage identifiers.
+- Preserve file transfer, streaming, channel administration and identity tools through their corresponding menus.
+
+## 回响 0.3.5 (2026-10-26)
+
+- Add a login-first entry screen with explicit account and guest actions. Restore saved accounts into their server
+  and friend page; guests can open the voice-server connection screen. Automatic favorites wait until entry.
+- Incoming server invitations can show their confirmation from the entry screen without opening account login.
+- Rename the app to 回响 and use the purple one-eyed mascot selected from the user's supplied image. Add the
+  transparent asset, lossless WebP resource, adaptive launcher layer, themed mark and notification mark. Earlier
+  icon concepts remain as design references in `docs/branding/`.
+- Decode only enough of structured notes to keep internal Base64/JSON metadata out of display names. Prefer a
+  plain-text alias or a public profile display name, with a generic contact label when no readable name is available.
+- Fetch public names without Matrix login or chat synchronization; failed lookups preserve the friend list.
+- Load friends after account login and when reopening the account page. Separate loading and empty states replace
+  the old instruction to refresh manually. Protocol and Android unit regressions pass.
+
+## 声桥 TS 0.3.4 (2026-10-26)
+
+- Accept version 2 account key envelopes instead of rejecting them before decryption. A synthetic version 2
+  envelope and seed were independently accepted by the installed official native reader; the new protocol and
+  controller regressions cover password login, bookmark synchronization, sealed persistence and restoration.
+- Unsupported formats now report only envelope length, version and derived-key length. Authentication tags are
+  still verified; unrecognized versions, truncated envelopes and corrupted contents are rejected.
+- Old saved format errors prompt a fresh login with the updated reader. No account sync data is modified.
+
+## 声桥 TS 0.3.3 (2026-10-26)
+
+- Bookmark unlocking now retains separate errors for a missing key, unsupported envelope, failed authentication,
+  password-key derivation and unavailable crypto services. Closing/reopening the page preserves the exact error;
+  only an old saved login without diagnostic information asks for an initial password login.
+- Account authentication remains successful even if the phone's bookmark key derivation fails. The signed-in
+  account page displays its installed version. This build improves diagnosis; it does not claim the reported
+  phone-specific bookmark unlocking failure has been resolved.
+
+## 声桥 TS 0.3.2 (2026-10-26)
+
+- Password login now unlocks and reads the account's encrypted server bookmarks through the independent account
+  synchronization API. The server list separates account bookmarks from local favorites and supports tap-to-connect.
+- Account sync keys, bookmark caches and saved server passwords are encrypted with Android Keystore. Failed refreshes
+  preserve cached bookmarks; switching accounts clears the previous account's cache. Cloud chat remains optional.
+- The connection form automatically uses the signed-in username, including when login happens while the form is
+  already open. Users can still choose another nickname; a bookmark-specific nickname takes precedence.
+- Upgrading from earlier versions requires one password login to unlock bookmark synchronization. Voice identities
+  and channel settings are not imported from the account.
+
+## 声桥 TS 0.3.1 (2026-10-26)
+
+- Account authentication now succeeds and saves the username/session independently of cloud chat. Opening the
+  account page or restoring a saved account never automatically calls Matrix or `tschat.createAccount`.
+- Cloud chat has its own explicit connect button and error state. Chat 503 responses and contact-list failures
+  no longer undo a successful account login.
+- The account page shows this phone's saved servers with a connect action. Official cloud bookmarks are encrypted;
+  cloud bookmark synchronization remains unsupported and is clearly distinguished from local favorites.
+
+## 声桥 TS 0.3.0 (2026-10-26)
+
+- **Account login:** “Account & cloud chat” now signs in directly with the myTeamSpeak email address, password and
+  optional six-digit OTP. The app exchanges this login for the account's cloud-chat credentials, opens Matrix, and
+  syncs friends and existing conversations without a running desktop client.
+- **Safer sessions:** raw email passwords are never stored. The myTeamSpeak session, cloud-chat credentials and
+  Matrix session are sealed with Android Keystore and excluded from Android backup and device transfer. A failed
+  login keeps the previous account usable, and a newly created myTeamSpeak session is revoked when setup fails.
+- **Migration:** `.tsaccount` import remains available as a separate recovery path for an old installation or an
+  already exported configuration. Normal use no longer requires a computer.
+- **Version:** the compact preview packages of 声桥 TS are now 0.3.0 for `arm64-v8a`, `armeabi-v7a`, and universal
+  devices.
+
 ## 1.4.0 (2026-10-24)
 
 - **Channel info:** holding a channel shows its topic, how many are in it (and the limit), its type, voice codec and

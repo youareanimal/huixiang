@@ -121,6 +121,7 @@ fun SettingsContent(
     startTab: Int = 0,
     modifier: Modifier = Modifier,
     self: SelfInfo? = null,
+    singleSection: Boolean = false,
 ) {
     var tab by rememberSaveable { mutableStateOf(startTab) }
     var v by remember { mutableStateOf(voice) }
@@ -129,8 +130,8 @@ fun SettingsContent(
     var language by rememberSaveable { mutableStateOf(savedLanguage) }
 
     // While the settings are open the microphone is measured, nothing is sent
-    DisposableEffect(Unit) {
-        actions.micTest(true)
+    DisposableEffect(tab) {
+        if (tab == 2) actions.micTest(true)
         onDispose { actions.micTest(false) }
     }
 
@@ -138,6 +139,7 @@ fun SettingsContent(
         Column(
             modifier.clip(RoundedCornerShape(12.dp)).background(Ts.panel),
         ) {
+            if (!singleSection) {
             Row(Modifier.fillMaxWidth().background(Ts.card).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.settings), color = Ts.bright, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, modifier = Modifier.weight(1f))
                 androidx.compose.material3.Icon(
@@ -162,6 +164,7 @@ fun SettingsContent(
                 }
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Ts.card))
+            }
             Column(
                 Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),

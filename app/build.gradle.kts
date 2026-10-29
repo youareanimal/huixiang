@@ -17,11 +17,12 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "io.github.korppujauho.pocketts"
+        applicationId = "app.shengqiao.ts"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 13
+        versionName = "0.5.0"
+        buildConfigField("String", "UPDATE_FEED_URL", "\"https://huixiang-updates.pages.dev/latest.json\"")
         // Phones (WebRTC's native code is large; these two cover practically every phone)
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
@@ -54,7 +55,7 @@ android {
             if (releaseKey != null) signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "DEV_LOG_URL", "\"\"")
             // The GitHub release asks GitHub for newer versions (a Google Play build won't)
-            buildConfigField("boolean", "UPDATE_CHECK", "true")
+            buildConfigField("boolean", "UPDATE_CHECK", "false")
         }
         // The Google Play version: the release as an app bundle (bundlePlay), the same app and key, but without the
         // GitHub update check (Play updates it)
@@ -74,11 +75,32 @@ android {
             buildConfigField("String", "DEV_LOG_URL", "\"${devEnv["DEV_LOG_URL"].orEmpty()}\"")
             buildConfigField("boolean", "UPDATE_CHECK", "false")
         }
+        // Release shrinking, signed with the local test key. Updates the previous debug package in place.
+        create("compact") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-preview"
+            // CI builds the APK; the existing upgrade key stays on the release machine.
+            signingConfig = if (System.getenv("HUIXIANG_UNSIGNED_BUILD") == "1") null else signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     // The app's languages, listed for Android 13 and later (Settings › Apps › PocketTS › Language), from res/values-*
     androidResources {
         generateLocaleConfig = true
+    }
+
+    // APKs distributed outside Google Play can't use the store's ABI delivery.
+    // Keep a universal package and add two smaller APKs so a phone downloads
+    // only the WebRTC native code its CPU needs.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
+        }
     }
 
     // Every language in every install from Google Play: the app's language can be chosen in its settings

@@ -4,7 +4,7 @@ import android.content.Context
 
 /** How talking works, as in WebTS's Settings: activation, levels and the microphone's processing. */
 data class VoiceSettings(
-    val activation: Activation = Activation.VAD,
+    val activation: Activation = Activation.PTT,
     val vadThreshold: Float = 0.01f, // voice activation level: the microphone's RMS, 0 - 0.1
     val vadTailMs: Int = 600, // delay before deactivation
     val voiceVolumeDb: Int = 0, // everyone's voice, -20 to +12 dB
@@ -30,7 +30,7 @@ data class VoiceSettings(
     val uiSounds: Boolean = true, // sounds for events (people coming and going, messages, pokes, streams, the buttons)
     val uiSoundVolume: Float = 0.6f, // their volume, 0 - 1
     val adminTools: Boolean = false, // the person menu offers move, kick and ban (the server decides who may)
-    val controlsAtBottom: Boolean = false, // the buttons and the Channels/Chat switch at the bottom of the screen (within thumb reach)
+    val controlsAtBottom: Boolean = true, // the buttons and the Channels/Chat switch at the bottom of the screen (within thumb reach)
 ) {
     enum class Activation { VAD, PTT, CONTINUOUS }
 

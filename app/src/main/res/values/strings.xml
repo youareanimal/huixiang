@@ -4,7 +4,12 @@
   language wants; counts use plurals. Log lines and TeamSpeak commands stay in the code, in English.
 -->
 <resources>
-    <string name="app_name" translatable="false">PocketTS</string>
+    <string name="app_name" translatable="false">回响</string>
+    <string name="welcome_title">Your community, within reach</string>
+    <string name="welcome_description">Voice, channels and chat for TeamSpeak 3 / 6 servers. Connect with a server address and a nickname.</string>
+    <string name="connection_help">Connection guide</string>
+    <string name="connection_help_body">Enter a hostname or IP address, optionally followed by :9987 (the default voice port). Use the voice port configured by the administrator, not the ServerQuery or file transfer port.\n\nYou can also paste a ts3server:// or teamspeak:// invitation here. Review its details before joining.\n\nA local TeamSpeak identity is created on this phone. In “Account &amp; cloud chat”, sign in with your myTeamSpeak email and password to sync friends and existing cloud conversations. Microphone permission is needed to speak.</string>
+    <string name="fork_attribution">An independent client based on PocketTS • GPL-3.0. Not affiliated with TeamSpeak.</string>
 
     <!-- Shared -->
     <string name="cancel">Cancel</string>
@@ -25,6 +30,7 @@
     <string name="link_use_key_desc">It gives you rights on this server, such as admin. Use it only if you trust who sent the link.</string>
     <string name="disconnect">Disconnect</string>
     <string name="nickname">Nickname</string>
+    <string name="account_nickname_hint">Defaults to your account name: %1$s. You can change it for this server.</string>
     <string name="server_address">Server address or nickname</string>
     <string name="server_password">Server password</string>
     <string name="remember_password">Remember the password</string>
@@ -44,7 +50,7 @@
     <string name="favourite_file_port">File transfer port</string>
     <string name="favourite_file_port_hint">The server\'s own (usually 30033)</string>
     <string name="favourite_file_port_desc">Only if the server\'s pictures and avatars don\'t load: its file transfer is on another port.</string>
-    <string name="update_title">PocketTS %1$s is out</string>
+    <string name="update_title">回响 %1$s is out</string>
     <string name="update_text">A newer version than this one (%1$s) is on GitHub.</string>
     <string name="not_now">Not now</string>
     <string name="download">Download</string>
@@ -114,7 +120,7 @@
 
     <!-- A picture on the whole screen -->
     <string name="picture_save">Save to the gallery</string>
-    <!-- %1$s is the folder, Pictures/PocketTS -->
+    <!-- %1$s is the folder, Pictures/回响 -->
     <string name="picture_saved">Saved to %1$s</string>
     <!-- %1$s is the reason, as the phone gives it -->
     <string name="picture_failed">That didn\'t work: %1$s</string>
@@ -199,9 +205,9 @@
     <string name="avatar_change">Change</string>
     <string name="avatar_desc">Others see it on this server. It\'s made to fit 320 × 320.</string>
     <string name="general_floating_ptt">Floating push-to-talk button</string>
-    <string name="general_floating_ptt_desc">In push-to-talk mode, a round button stays at the bottom of PocketTS\'s screen, so you can talk while you scroll the chat. The button over other apps (below) is a separate setting.</string>
+    <string name="general_floating_ptt_desc">In push-to-talk mode, a round button stays at the bottom of 回响\'s screen, so you can talk while you scroll the chat. The button over other apps (below) is a separate setting.</string>
     <string name="general_overlay_ptt">Talk button over other apps</string>
-    <string name="general_overlay_ptt_desc">In push-to-talk mode, a round button shows when you go to other apps (not in PocketTS itself). Hold it to talk, drag it to move it. Android asks once to let PocketTS display over other apps.</string>
+    <string name="general_overlay_ptt_desc">In push-to-talk mode, a round button shows when you go to other apps (not in 回响 itself). Hold it to talk, drag it to move it. Android asks once to let 回响 display over other apps.</string>
     <string name="general_volume_ptt">Volume buttons are push-to-talk</string>
     <string name="general_volume_ptt_desc">In push-to-talk mode, holding a volume button talks while the app is on screen (instead of changing the volume).</string>
     <string name="general_headset_ptt">Headset button is push-to-talk</string>
@@ -209,7 +215,7 @@
     <string name="general_call_mute">Mute during phone calls</string>
     <string name="general_call_mute_desc">When a phone call rings or starts, your microphone and sound go off (and the sound of a stream you watch), and come back on when it ends. A stream you share pauses, so viewers don\'t see the call. Anything you had muted yourself stays muted.</string>
     <string name="general_updates">Check for updates</string>
-    <string name="general_updates_desc">Once a day, PocketTS asks GitHub whether a newer version is out, and says so on the connect screen. Nothing about you is sent.</string>
+    <string name="general_updates_desc">Once a day, 回响 asks GitHub whether a newer version is out, and says so on the connect screen. Nothing about you is sent.</string>
     <string name="general_screen_on">Keep the screen on</string>
     <string name="general_screen_on_desc">The screen doesn\'t go dark while you\'re connected and the app is open. While you share or watch a stream, it stays on anyway.</string>
     <string name="general_spacers">Allow joining spacer channels</string>
@@ -291,7 +297,7 @@
     <string name="identity_export_subtitle">Keep it private</string>
     <string name="identity_save_file">Save to a file</string>
     <string name="identity_export_what">The file is your identity itself: anyone who has it is you on every server, with your groups and permissions, such as a server admin\'s. Nobody can tell the difference.</string>
-    <string name="identity_export_where">Save it somewhere only you can reach, like this phone or a private drive. Don\'t send it in a chat or an email, and don\'t post it. A TeamSpeak app can open it, and so can PocketTS on another phone.</string>
+    <string name="identity_export_where">Save it somewhere only you can reach, like this phone or a private drive. Don\'t send it in a chat or an email, and don\'t post it. A TeamSpeak app can open it, and so can 回响 on another phone.</string>
     <string name="identity_wipe_title">Wipe your identity?</string>
     <string name="identity_wipe_what">This phone\'s identity is deleted, and a new one is made the next time you connect. To every server you\'re then someone new: your groups, permissions and anything given to your old identity (such as admin rights) don\'t come along.</string>
     <string name="identity_wipe_back">The only way back is an exported copy. If you might want it again, cancel and Export it first.</string>

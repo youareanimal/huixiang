@@ -168,6 +168,24 @@ object ServerFiles {
         }
     }
 
+    /** Re-encode a system-picker image as bounded sRGB PNG, removing EXIF and other source metadata. */
+    fun prepareAccountAvatar(context: Context, uri: Uri): ByteArray {
+        val raw = context.contentResolver.openInputStream(uri)?.use { input ->
+            val out = ByteArrayOutputStream(); val buffer = ByteArray(8192)
+            while (true) {
+                val count = input.read(buffer); if (count < 0) break
+                if (out.size() + count > 20 * 1024 * 1024) throw io.github.korppujauho.pocketts.proto.CloudFailure("AVATAR_IMAGE")
+                out.write(buffer, 0, count)
+            }
+            out.toByteArray()
+        } ?: throw io.github.korppujauho.pocketts.proto.CloudFailure("AVATAR_IMAGE")
+        return try {
+            val bitmap = decode(raw, 320)
+            try { encode(bitmap, Bitmap.CompressFormat.PNG, 100) }
+            finally { bitmap.recycle() }
+        } finally { raw.fill(0) }
+    }
+
     private fun decode(raw: ByteArray, maxSide: Int): Bitmap =
         ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(raw))) { decoder, info, _ ->
             val w = info.size.width

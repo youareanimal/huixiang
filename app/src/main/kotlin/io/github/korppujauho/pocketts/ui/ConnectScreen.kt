@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,15 +71,18 @@ fun ConnectScreen(
     voice: io.github.korppujauho.pocketts.VoiceSettings = io.github.korppujauho.pocketts.VoiceSettings(),
     settingsActions: SettingsActions? = null,
     onDismissError: () -> Unit = {},
+    accountUsername: String = "",
 ) {
     var settings by remember { mutableStateOf(false) }
-    var nick by remember { mutableStateOf(nickname) }
-    var addr by remember { mutableStateOf(address) }
+    var nick by rememberSaveable(nickname, accountUsername) { mutableStateOf(nickname) }
+    var addr by rememberSaveable { mutableStateOf(address) }
     var pw by remember { mutableStateOf(password) }
+    var help by rememberSaveable { mutableStateOf(false) }
     var remember by remember { mutableStateOf(password.isNotEmpty()) }
     var favorite by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Favorite?>(null) }
     val known = favorites.any { io.github.korppujauho.pocketts.Favorites.same(it.address, addr) }
+    val effectiveNickname = nick.ifBlank { accountUsername }
 
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         AppHeader { if (settingsActions != null) SettingsGear { settings = true } }
@@ -86,6 +90,11 @@ fun ConnectScreen(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(15.dp),
             verticalArrangement = Arrangement.spacedBy(15.dp),
         ) {
+            Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.welcome_title), color = Ts.bright, fontWeight = FontWeight.Bold, fontSize = 26.sp)
+                Text(stringResource(R.string.welcome_description), color = Ts.text, fontSize = 14.sp)
+                TextButton(onClick = { help = true }) { Text(stringResource(R.string.connection_help), color = Ts.brand) }
+            }
             if (favorites.isNotEmpty()) {
                 Panel(Modifier.fillMaxWidth(), header = {
                     Text(stringResource(R.string.favourites), color = Ts.title, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
@@ -100,6 +109,7 @@ fun ConnectScreen(
             }) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     TsField(nick, { nick = it }, stringResource(R.string.nickname))
+                    if (accountUsername.isNotBlank()) Text(stringResource(R.string.account_nickname_hint, accountUsername), color = Ts.muted, fontSize = 12.sp)
                     TsField(addr, { addr = it }, stringResource(R.string.server_address), placeholder = "ts.example.com", keyboard = KeyboardType.Uri)
                     TsField(pw, { pw = it }, stringResource(R.string.server_password), password = true, imeAction = ImeAction.Go)
                     CheckRow(stringResource(R.string.remember_password), remember) { remember = it }
@@ -108,12 +118,20 @@ fun ConnectScreen(
                     error?.let { WarningBanner(it, onDismissError, inset = 0.dp) }
                     UpdateCard()
                     PrimaryButton(
-                        stringResource(R.string.connect), enabled = nick.isNotBlank() && addr.isNotBlank(), modifier = Modifier.fillMaxWidth(),
-                    ) { actions.connect(addr.trim(), nick.trim(), pw, remember, favorite && !known) }
+                        stringResource(R.string.connect), enabled = addr.isNotBlank() && (effectiveNickname.isNotBlank() || io.github.korppujauho.pocketts.proto.JoinLink.isLink(addr)), modifier = Modifier.fillMaxWidth(),
+                    ) { actions.connect(addr.trim(), effectiveNickname.trim(), pw, remember, favorite && !known) }
                 }
             }
+            Text(stringResource(R.string.fork_attribution), color = Ts.muted, fontSize = 12.sp)
         }
     }
+
+    if (help) AlertDialog(
+        onDismissRequest = { help = false },
+        title = { Text(stringResource(R.string.connection_help)) },
+        text = { Text(stringResource(R.string.connection_help_body)) },
+        confirmButton = { TextButton(onClick = { help = false }) { Text(stringResource(R.string.close)) } },
+    )
 
     if (settings && settingsActions != null) {
         SettingsDialog(voice, nick, settingsActions, onDismiss = { settings = false })

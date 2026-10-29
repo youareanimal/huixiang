@@ -117,7 +117,7 @@ private fun ChannelBox(
 ) {
     val ch = item.node.channel
     val own = ch.id == ctx.ownChannel
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(18.dp)
     var box = Modifier.fillMaxWidth()
     if (item.depth > 0) {
         box = box.padding(start = (item.depth * 15).dp)

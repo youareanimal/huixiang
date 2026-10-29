@@ -74,6 +74,9 @@ fun PersonSheet(
     onMove: () -> Unit = {},
     onKick: () -> Unit = {},
     onBan: () -> Unit = {},
+    channelName: String = "",
+    serverGroups: List<String> = emptyList(),
+    channelGroup: String = "",
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss, containerColor = Pop.bottom,
@@ -102,6 +105,7 @@ fun PersonSheet(
                     }
                 }
             }
+            PersonDetails(person, isSelf, channelName, serverGroups, channelGroup)
             if (isSelf) {
                 // Away, as the TeamSpeak app sets it: others see AFK and the message
                 var msg by remember { mutableStateOf(awayMessage) }
@@ -141,6 +145,33 @@ fun PersonSheet(
                 ActionTile(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.Chat, stringResource(R.string.chat), Modifier.weight(1f), onClick = onChat)
             }
             if (admin) AdminTiles(onMove, onKick, onBan)
+        }
+    }
+}
+
+/** Only information supplied by this server; account email is visible solely on our own sheet. */
+@Composable
+internal fun PersonDetails(person: ServerModel.Client, isSelf: Boolean, channelName: String,
+    serverGroups: List<String>, channelGroup: String) {
+    val account = LocalVoiceAccountProfile.current
+    PopCard {
+        Text("用户资料", color = Ts.bright, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        androidx.compose.foundation.text.selection.SelectionContainer {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                fun value(text: String) = text.ifBlank { "服务器未提供" }
+                if (isSelf && person.id == account.clientId && account.username.isNotBlank()) {
+                    Text("当前账号：${account.username}", color = Ts.text, fontSize = 13.sp)
+                    if (account.email.isNotBlank()) Text("账号邮箱：${account.email}", color = Ts.text, fontSize = 13.sp)
+                }
+                Text("昵称：${person.nickname}", color = Ts.text, fontSize = 13.sp)
+                Text("唯一身份 UID：${value(person.uid)}", color = Ts.text, fontSize = 13.sp)
+                Text("当前频道：${value(channelName)}", color = Ts.text, fontSize = 13.sp)
+                Text("服务器身份组：${value(serverGroups.joinToString("、"))}", color = Ts.text, fontSize = 13.sp)
+                Text("频道身份组：${value(channelGroup)}", color = Ts.text, fontSize = 13.sp)
+                Text("客户端：${value(listOf(person.platform, person.version).filter { it.isNotBlank() }.joinToString(" · "))}", color = Ts.text, fontSize = 13.sp)
+                Text("国家/地区：${value(person.country)}", color = Ts.text, fontSize = 13.sp)
+                Text("状态：${listOfNotNull(if (person.away) "离开" else "在线", "麦克风已静音".takeIf { person.inputMuted }, "声音已静音".takeIf { person.outputMuted }).joinToString(" · ")}", color = Ts.text, fontSize = 13.sp)
+            }
         }
     }
 }

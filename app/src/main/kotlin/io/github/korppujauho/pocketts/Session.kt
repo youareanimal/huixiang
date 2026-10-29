@@ -58,6 +58,8 @@ object Session : TsClient.Listener {
         val micAllowed: Boolean = false, // the microphone permission
         val pttHeld: Boolean = false,
         val badges: Map<Int, List<Long>> = emptyMap(), // per person: their group and own icons
+        val serverGroupNames: Map<Int, String> = emptyMap(),
+        val channelGroupNames: Map<Int, String> = emptyMap(),
         val serverIcon: Long = 0,
         val sendingPicture: Boolean = false,
         val sendingProgress: Pair<Int, Int>? = null, // sending several pictures: which one (from 1), of how many
@@ -283,11 +285,11 @@ object Session : TsClient.Listener {
     private var levelTarget: Target? = null
 
     /** After raising the security level: the server that asked for it again. */
-    fun connectAgain() {
+    fun connectAgain(nickname: String? = null) {
         val t = levelTarget ?: return
         levelTarget = null
         _state.update { it.copy(neededLevel = 0) }
-        connect(app, t.address, t.nickname, t.password, t.filePort)
+        connect(app, t.address, nickname ?: t.nickname, t.password, t.filePort)
     }
 
     /** The security level wasn't raised (enough): the server's need is let be, and said why we're not connected. */
@@ -359,6 +361,13 @@ object Session : TsClient.Listener {
             return
         }
         c.disconnect()
+    }
+
+    /** Optional public profile fields arrive through notifyclientupdated; refusal leaves known data usable. */
+    fun personDetails(person: ServerModel.Client) {
+        val current = _state.value
+        if (current.phase != Phase.CONNECTED || current.client(person.id)?.uid != person.uid) return
+        client?.sendCommand(Commands.build("clientgetvariables", "clid" to person.id, "return_code" to "quiet-client-details"))
     }
 
     // The last join asked for, until the server answers it (by its return code)
@@ -1334,6 +1343,8 @@ object Session : TsClient.Listener {
                 cannotTalk = model.clients.values.filter { c -> !model.canTalk(c) }.map { c -> c.id }.toSet(),
                 server = HashMap(model.serverVars),
                 badges = model.clients.values.associate { c -> c.id to model.badges(c) },
+                serverGroupNames = model.serverGroups.mapValues { it.value.name },
+                channelGroupNames = model.channelGroups.mapValues { it.value.name },
                 streams = HashMap(model.streams),
                 serverIcon = model.serverVars["virtualserver_icon_id"]?.toLongOrNull()?.let { v -> if (v < 0) v + (1L shl 32) else v } ?: 0,
                 channelCount = model.channels.size,

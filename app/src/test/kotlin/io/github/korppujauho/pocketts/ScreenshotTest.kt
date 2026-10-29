@@ -13,6 +13,8 @@ import io.github.korppujauho.pocketts.proto.Commands
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.ui.ConnectActions
 import io.github.korppujauho.pocketts.ui.ConnectScreen
+import io.github.korppujauho.pocketts.ui.EntryScreen
+import io.github.korppujauho.pocketts.ui.CloudAccountHome
 import io.github.korppujauho.pocketts.ui.PocketTsTheme
 import io.github.korppujauho.pocketts.ui.ServerActions
 import io.github.korppujauho.pocketts.ui.ServerScreen
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,8 +58,15 @@ class ScreenshotTest {
         io.github.korppujauho.pocketts.ui.chatNow = { Example.T0 + 600_000 } // the example lines are "today"
     }
 
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
     private fun shot(name: String, content: @Composable () -> Unit) =
         captureRoboImage("${roborazziSystemPropertyOutputDirectory()}/$name.png") { PocketTsTheme { content() } }
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w360dp-h800dp-xhdpi", sdk = [36])
+    fun huiXiangEntryChinese() = shot("huixiang-entry-zh") {
+        EntryScreen(onLogin = {}, onGuest = {})
+    }
 
     @Test
     fun connect() = shot("connect") {
@@ -67,6 +77,45 @@ class ScreenshotTest {
                 Favorite("192.0.2.10:9987", "Test server"),
             ), null, Example.noConnect, settingsActions = Example.noSettings,
         )
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w411dp-h891dp-xxhdpi", sdk = [36])
+    fun shengQiaoConnectChinese() = shot("shengqiao-connect-zh") {
+        ConnectScreen("示例用户", "", "", emptyList(), null, Example.noConnect, settingsActions = Example.noSettings,
+            accountUsername = "示例用户")
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w411dp-h891dp-xxhdpi", sdk = [36])
+    fun shengQiaoCloudAccountEmptyChinese() {
+        shot("shengqiao-cloud-empty-zh") {
+            CloudAccountHome(CloudAccountController.State(), tab = 0, onTab = {}, onImport = {},
+                onLogin = { _, _, _ -> }, onOpenLogin = {}, onForget = {}, onRoom = {}, onContact = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w411dp-h891dp-xxhdpi", sdk = [36])
+    fun shengQiaoAccountLoggedInChinese() = shot("shengqiao-account-logged-in-zh") {
+        Column(Modifier.fillMaxSize()) {
+            CloudAccountHome(CloudAccountController.State(hasAccount = true, username = "示例用户",
+                localServers = listOf(Favorite("ts.example.com", "我的本机收藏")), bookmarksLoaded = true,
+                bookmarks = listOf(io.github.korppujauho.pocketts.proto.MyTsBookmarks.Bookmark(
+                    "fixture-id", "我的账号书签", "voice.example.com:9988", "示例用户", ""))),
+                tab = 0, onTab = {}, onImport = {}, onLogin = { _, _, _ -> },
+                onOpenLogin = {}, onForget = {}, onRoom = {}, onContact = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w411dp-h891dp-xxhdpi", sdk = [36])
+    fun shengQiaoBookmarkKeyFailureChinese() = shot("shengqiao-bookmark-key-failure-zh") {
+        Column(Modifier.fillMaxSize()) {
+            CloudAccountHome(CloudAccountController.State(hasAccount = true, username = "示例用户",
+                bookmarkError = "BOOKMARK_KEY_AUTH"), tab = 0, onTab = {}, onImport = {},
+                onLogin = { _, _, _ -> }, onOpenLogin = {}, onForget = {}, onRoom = {}, onContact = {})
+        }
     }
 
     @Test
@@ -244,14 +293,15 @@ class ScreenshotTest {
 
     /** The app icon as launchers cut it (rounded square, circle), its themed one-colour version, and the notification icon. */
     @Test
+    @Config(qualifiers = "w411dp-h891dp-mdpi", sdk = [36])
     fun appIcon() = shot("app-icon") {
         Row(
             Modifier.fillMaxSize().background(Color(0xFF6B7280)),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconTile(RoundedCornerShape(24), Color(0xFF1B1D22), R.drawable.ic_launcher_foreground)
-            IconTile(CircleShape, Color(0xFF1B1D22), R.drawable.ic_launcher_foreground)
+            IconTile(RoundedCornerShape(24), Color(0xFF24182F), R.drawable.ic_launcher_foreground)
+            IconTile(CircleShape, Color(0xFF24182F), R.drawable.ic_launcher_foreground)
             IconTile(CircleShape, Color(0xFFD7E3FF), R.drawable.ic_launcher_monochrome, tint = Color(0xFF1B3A7A))
             Image(painterResource(R.drawable.ic_notification), null, Modifier.size(32.dp), colorFilter = ColorFilter.tint(Color.White))
         }
@@ -295,7 +345,7 @@ class ScreenshotTest {
     private fun IconTile(shape: androidx.compose.ui.graphics.Shape, background: Color, icon: Int, tint: Color? = null) {
         Box(Modifier.size(84.dp).clip(shape).background(background), contentAlignment = Alignment.Center) {
             Image(
-                painterResource(icon), null, Modifier.requiredSize(126.dp),
+                androidDrawablePainter(icon, 126.dp), null, Modifier.requiredSize(126.dp),
                 colorFilter = tint?.let { ColorFilter.tint(it) },
             )
         }
@@ -315,6 +365,22 @@ class ScreenshotTest {
     fun serverConnecting() = shot("server-connecting") {
         ServerScreen(Session.UiState(phase = Session.Phase.CONNECTING, address = "ts.example.com", reconnecting = 2), Example.noActions)
     }
+}
+
+/** Render the actual Android launcher layer, including inset bitmaps, in Compose screenshot previews. */
+@Composable
+internal fun androidDrawablePainter(icon: Int, edge: androidx.compose.ui.unit.Dp): androidx.compose.ui.graphics.painter.Painter {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val pixels = with(androidx.compose.ui.platform.LocalDensity.current) { edge.roundToPx() }.coerceAtLeast(1)
+    val bitmap = androidx.compose.runtime.remember(context, icon, pixels) {
+        android.graphics.Bitmap.createBitmap(pixels, pixels, android.graphics.Bitmap.Config.ARGB_8888).also { target ->
+            context.getDrawable(icon)!!.apply {
+                setBounds(0, 0, pixels, pixels)
+                draw(android.graphics.Canvas(target))
+            }
+        }.asImageBitmap()
+    }
+    return androidx.compose.ui.graphics.painter.BitmapPainter(bitmap)
 }
 
 /** An example server like the one in WebTS's screenshots. */

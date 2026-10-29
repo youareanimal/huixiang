@@ -1,6 +1,14 @@
 # Developing PocketTS
 
+## 回响发布约定
+
+本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。新版推送 `v<版本号>` 标签后使用 `.github/workflows/huixiang-build.yml` 在 GitHub Actions 完成测试及精简 APK 构建，产物为 `HuiXiang-<版本号>-unsigned`。签名私钥保留在发行电脑，不上传到仓库或 Actions Secret；下载 CI 产物后，用原有密钥签名，再把签名安装包、校验清单与 CI 对应源码发布到 GitHub Releases。沿用现有 `app.shengqiao.ts.debug` 包名及证书，确保可覆盖升级。已有 `release.yml` 仅限原作者仓库。
+
+当前客户端仅接受现有更新站点的同源 HTTPS 地址，GitHub Release 资产还会跳转至下载域名。因此迁移构建时应把 GitHub Actions 生成的原始签名 APK 同步到现有更新站点，更新版本清单，保留旧版本下载文件；不要未经客户端适配直接更换清单中的下载域名。
+
 ## The parts
+
+Windows 可用内存不足时，可先用 `:app:compileDebugUnitTestKotlin -Pkotlin.compiler.execution.strategy=in-process` 单独编译，再运行受限内存的单进程测试，避免 Kotlin 编译器和 Robolectric 同时占用内存。该编译策略见 [Kotlin 官方说明](https://kotlinlang.org/docs/compiler-execution-strategy.html)。本地调试 JVM 参数仅通过构建命令传入，不影响发布包的功能。
 
 - `tsproto/`: the TeamSpeak connection in plain Kotlin (no Android): packets, encryption, commands, the channel and
   people model, chat, file transfer and streams. Most of the tests are here.

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PocketTS"
+rootProject.name = "ShengQiaoTS"
 include(":tsproto", ":app")

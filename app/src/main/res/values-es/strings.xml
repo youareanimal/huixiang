@@ -39,7 +39,7 @@
     <string name="favourite_file_port">Puerto de transferencia de archivos</string>
     <string name="favourite_file_port_hint">El del servidor (normalmente 30033)</string>
     <string name="favourite_file_port_desc">Solo si las imágenes y los avatares del servidor no cargan: su transferencia de archivos está en otro puerto.</string>
-    <string name="update_title">Ya está disponible PocketTS %1$s</string>
+    <string name="update_title">Ya está disponible 回响 %1$s</string>
     <string name="update_text">Hay una versión más nueva que esta (%1$s) en GitHub.</string>
     <string name="not_now">Ahora no</string>
     <string name="download">Descargar</string>
@@ -183,9 +183,9 @@
     <string name="avatar_change">Cambiar</string>
     <string name="avatar_desc">Los demás la ven en este servidor. Se ajusta a 320 × 320.</string>
     <string name="general_floating_ptt">Botón flotante de pulsar para hablar</string>
-    <string name="general_floating_ptt_desc">En el modo pulsar para hablar, un botón redondo se queda en la parte inferior de la pantalla de PocketTS para que puedas hablar mientras te desplazas por el chat. El botón sobre otras apps (abajo) es un ajuste aparte.</string>
+    <string name="general_floating_ptt_desc">En el modo pulsar para hablar, un botón redondo se queda en la parte inferior de la pantalla de 回响 para que puedas hablar mientras te desplazas por el chat. El botón sobre otras apps (abajo) es un ajuste aparte.</string>
     <string name="general_overlay_ptt">Botón para hablar sobre otras apps</string>
-    <string name="general_overlay_ptt_desc">En el modo pulsar para hablar, aparece un botón redondo cuando vas a otras apps (no en el propio PocketTS). Mantenlo pulsado para hablar y arrástralo para moverlo. Android pide una vez permiso para mostrar PocketTS sobre otras apps.</string>
+    <string name="general_overlay_ptt_desc">En el modo pulsar para hablar, aparece un botón redondo cuando vas a otras apps (no en el propio 回响). Mantenlo pulsado para hablar y arrástralo para moverlo. Android pide una vez permiso para mostrar 回响 sobre otras apps.</string>
     <string name="general_volume_ptt">Los botones de volumen son pulsar para hablar</string>
     <string name="general_volume_ptt_desc">En el modo pulsar para hablar, mantener pulsado un botón de volumen transmite tu voz mientras la app está en pantalla (en lugar de cambiar el volumen).</string>
     <string name="general_headset_ptt">El botón de los auriculares es pulsar para hablar</string>
@@ -193,7 +193,7 @@
     <string name="general_call_mute">Silenciar durante las llamadas</string>
     <string name="general_call_mute_desc">Cuando suena o empieza una llamada, el micrófono y el sonido se apagan (también el sonido de la transmisión que ves), y vuelven al terminar. La transmisión que compartes se pausa para que los espectadores no vean la llamada. Lo que hayas silenciado tú sigue silenciado.</string>
     <string name="general_updates">Buscar actualizaciones</string>
-    <string name="general_updates_desc">Una vez al día, PocketTS pregunta a GitHub si hay una versión más nueva y lo indica en la pantalla de conexión. No se envía nada sobre ti.</string>
+    <string name="general_updates_desc">Una vez al día, 回响 pregunta a GitHub si hay una versión más nueva y lo indica en la pantalla de conexión. No se envía nada sobre ti.</string>
     <string name="general_screen_on">Mantener la pantalla encendida</string>
     <string name="general_screen_on_desc">La pantalla no se apaga mientras estás conectado y la app está abierta. Mientras compartes o ves una transmisión, se queda encendida de todos modos.</string>
     <string name="general_spacers">Permitir unirse a espaciadores</string>
@@ -276,7 +276,7 @@
     <string name="identity_export_subtitle">Mantenla en privado</string>
     <string name="identity_save_file">Guardar en un archivo</string>
     <string name="identity_export_what">El archivo es tu propia identidad: quien lo tenga es tú en todos los servidores, con tus grupos y permisos, como los de un administrador del servidor. Nadie puede notar la diferencia.</string>
-    <string name="identity_export_where">Guárdalo donde solo tú tengas acceso, como este teléfono o una unidad privada. No lo envíes por chat ni por correo y no lo publiques. Una app de TeamSpeak puede abrirlo, y también PocketTS en otro teléfono.</string>
+    <string name="identity_export_where">Guárdalo donde solo tú tengas acceso, como este teléfono o una unidad privada. No lo envíes por chat ni por correo y no lo publiques. Una app de TeamSpeak puede abrirlo, y también 回响 en otro teléfono.</string>
     <string name="identity_wipe_title">¿Borrar tu identidad?</string>
     <string name="identity_wipe_what">Se elimina la identidad de este teléfono y se crea una nueva la próxima vez que te conectes. Para todos los servidores serás alguien nuevo: tus grupos, permisos y todo lo que se le dio a tu identidad anterior (como derechos de administrador) no se conservan.</string>
     <string name="identity_wipe_back">La única forma de volver atrás es una copia exportada. Si puede que la necesites, cancela y expórtala primero.</string>

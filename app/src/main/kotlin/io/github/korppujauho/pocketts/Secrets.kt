@@ -95,6 +95,13 @@ object Secrets {
 fun secretPrefs(context: Context): SharedPreferences = context.getSharedPreferences("secrets", Context.MODE_PRIVATE)
 
 /**
+ * Cloud chat credentials get their own excluded file. Keeping them apart from the account device id and UI state
+ * makes it possible to upgrade an existing build without bringing older, unsealed entries along.
+ */
+fun cloudSecretPrefs(context: Context): SharedPreferences =
+    context.getSharedPreferences("cloud-secrets", Context.MODE_PRIVATE)
+
+/**
  * The secret saved under [name] (null when none). One an earlier version kept in [old] is moved here first, and one
  * saved before sealing existed is sealed now, so it's in plain text only until the first time it's read. Throws
  * [SecretBox.Unreadable] when it can't be opened; the saved value is then left as it is.

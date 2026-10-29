@@ -1,68 +1,114 @@
-# PocketTS
+# 回响 · Android
 
-> **Made with AI assistance.** PocketTS is written with the help of an AI coding assistant. Every change is tested
-> by hand on a real phone before it goes in.
+0.5.0：统一登录后的账号连接入口，增加服务器内账号头像、其他用户头像和用户资料卡，补齐基础好友文字聊天。好友聊天仍需官方云服务可用，已开启端到端加密的会话暂不支持解密或发送。
 
-A free, unofficial TeamSpeak client for Android, made for TeamSpeak 6 servers. Type a nickname and a server address
-to join.
+安装包与对应源码见 [GitHub Releases](https://github.com/youareanimal/huixiang/releases)。GitHub Actions 负责测试与构建，现有升级私钥保留在发行电脑，签名后分发；沿用原包名、签名及在线更新源。构建与验收说明见 [验收记录](docs/VALIDATION.md)。
 
-<img src="docs/screenshots/overview.png" alt="PocketTS screens: the channels and the people in them, the channel chat, a person's menu (volume, poke and private chat), and the settings">
+基于 [PocketTS](https://github.com/KorppuJauho/pocketts) 二次开发的非官方 TeamSpeak 3 / 6 安卓客户端。保留完整协议和音频实现，采用 Jetpack Compose + Kotlin。
 
-## What it does
+## 当前版本功能
 
-- **Voice:** voice activation, push-to-talk (also a floating button over other apps), echo and noise removal. Keeps
-  working with the screen off, and goes quiet during phone calls.
-- **Channels:** who is where, with avatars, icons, badges and banners. Password-protected channels ask for the
-  password. Hold a channel for its info.
-- **Chat:** channel and private chats, pictures, pokes, and a history kept on the phone for 90 days.
-- **Files:** a channel's files: download, upload, rename and delete them, and make folders (as the server allows).
-- **Streams:** watch others' screen and camera streams (at the size you choose, small over the app, or in a small
-  window over other apps), and share your own camera (with your microphone) or screen (with what the phone plays).
-- **Admin tools** (optional): move, kick and ban people, and add, edit, move and delete channels. The server decides
-  who may.
-- **Connecting** by address, server nickname or TeamSpeak link; favourites; reconnecting by itself when the network
-  changes; and mute, sound and disconnect buttons in the notification.
-- **Settings** and sounds for events.
-- **Languages:** English, Finnish, German, Spanish, French, Simplified Chinese and Russian (see
-  [TRANSLATIONS.md](TRANSLATIONS.md); corrections welcome).
+- 服务器地址/昵称连接、收藏、网络变化后自动重连。
+- 频道树、成员列表、频道密码、频道及私聊消息。
+- Opus 语音、默认按住说话（可切换语音激活）、回声消除、降噪、后台前台服务。
+- TS6 WebRTC 屏幕/摄像头串流接收与发送（继承上游实现，需设备与服务器实测）。
+- 文件传输、身份导入导出、Android Keystore 加密保存身份和密码。
+- 使用 myTeamSpeak 邮箱、密码和可选 OTP 登录，默认使用账号用户名作为昵称，读取并解密账号服务器书签；登录及重开账号页时自动加载好友和公开显示名称，云聊天另行连接。
+- “我的”显示账号邮箱和在线头像，点击邮箱可复制，点击头像或“修改头像”进入管理；账号头像与当前服务器头像分别设置。账号头像本版仅修改在线状态，选择图片后先预览、再确认上传。资料自动刷新并加密缓存，旧账号无需重新登录即可补齐邮箱。
+- 所有密码输入框支持显示/隐藏小眼睛，默认隐藏，离开输入框或切到后台后重新隐藏；原始账号密码不保存。
+- 新主框架以简体中文为主；现有语音和高级设置保留多语言，新页面其他语言文案仍待补全。
+- 本项目新增：回响品牌、紫色/薄荷青主题、四个固定主入口、最近连接、好友加密缓存与持续语音条；邀请链接先确认，关闭上游更新检查。
 
-Your TeamSpeak identity and saved passwords are encrypted on the phone. No account, no ads, no tracking (see the
-[privacy policy](PRIVACY.md)). The GitHub version asks GitHub once a day whether there's a newer version (you can turn
-that off in Settings).
+## 安装与连接
 
-**Status:** early, being tested. See the [changelog](CHANGELOG.md), and the
-[issues](https://github.com/KorppuJauho/pocketts/issues) for what's planned. Questions, ideas and tips are welcome in
-the [discussions](https://github.com/KorppuJauho/pocketts/discussions); bugs go to the issues. Security problems:
-please report them privately, see [SECURITY.md](SECURITY.md).
+构建成功后安装对应的预览 APK。要求 Android 10+。优先选择与手机 CPU 对应的
+[`HuiXiang-0.5.0-preview-arm64-v8a.apk`](https://github.com/youareanimal/huixiang/releases/download/v0.5.0/HuiXiang-0.5.0-preview-arm64-v8a.apk)（华为畅享70等近年手机）或
+`HuiXiang-0.5.0-preview-armeabi-v7a.apk`（较旧手机）；不确定时使用较大的
+`HuiXiang-0.5.0-preview.apk`，它同时支持两种 CPU。三个包的包名和功能相同，不要重复安装。
+保留旧版的包名和签名，可直接覆盖安装，无需先卸载。
+各文件校验值见 `SHA256SUMS.txt`。
 
-## Install
+1. 首次打开选择“登录 TeamSpeak 账号”或“访客进入”。已保存账号会自动恢复并打开账号服务器页。
+2. 可点账号书签连接，或在连接页输入服务器地址，例如 `pi.animal26.site`。已登录账号的全部入口统一使用当前账号用户名；访客进入后可手动输入昵称。未指定端口时使用 UDP 9987；自定义端口请用 `域名:端口`。
+3. 如服务器设置密码，在密码框填写。不要把 myTeamSpeak 账号密码填到这里。
+4. 点击连接，按需允许麦克风和通知。默认按住说话；设置中可以更改。
+5. 可粘贴完整 `ts3server://` / `teamspeak://` 邀请，或从其他应用分享纯文本邀请到回响。加入前会展示地址、频道与权限密钥选项。
 
-Download the APK from [Releases](https://github.com/KorppuJauho/pocketts/releases) and open it on your phone
-(Android 10 or newer). Android asks once to allow installing apps from your browser.
+邀请链接中的密码与权限密钥不会作为收藏地址保存。普通地址的“记住密码/收藏”选项正常生效；邀请链接走独立确认流程，连接后可再收藏服务器。
 
-## Known limitations
+## 在线更新
 
-- **No myTeamSpeak features.** Pictures shared through myTeamSpeak by the TeamSpeak app can't be shown in PocketTS.
-- **Pictures go to the server's own files.** PocketTS can't upload pictures to TeamSpeak's picture service. The
-  pictures you send are saved in the channel's files on the server (file transfer), so you need permission to upload
-  files in that channel. TeamSpeak app users see them as usual.
+先手动安装 0.4.2 一次，之后可在“我的 → 关于回响 → 检查更新”下载新版并安装。默认每天最多自动检查一次，可关闭；发现更新时首页显示提示，点击“稍后”可忽略当前版本。不会自动下载安装。
 
-## Building it yourself
+下载自动选择 arm64 或 armeabi-v7a，关闭弹窗后可继续下载，取消可重试。完成后检查文件大小、SHA-256、包名、版本和应用签名；点击“安装新版”交给系统确认。首次可能需要在系统中允许回响安装应用，再返回点击安装。覆盖升级保留账号和设置，但安装会关闭应用并中断语音。应用被系统终止时可重新下载，已完成安装包会在再次打开时恢复。
 
-See [DEVELOPING.md](DEVELOPING.md).
+更新源为独立的 HTTPS 地址 `https://huixiang-updates.pages.dev/latest.json`，不需要网盘或 TeamSpeak 账号；旧网盘仍可手动下载。新版发布：先构建 APK 和对应源代码 ZIP，再运行 `scripts/publish-update.ps1`。它会生成版本清单，通过 PI 已登录的 Cloudflare 官方工具发布，并同步 arm64 包到原网盘共享目录；不会读取管理员令牌。
 
-## Credits
+## 账号与服务器
 
-The people who have helped are in [CREDITS.md](CREDITS.md).
+从欢迎页或“我的”登录 myTeamSpeak；开启两步验证的账号展开验证码输入框并填写 OTP。认证成功后立即进入服务器首页，书签和好友分别加载；云消息按需连接，503 不会导致账号退出。好友名称加密缓存，离线读取失败时保留已有结果，页面切换不会重复创建账号控制器。
 
-## License
+“服务器”页分别显示“账号服务器书签”和“本机收藏”，均可点击连接。登录后通过独立账号同步接口读取并解密服务器书签，使用书签指定的昵称，未指定时使用当前昵称。此过程不连接 Matrix，也不修改官方收藏。用户名自动填入连接页，手动修改的昵称会保留。
 
-[GNU General Public License v3.0](LICENSE). You're welcome to fork PocketTS, change it and share your version, as
-long as you share its source code under the same license.
+从 0.3.1 或更早版本升级后，请重新登录一次，以解锁并安全保存书签同步密钥。之后打开应用先读取加密缓存，服务器与好友页各有独立刷新入口。书签失败显示具体错误代码，不再把所有解锁失败都提示成“请重新登录”；账号页显示安装版本，关闭后保留错误原因。此版补充版本 2 密钥封装支持，手机实际同步仍需验收。书签错误不撤销账号登录；账号曾重置密码、同步密钥失效时，可能需要在官方客户端先恢复账号同步。当前只读取服务器书签，不导入账号中的语音身份、频道密码或自动连接设置。
 
-The PocketTS name and icon are mine. If you release your own version as an app (in an app store or as your own
-downloads), give it a different name and icon so nobody mistakes it for PocketTS.
+需要好友云聊天时，在“好友”页点击好友，再点击“发消息”；也可进入“消息”页手动点击“连接云消息”。应用按需连接并复用已有两人会话，没有会话时会创建私人聊天并邀请好友。收到的邀请需明确接受，之后才能回复。连接失败只显示云聊天错误，账号仍保持登录。
 
-PocketTS isn't affiliated with or endorsed by TeamSpeak Systems GmbH. TeamSpeak is their trademark.
+原始邮箱密码仅用于当次登录，不保存在手机上。myTeamSpeak 会话、聊天凭据和聊天会话由 Android Keystore 加密保存，且排除在 Android 备份和设备迁移之外。登录失败不会覆盖之前可用的账号；点“移除”只清除本机登录信息，不删除 TeamSpeak 账号、好友或云端会话。
 
-PocketTS is free and stays free. If you'd like to say thanks, you can [buy me a coffee](https://buymeacoffee.com/jauho).
+`.tsaccount` 仅用于迁移旧版安装或恢复已有配置，不再是正常登录入口：
+
+1. 在 Windows 项目目录运行 `node tools/export-cloud-account.cjs`，按提示选择当前官方账号。
+2. 用私密传输方式把生成的 `.tsaccount` 文件送到手机；不要把文件发给他人或放进源码包。
+3. 在手机上打开“账号与服务器”，选择“导入 .tsaccount（迁移或恢复）”。迁移操作会主动验证并连接云聊天。
+
+可查看好友、已有会话、文字历史和发送非加密文字消息。会话在应用前台每三秒尝试同步，阅读到最新消息时发送已读回执；支持加载更早消息，本次最多保留 500 条。发送失败保留草稿，在当前账号连接内重试同一内容复用事务编号；重启后不保留草稿或待发消息。加密房间目前只显示加密占位消息，图片、附件和 E2EE 解密尚未实现，不会创建未加密会话来替代已加密私聊。
+
+## 兼容范围
+
+支持连接 TS3 / TS6 **服务器**，并兼容已验证的 myTeamSpeak 账号与官方 Matrix 云聊天接口。该云聊天接口不是 TeamSpeak 公布的第三方开发 SDK，后续服务变更可能影响兼容性。服务器内聊天图片通过文件传输保存，需要相应上传权限。不同版本/权限配置与 Android 厂商后台策略仍需实际验证。
+
+验收结果见 [docs/VALIDATION.md](docs/VALIDATION.md)。构建成功和协议自动化通过不等于已经验证手机上的麦克风、听筒、蓝牙或屏幕共享。
+
+## Windows 构建
+
+本次使用的工具均位于项目 `.tooling/`，避免占用 C 盘缓存。已配置好的本机执行：
+
+```powershell
+./scripts/build-windows.ps1
+```
+
+默认任务生成 0.4.0 调试 APK；更小的预览包使用：
+
+```powershell
+./scripts/build-windows.ps1 -Tasks ':app:assembleCompact'
+```
+
+该任务会同时生成通用预览包和两个按 CPU 拆分的预览包。
+
+新环境需 JDK 21+、Android SDK platform `android-37.0`、build-tools `37.0.0`、platform-tools。设置 `JAVA_HOME` 与 `ANDROID_HOME`，或按本项目 `.tooling/java/<jdk目录>` 与 `.tooling/android-sdk` 布局准备。Gradle wrapper 固定为 9.8.2，下载有 SHA-256 校验。中文路径通过 `android.overridePathCheck` 开启构建；本项目无本地 C/C++ 编译步骤。
+
+仅协议单元测试：
+
+```powershell
+./scripts/build-windows.ps1 -Tasks ':tsproto:test'
+```
+
+显式验收指定服务器（两名临时测试用户；私聊与一个静音语音包；不上传文件、不创建或修改频道）：
+
+```powershell
+$env:SHENGQIAO_TEST_SERVER = 'pi.animal26.site:9987'
+./scripts/build-windows.ps1 -Tasks ':tsproto:test', '--tests', '*ShengQiaoServerSmokeTest', '--rerun-tasks'
+Remove-Item Env:SHENGQIAO_TEST_SERVER
+```
+
+**不要在生产服务器设置 `TS_TEST_SERVER` 后运行上游全部集成测试**：上游 `ServerTest` 会创建频道、上传文件、设置头像并进行串流信令测试。此处使用单独的 `SHENGQIAO_TEST_SERVER` 测试入口。
+
+## 发布与来源
+
+当前 APK 是调试签名的测试版本，不应直接作为商店正式版。正式发布前需自有持久签名密钥及真机回归。上游发布工作流保留作参考，没有发布本项目。
+
+- 应用 ID：`app.shengqiao.ts`；调试版：`app.shengqiao.ts.debug`。
+- 上游源码、固定提交和修改范围见 [UPSTREAM.md](UPSTREAM.md)。原始英文说明保存在 `docs/README-upstream.md`。
+- 使用 GPL-3.0，保留 [LICENSE](LICENSE)、[CREDITS.md](CREDITS.md) 与 [TRANSLATIONS.md](TRANSLATIONS.md)。分发 APK 时应按许可证提供对应源码。
+- 本项目与 TeamSpeak 官方无关联。

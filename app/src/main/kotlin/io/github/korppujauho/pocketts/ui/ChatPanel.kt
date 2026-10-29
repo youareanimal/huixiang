@@ -93,6 +93,7 @@ import io.github.korppujauho.pocketts.proto.Chat
 import io.github.korppujauho.pocketts.proto.ServerModel
 import kotlin.math.abs
 import io.github.korppujauho.pocketts.proto.MessageText
+import androidx.compose.ui.text.withLink
 import java.util.Date
 
 /** The chat as WebTS shows it: tabs (the channel, the server, private chats), the lines, and the message box. */
@@ -105,6 +106,7 @@ fun ChatPanel(
     onSend: (Chat.Key, String) -> Unit,
     onPicture: (List<Uri>, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
+    onPerson: ((ServerModel.Client) -> Unit)? = null,
 ) {
     Panel(modifier, header = {
         Row(
@@ -127,7 +129,7 @@ fun ChatPanel(
             Messages(entries, emptyText = when (key) {
                 is Chat.Key.Channel -> stringResource(R.string.chat_empty_channel)
                 is Chat.Key.Private -> stringResource(R.string.chat_empty_private)
-            }, state)
+            }, state, onPerson)
         }
         val target = when (key) {
             is Chat.Key.Channel -> state.ownChannelName.ifEmpty { null }
@@ -165,7 +167,8 @@ private fun ChatTab(prefix: String, name: String, active: Boolean, unread: Boole
 }
 
 @Composable
-private fun ColumnScope.Messages(entries: List<Chat.Entry>, emptyText: String, state: Session.UiState) {
+private fun ColumnScope.Messages(entries: List<Chat.Entry>, emptyText: String, state: Session.UiState,
+    onPerson: ((ServerModel.Client) -> Unit)?) {
     var viewing by remember { mutableStateOf<Viewing?>(null) }
     viewing?.let { PictureViewer(it.model, it.shown) { viewing = null } }
     val open = remember { { v: Viewing -> viewing = v } }
@@ -199,7 +202,7 @@ private fun ColumnScope.Messages(entries: List<Chat.Entry>, emptyText: String, s
                 // A line from before has no client id: our own is ours today too. The line gets only what it shows,
                 // so it isn't drawn again each time someone starts or stops talking.
                 val sender = state.clientByUid(e.senderUid) ?: state.client(if (e.outgoing && e.senderId == 0) state.ownId else e.senderId)
-                MessageLine(time, e, sender, state.serverKey, open)
+                MessageLine(time, e, sender, state.serverKey, open, onPerson)
             }
         }
     }
@@ -286,7 +289,8 @@ private fun EventLine(time: String, parts: List<Chat.Part>) {
 }
 
 @Composable
-private fun MessageLine(time: String, e: Chat.Entry, sender: ServerModel.Client?, server: String, onPicture: (Viewing) -> Unit) {
+private fun MessageLine(time: String, e: Chat.Entry, sender: ServerModel.Client?, server: String, onPicture: (Viewing) -> Unit,
+    onPerson: ((ServerModel.Client) -> Unit)?) {
     // A file from the TeamSpeak app (through myTeamSpeak): one short line instead of its note
     val tsFile = remember(e.text) { Pictures.teamSpeakFile(e.text) }
     val (pictures, rest) = remember(e.text) { if (tsFile != null) emptyList<Pictures.ChannelPicture>() to "" else Pictures.channelPictures(e.text) }
@@ -305,7 +309,13 @@ private fun MessageLine(time: String, e: Chat.Entry, sender: ServerModel.Client?
                 append("  ")
                 appendInlineContent("avatar", "•")
                 append(" ")
-                withStyle(SpanStyle(color = Ts.sender, fontWeight = FontWeight.Bold)) { append(e.senderName.ifEmpty { system } + ":") }
+                withStyle(SpanStyle(color = Ts.sender, fontWeight = FontWeight.Bold)) {
+                    if (sender != null && onPerson != null) {
+                        withLink(androidx.compose.ui.text.LinkAnnotation.Clickable("person", linkInteractionListener = { onPerson(sender) })) {
+                            append(e.senderName.ifEmpty { system } + ":")
+                        }
+                    } else append(e.senderName.ifEmpty { system } + ":")
+                }
                 // With pictures, the words go under them (as in the TeamSpeak app)
                 if (pictures.isEmpty()) {
                     append("  ")
@@ -314,7 +324,9 @@ private fun MessageLine(time: String, e: Chat.Entry, sender: ServerModel.Client?
             },
             inlineContent = mapOf(
                 "avatar" to InlineTextContent(Placeholder(20.sp, 20.sp, PlaceholderVerticalAlign.TextCenter)) {
-                    PersonAvatar(sender, server, 20)
+                    Box(Modifier.size(20.dp).then(if (sender != null && onPerson != null) Modifier.clickable { onPerson(sender) } else Modifier)) {
+                        PersonAvatar(sender, server, 20)
+                    }
                 },
             ),
             color = Ts.text, fontSize = 15.sp,

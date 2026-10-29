@@ -22,6 +22,12 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    val smokeServer = System.getenv("SHENGQIAO_TEST_SERVER") ?: ""
+    inputs.property("shengQiaoTestServer", smokeServer)
+    environment("SHENGQIAO_TEST_SERVER", smokeServer)
+    val cloudTransfer = System.getenv("SHENGQIAO_ACCOUNT_TRANSFER") ?: ""
+    inputs.property("cloudReadOnlyEnabled", cloudTransfer.isNotEmpty())
+    environment("SHENGQIAO_ACCOUNT_TRANSFER", cloudTransfer)
     environment("TS_TEST_SERVER", System.getenv("TS_TEST_SERVER") ?: "")
     environment("TS_TEST_FT_PORT", System.getenv("TS_TEST_FT_PORT") ?: "")
     testLogging {
