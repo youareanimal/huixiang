@@ -22,7 +22,7 @@
 ## 安装与连接
 
 构建成功后安装对应的预览 APK。要求 Android 10+。优先选择与手机 CPU 对应的
-[`HuiXiang-0.5.1-preview-arm64-v8a.apk`](https://pi.animal26.site:8443/huixiang/HuiXiang-0.5.1-preview-arm64-v8a.apk)（华为畅享70等近年手机）或
+[`HuiXiang-0.5.1-preview-arm64-v8a.apk`](https://pi.animal26.site:8443/huixiang/HuiXiang-0.5.1-preview-arm64-v8a.apk)（近年手机）或
 `HuiXiang-0.5.1-preview-armeabi-v7a.apk`（较旧手机）；不确定时使用较大的
 `HuiXiang-0.5.1-preview.apk`，它同时支持两种 CPU。三个包的包名和功能相同，不要重复安装。
 保留旧版的包名和签名，可直接覆盖安装，无需先卸载。
@@ -41,8 +41,6 @@
 先手动安装 0.4.2 一次，之后可在“我的 → 关于回响 → 检查更新”下载新版并安装。默认每天最多自动检查一次，可关闭；发现更新时首页显示提示，点击“稍后”可忽略当前版本。不会自动下载安装。
 
 下载自动选择 arm64 或 armeabi-v7a，关闭弹窗后可继续下载，取消可重试。完成后检查文件大小、SHA-256、包名、版本和应用签名；点击“安装新版”交给系统确认。首次可能需要在系统中允许回响安装应用，再返回点击安装。覆盖升级保留账号和设置，但安装会关闭应用并中断语音。应用被系统终止时可重新下载，已完成安装包会在再次打开时恢复。
-
-0.5.1 默认更新源为 `https://pi.animal26.site:8443/huixiang/latest.json`，关于页可选择 PI 直连或 Cloudflare；连接失败会尝试备用源，当前来源显示在页面中。下载切源只接受同一版本、架构、长度与 SHA-256 的安装包，不需要网盘或 TeamSpeak 账号。0.5.0 及更早版本仍使用 Cloudflare，首次可从上方 PI 链接手动覆盖安装 0.5.1，之后 App 内更新才会优先使用 PI。
 
 新版由 GitHub Actions 构建，下载原始产物在本机签名后，运行 `scripts/publish-update.ps1` 发布同一安装包及源码到 Cloudflare 与 PI 镜像；同时同步 arm64 包到原网盘共享目录，不读取网盘管理员令牌。
 
