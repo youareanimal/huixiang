@@ -78,6 +78,31 @@ jobs:
       - name: Archive matching source
         run: git archive --format=zip --prefix=huixiang/ -o "dist/HuiXiang-$VERSION-source.zip" HEAD
 
+      - name: Prepare online update package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp dist/signed/*.apk dist/
+          cp dist/signed/SHA256SUMS.txt "dist/HuiXiang-$VERSION-SHA256SUMS.txt"
+          python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          version = os.environ['VERSION']
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8')
+          section = changelog.split('## 回响 ' + version + ' ', 1)[1]
+          notes = section.split('\n', 1)[1].split('\n## ', 1)[0].strip()
+          subprocess.run(['python3', 'scripts/prepare-update.py', '--notes', notes], check=True)
+          PY
+          cp "dist/HuiXiang-$VERSION-SHA256SUMS.txt" dist/update-site/
+
+      - name: Upload online update package
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-${{ env.VERSION }}-online-update
+          path: dist/update-site/
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload build outputs
         uses: actions/upload-artifact@v7
         with:
