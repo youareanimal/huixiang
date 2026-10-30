@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Download pinned public client and inspect native symbols
         shell: bash
         run: |
@@ -38,6 +41,7 @@ jobs:
               strings = subprocess.run(['strings','-t','x',str(path)], capture_output=True, text=True)
               Path('evidence', stem + '.strings.txt').write_text('\n'.join(s for s in strings.stdout.splitlines() if any(m in s.lower() for m in ['myts','myteam','badge','avatar','ed25519','verification'])))
           PY
+          python3 scripts/research/myts-native-vectors.py native/TeamSpeak > evidence/native-vectors.json
           tar -cf - -C native . | xz -1 > native.tar.xz
           split -b 24M -d native.tar.xz native-part-
           ls -lh native-part-*
