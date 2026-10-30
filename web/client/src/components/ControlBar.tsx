@@ -1,4 +1,3 @@
-import { Button, Tooltip, Typography } from '@douyinfe/semi-ui';
 import {
   IconExit,
   IconMicrophone,
@@ -6,8 +5,6 @@ import {
   IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
-
-const { Text } = Typography;
 
 interface Props {
   micOn: boolean;
@@ -24,7 +21,10 @@ interface Props {
   onDisconnect: () => void;
 }
 
-/** 底部控制条：麦克风（可切按住说话）、扬声器、当前频道、离开。 */
+/**
+ * 底部控制栏：左边是「你在哪」，中间是「你的话筒」，右边是「走」。
+ * 常开 / 按住说话改成两段式，当前模式一眼可见，不会把「点它会变成什么」当文案。
+ */
 export default function ControlBar({
   micOn,
   micLevel,
@@ -43,22 +43,32 @@ export default function ControlBar({
 
   return (
     <div className="control-bar">
-      <div className="control-left">
-        <Tooltip content={micOn ? '关掉麦克风' : '打开麦克风（会请求权限）'}>
-          <Button
-            className={`control-btn${micOn ? ' control-btn-on' : ''}`}
-            theme={micOn ? 'solid' : 'light'}
-            type={micOn ? 'primary' : 'tertiary'}
-            icon={micOn ? <IconMicrophone /> : <IconMicrophoneOff />}
-            onClick={onToggleInput}
-          >
-            {micOn ? '麦克风已开' : '麦克风'}
-          </Button>
-        </Tooltip>
+      <div className="control-side">
+        <div className="control-place">
+          <span className={`dot${live ? '' : ' dot-idle'}`} />
+          <span className="control-place-name" title={channelName}>
+            {channelName}
+          </span>
+          <span className="control-place-sub">{clientCount} 人在线</span>
+        </div>
+      </div>
+
+      <div className="control-center">
+        <button
+          type="button"
+          className={`mic-btn${micOn ? '' : ' is-off'}`}
+          onClick={onToggleInput}
+          title={micOn ? '关掉麦克风' : '打开麦克风（会请求权限）'}
+          aria-pressed={micOn}
+        >
+          {micOn ? <IconMicrophone /> : <IconMicrophoneOff />}
+          <span>{micOn ? '麦克风已开' : '麦克风'}</span>
+        </button>
 
         {micOn && pttMode && (
           <button
-            className={`ptt${pttHeld ? ' ptt-held' : ''}`}
+            type="button"
+            className={`ptt-btn${pttHeld ? ' is-held' : ''}`}
             onMouseDown={() => onPttHold(true)}
             onMouseUp={() => onPttHold(false)}
             onMouseLeave={() => onPttHold(false)}
@@ -68,45 +78,52 @@ export default function ControlBar({
             }}
             onTouchEnd={() => onPttHold(false)}
           >
-            {pttHeld ? '正在说话…' : '按住说话（或按住空格）'}
+            {pttHeld ? '正在说话…' : '按住不放（空格）'}
           </button>
         )}
 
         {micOn && !pttMode && (
-          <div className="level" title="麦克风音量">
+          <div className="level" title="麦克风音量" aria-hidden="true">
             <div className="level-fill" style={{ width: `${Math.min(100, micLevel * 180)}%` }} />
           </div>
         )}
 
-        <Tooltip content={pttMode ? '改成一直开麦' : '改成按住说话'}>
-          <Button theme="borderless" size="small" type={pttMode ? 'primary' : 'tertiary'} onClick={onTogglePttMode}>
-            {pttMode ? '按住说话' : '常开'}
-          </Button>
-        </Tooltip>
-
-        <Tooltip content={outputMuted ? '打开声音' : '静音所有人'}>
-          <Button
-            theme="borderless"
-            type={outputMuted ? 'danger' : 'tertiary'}
-            icon={outputMuted ? <IconVolumnSilent /> : <IconVolume2 />}
-            onClick={onToggleOutput}
+        <div className="segment" role="group" aria-label="说话方式">
+          <button
+            type="button"
+            className={pttMode ? '' : 'is-on'}
+            onClick={() => pttMode && onTogglePttMode()}
           >
-            {outputMuted ? '已静音' : '声音'}
-          </Button>
-        </Tooltip>
+            常开
+          </button>
+          <button
+            type="button"
+            className={pttMode ? 'is-on' : ''}
+            onClick={() => !pttMode && onTogglePttMode()}
+          >
+            按住说话
+          </button>
+        </div>
+
+        <div className="v-divider" />
+
+        <button
+          type="button"
+          className="ghost-btn"
+          onClick={onToggleOutput}
+          title={outputMuted ? '打开声音' : '静音所有人'}
+          aria-pressed={outputMuted}
+        >
+          {outputMuted ? <IconVolumnSilent /> : <IconVolume2 />}
+          <span>{outputMuted ? '已静音' : '声音'}</span>
+        </button>
       </div>
 
-      <div className="control-center">
-        <Text type="tertiary" size="small">
-          {channelName} · {clientCount} 人在线
-          {live && micOn ? ' · 正在发送' : ''}
-        </Text>
-      </div>
-
-      <div className="control-right">
-        <Button theme="borderless" type="danger" icon={<IconExit />} onClick={onDisconnect}>
-          离开
-        </Button>
+      <div className="control-side control-side-right">
+        <button type="button" className="danger-btn" onClick={onDisconnect}>
+          <IconExit />
+          <span>离开</span>
+        </button>
       </div>
     </div>
   );

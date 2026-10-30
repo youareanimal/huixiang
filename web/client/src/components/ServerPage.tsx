@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Banner, Button, Input, Layout, Modal, Spin, Typography } from '@douyinfe/semi-ui';
-import { IconEdit, IconServer, IconUserGroup } from '@douyinfe/semi-icons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Input, Modal, Spin } from '@douyinfe/semi-ui';
+import { IconClose, IconEdit, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
 import type { ChannelNode, ChatLine, State } from '../protocol';
 import { findChannel } from '../protocol';
+import { avatarColor, initial } from '../ui';
 import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
-import MemberList from './MemberList';
 import ControlBar from './ControlBar';
-
-const { Sider, Content } = Layout;
-const { Title, Text } = Typography;
+import Stage from './Stage';
 
 interface Props {
   state: State;
@@ -60,11 +58,35 @@ export default function ServerPage({
   const [newName, setNewName] = useState('');
   const [passwordFor, setPasswordFor] = useState<ChannelNode | null>(null);
   const [password, setPassword] = useState('');
+  const [joiningChannel, setJoiningChannel] = useState<number | null>(null);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [railOpen, setRailOpen] = useState(false);
+  const [errorDismissed, setErrorDismissed] = useState(false);
+  const joinTimer = useRef<number | null>(null);
 
   const current = useMemo(
     () => (state.ownChannel ? findChannel(state.tree, state.ownChannel) : null),
     [state.tree, state.ownChannel],
   );
+
+  // 进了频道就撤掉行内 loading；卡住也别一直转，3 秒兜底
+  useEffect(() => {
+    setJoiningChannel(null);
+    if (joinTimer.current) {
+      window.clearTimeout(joinTimer.current);
+      joinTimer.current = null;
+    }
+  }, [state.ownChannel]);
+
+  useEffect(() => {
+    setErrorDismissed(false);
+  }, [state.error]);
+
+  useEffect(() => {
+    return () => {
+      if (joinTimer.current) window.clearTimeout(joinTimer.current);
+    };
+  }, []);
 
   // 按住说话：空格键也要能用，但输入框里要放过
   useEffect(() => {
@@ -88,107 +110,187 @@ export default function ServerPage({
   }, [pttMode, micOn, onPttHold]);
 
   const join = (channel: ChannelNode) => {
+    if (channel.id === state.ownChannel) return;
+    setRailOpen(false);
     if (channel.password) {
       setPasswordFor(channel);
       setPassword('');
       return;
     }
+    setJoiningChannel(channel.id);
+    if (joinTimer.current) window.clearTimeout(joinTimer.current);
+    joinTimer.current = window.setTimeout(() => setJoiningChannel(null), 3000);
     onJoinChannel(channel.id);
   };
 
   const channelTitle = current?.display || current?.name || '频道';
+  const people = current?.clients ?? [];
   const connecting = state.phase === 'connecting';
+  const channelTag = current?.password ? '有密码' : '公共';
 
   return (
-    <Layout className="server-page">
-      <div className="server-head">
-        <div className="server-title">
-          <IconServer />
-          <Title heading={5} style={{ margin: 0 }}>
+    <div className="server-page">
+      <header className="server-head">
+        <div className="head-left">
+          <button
+            type="button"
+            className="icon-btn rail-toggle"
+            onClick={() => setRailOpen((v) => !v)}
+            aria-label="频道列表"
+            aria-expanded={railOpen}
+          >
+            <IconMenu />
+          </button>
+          <div className="brand-mark-sm" aria-hidden="true">
+            响
+          </div>
+          <span className="server-name" title={state.serverName || state.address}>
             {state.serverName || '正在连接…'}
-          </Title>
-          <Text type="tertiary" size="small">
+          </span>
+          <span className="head-addr">
+            <span className="dot" />
             {state.address}
-          </Text>
+          </span>
         </div>
-        <div className="server-head-right">
-          <Text type="tertiary" size="small">
-            <IconUserGroup size="small" /> {state.clientCount}
-          </Text>
-          <Button
-            theme="borderless"
-            size="small"
-            icon={<IconEdit size="small" />}
+
+        <div className="head-right">
+          <span className="pill" title="服务器总在线人数">
+            <IconUserGroup size="small" />
+            全服 {state.clientCount} 人
+          </span>
+          <button
+            type="button"
+            className="user-chip"
             onClick={() => {
               setNewName(state.nickname);
               setRenaming(true);
             }}
+            title="改昵称"
           >
-            {state.nickname}
-          </Button>
-        </div>
-      </div>
-
-      {state.error && (
-        <Banner
-          type="danger"
-          closeIcon={null}
-          description={
-            <span>
-              {state.error}{' '}
-              <Button size="small" theme="borderless" type="primary" onClick={onReconnect}>
-                重连
-              </Button>
+            <span
+              className="msg-avatar"
+              style={{ background: avatarColor('me'), width: 24, height: 24 }}
+              aria-hidden="true"
+            >
+              {initial(state.nickname)}
             </span>
-          }
-          style={{ margin: '0 16px 12px' }}
-        />
-      )}
-      {!audioReady && (
-        <Banner
-          type="warning"
-          closeIcon={null}
-          description="这个浏览器不支持 WebCodecs 音频，听不到也说不了话。请用 Chrome 94+、Edge 94+、Safari 16.4+ 或 Firefox 130+。"
-          style={{ margin: '0 16px 12px' }}
-        />
-      )}
+            <span className="user-chip-name">{state.nickname}</span>
+            <IconEdit size="small" />
+          </button>
+        </div>
+      </header>
+
+      {(state.error && !errorDismissed) || !audioReady ? (
+        <div className="banner-stack">
+          {state.error && !errorDismissed && (
+            <div className="banner-line" role="alert">
+              <div
+                style={{
+                  flex: '1 1 260px',
+                  minWidth: 0,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  background: 'var(--danger-soft)',
+                  color: '#a3242b',
+                  fontSize: 12.5,
+                  lineHeight: 1.5,
+                }}
+              >
+                {state.error}
+              </div>
+              <button type="button" className="ghost-btn" onClick={onReconnect}>
+                重连
+              </button>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setErrorDismissed(true)}
+                aria-label="关闭提示"
+              >
+                <IconClose size="small" />
+              </button>
+            </div>
+          )}
+          {!audioReady && (
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                background: 'var(--warn-soft)',
+                color: '#8a5300',
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              这个浏览器不支持 WebCodecs 音频，听不到也说不了话。请用 Chrome 94+、Edge 94+、Safari 16.4+
+              或 Firefox 130+。
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {connecting ? (
         <div className="server-loading">
           <Spin size="large" />
-          <Text type="tertiary">正在和服务器握手…</Text>
+          <span>正在和服务器握手…</span>
         </div>
       ) : (
-        <Layout className="server-body">
-          <Sider className="server-sider" style={{ width: 280, minWidth: 280 }}>
-            <div className="sider-head">
-              <Text strong size="small">
-                频道
-              </Text>
+        <div className="server-body">
+          <aside className={`channel-rail${railOpen ? ' is-open' : ''}`} aria-label="频道">
+            <div className="rail-head">
+              <span className="rail-title">频道</span>
+              <span className="rail-count">{countChannels(state.tree)}</span>
             </div>
             <ChannelTree
               tree={state.tree}
-              ownId={state.ownId}
               ownChannel={state.ownChannel}
+              joiningChannel={joiningChannel}
               onJoin={join}
             />
-          </Sider>
+            <div className="rail-foot">
+              <span className="dot" />
+              <span>已连接</span>
+              <span style={{ color: 'var(--text-4)' }}>· Opus 48k</span>
+            </div>
+          </aside>
 
-          <Content className="server-content">
+          {railOpen && (
+            <div className="rail-scrim" role="presentation" onClick={() => setRailOpen(false)} />
+          )}
+
+          <main className="server-content">
+            <div className="channel-head">
+              <div className="channel-head-main">
+                <div className="channel-title-row">
+                  <h1 className="channel-title" title={channelTitle}>
+                    {channelTitle}
+                  </h1>
+                  <span className="chan-tag">{channelTag}</span>
+                </div>
+                <span className="channel-topic">{current?.topic || `${people.length} 人在这个频道`}</span>
+              </div>
+              <div className="channel-head-right">
+                <span className="pill">
+                  <IconUserGroup size="small" />
+                  {people.length} 人
+                </span>
+              </div>
+            </div>
+
+            <Stage members={people} ownId={state.ownId} channelName={channelTitle} />
+
             <ChatPanel
               lines={chat}
               ownId={state.ownId}
               title={channelTitle}
               hint="频道消息，服务器上所有人都能看到"
-              placeholder={`在「${channelTitle}」里说点什么，Enter 发送，Shift+Enter 换行`}
+              placeholder={`发消息到 ${channelTitle}`}
+              collapsed={chatCollapsed}
+              onToggleCollapsed={() => setChatCollapsed((v) => !v)}
               onSend={onSay}
             />
-          </Content>
-
-          <Sider className="server-sider server-sider-right" style={{ width: 220, minWidth: 220 }}>
-            <MemberList members={current?.clients ?? []} ownId={state.ownId} title={channelTitle} />
-          </Sider>
-        </Layout>
+          </main>
+        </div>
       )}
 
       <ControlBar
@@ -198,7 +300,7 @@ export default function ServerPage({
         pttMode={pttMode}
         pttHeld={pttHeld}
         channelName={channelTitle}
-        clientCount={state.clientCount}
+        clientCount={people.length}
         onToggleInput={onToggleInput}
         onToggleOutput={onToggleOutput}
         onTogglePttMode={onTogglePttMode}
@@ -233,7 +335,10 @@ export default function ServerPage({
         visible={!!passwordFor}
         onCancel={() => setPasswordFor(null)}
         onOk={() => {
-          if (passwordFor) onJoinChannel(passwordFor.id, password);
+          if (passwordFor) {
+            setJoiningChannel(passwordFor.id);
+            onJoinChannel(passwordFor.id, password);
+          }
           setPasswordFor(null);
         }}
         okText="进入"
@@ -245,11 +350,23 @@ export default function ServerPage({
           onChange={setPassword}
           placeholder="频道密码"
           onEnterPress={() => {
-            if (passwordFor) onJoinChannel(passwordFor.id, password);
+            if (passwordFor) {
+              setJoiningChannel(passwordFor.id);
+              onJoinChannel(passwordFor.id, password);
+            }
             setPasswordFor(null);
           }}
         />
       </Modal>
-    </Layout>
+    </div>
   );
+}
+
+function countChannels(tree: ChannelNode[]): number {
+  let n = 0;
+  for (const c of tree) {
+    if (!c.spacer) n += 1;
+    n += countChannels(c.children);
+  }
+  return n;
 }

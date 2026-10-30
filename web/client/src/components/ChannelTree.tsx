@@ -1,110 +1,162 @@
-import { useMemo } from 'react';
-import { Tooltip, Typography } from '@douyinfe/semi-ui';
+import { useMemo, useState } from 'react';
 import {
+  IconChevronDown,
+  IconChevronRight,
   IconLock,
   IconMicrophoneOff,
+  IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
 import type { ChannelNode, Member } from '../protocol';
-import { flatten } from '../protocol';
-
-const { Text } = Typography;
 
 interface Props {
   tree: ChannelNode[];
-  ownId: number;
   ownChannel: number;
+  /** 正在切换的目标频道：置灰 + 禁止重复点 */
+  joiningChannel: number | null;
   onJoin: (channel: ChannelNode) => void;
 }
 
-/** 频道里的一个人。说话时整行会亮起来，静音/离开用小图标标出来。 */
-function PersonRow({ member, ownId }: { member: Member; ownId: number }) {
-  const me = member.id === ownId;
+interface Row {
+  channel: ChannelNode;
+  depth: number;
+}
+
+/** 按折叠状态摊平成要渲染的行。父频道折起来时，整棵子树都不出。 */
+function walk(list: ChannelNode[], depth: number, collapsed: Set<number>, out: Row[]) {
+  for (const channel of list) {
+    out.push({ channel, depth });
+    if (channel.children.length > 0 && !collapsed.has(channel.id)) {
+      walk(channel.children, depth + 1, collapsed, out);
+    }
+  }
+  return out;
+}
+
+/** 别人频道里的成员：只在这里露一行。当前频道的人交给舞台，不重复画。 */
+function PersonRow({ member }: { member: Member }) {
   return (
-    <div className={`person${member.talking ? ' person-talking' : ''}${me ? ' person-me' : ''}`}>
+    <div className={`person${member.talking ? ' person-talking' : ''}`}>
       <span className="person-dot" />
       <span className="person-name" title={member.nickname}>
         {member.nickname}
-        {me && <Text type="tertiary" size="small"> （我）</Text>}
       </span>
       <span className="person-marks">
         {member.priority && (
-          <Tooltip content="优先发言人">
-            <span className="mark mark-priority">P</span>
-          </Tooltip>
+          <span className="mark mark-priority" title="优先发言人">
+            P
+          </span>
         )}
         {member.away && (
-          <Tooltip content="离开">
-            <span className="mark mark-away">离</span>
-          </Tooltip>
+          <span className="mark mark-away" title="离开">
+            离
+          </span>
         )}
         {member.streaming && (
-          <Tooltip content="正在共享画面">
-            <span className="mark mark-stream">屏</span>
-          </Tooltip>
+          <span className="mark mark-stream" title="正在共享画面">
+            屏
+          </span>
         )}
-        {member.inputMuted && <IconMicrophoneOff size="small" className="mark-icon" />}
-        {member.outputMuted && <IconVolumnSilent size="small" className="mark-icon" />}
+        {member.inputMuted && <IconMicrophoneOff size="small" />}
+        {member.outputMuted && <IconVolumnSilent size="small" />}
       </span>
     </div>
   );
 }
 
-export default function ChannelTree({ tree, ownId, ownChannel, onJoin }: Props) {
-  const rows = useMemo(() => flatten(tree), [tree]);
+export default function ChannelTree({ tree, ownChannel, joiningChannel, onJoin }: Props) {
+  const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
+  const rows = useMemo(() => walk(tree, 0, collapsed, []), [tree, collapsed]);
+
+  const toggle = (id: number) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  if (rows.length === 0) {
+    return <div className="rail-body">这个服务器还没有频道</div>;
+  }
 
   return (
-    <div className="channel-tree">
+    <div className="rail-body">
       {rows.map(({ channel, depth }) => {
-        const here = channel.id === ownChannel;
-        const people = channel.clients;
-
         // 分隔符频道：TeamSpeak 用它画横线或居中标题，不能点进去
         if (channel.spacer) {
           return (
-            <div key={channel.id} className="spacer" style={{ paddingLeft: 12 + depth * 14 }}>
+            <div className="chan-spacer" key={channel.id} style={{ paddingLeft: 8 + depth * 12 }}>
               {channel.display ? (
-                <Text type="tertiary" size="small" className="spacer-text">
-                  {channel.display}
-                </Text>
+                <span className="chan-spacer-text">{channel.display}</span>
               ) : (
-                <span className="spacer-line" />
+                <span className="chan-spacer-line" />
               )}
             </div>
           );
         }
 
+        const here = channel.id === ownChannel;
+        const hasChildren = channel.children.length > 0;
+        const open = !collapsed.has(channel.id);
+        const joining = joiningChannel === channel.id;
+        const people = channel.clients;
+
         return (
           <div key={channel.id}>
             <div
-              className={`channel${here ? ' channel-here' : ''}`}
-              style={{ paddingLeft: 8 + depth * 14 }}
-              onClick={() => onJoin(channel)}
+              className={`chan-row${here ? ' chan-on' : ''}`}
+              style={{ paddingLeft: 8 + depth * 12 }}
               role="button"
               tabIndex={0}
+              aria-current={here ? 'true' : undefined}
+              aria-disabled={joining || undefined}
+              onClick={() => {
+                if (joining) return;
+                onJoin(channel);
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') onJoin(channel);
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (!joining) onJoin(channel);
+                }
               }}
             >
-              <span className="channel-name" title={channel.topic || channel.display}>
+              {hasChildren ? (
+                <span
+                  className="chan-caret"
+                  role="presentation"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggle(channel.id);
+                  }}
+                >
+                  {open ? <IconChevronDown size="small" /> : <IconChevronRight size="small" />}
+                </span>
+              ) : (
+                <span className="chan-caret-space" />
+              )}
+              <span className="chan-icon">
+                <IconVolume2 size="small" />
+              </span>
+              <span className="chan-name" title={channel.topic || channel.display}>
                 {channel.display || channel.name}
               </span>
-              {channel.password && <IconLock size="small" className="channel-lock" />}
-              {people.length > 0 && <span className="channel-count">{people.length}</span>}
+              {channel.password && <IconLock size="small" className="chan-lock" />}
+              {people.length > 0 && <span className="chan-count">{people.length}</span>}
             </div>
-            {people.map((m) => (
-              <div key={m.id} style={{ paddingLeft: depth * 14 + 20 }}>
-                <PersonRow member={m} ownId={ownId} />
+
+            {people.length > 0 && !here && (
+              <div className="chan-people" style={{ paddingLeft: 8 + depth * 12 + 22 }}>
+                {people.map((m) => (
+                  <PersonRow key={m.id} member={m} />
+                ))}
               </div>
-            ))}
+            )}
           </div>
         );
       })}
-      {rows.length === 0 && (
-        <Text type="tertiary" size="small" style={{ padding: 12, display: 'block' }}>
-          这个服务器还没有频道
-        </Text>
-      )}
     </div>
   );
 }
