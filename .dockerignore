@@ -1,0 +1,33 @@
+# Docker 构建上下文是仓库根目录，这份文件决定什么不传进去。
+# 主要目的是别把本地的 node_modules 和构建产物一起塞进去（会覆盖镜像里刚装好/刚编好的）。
+
+.git
+.gradle
+.kotlin
+.tooling
+build
+dist
+*.apk
+*.aab
+
+# 安卓那半边完全不参与镜像构建
+app
+docker
+
+# 前端：只传源码，node_modules 和 dist 在镜像里重新生成
+web/client/node_modules
+web/client/dist
+
+# 网关的构建产物同理
+web/gateway/build
+
+# 测试脚本和截图
+web/client/test
+web/gateway/test
+*.png
+*.log
+
+# 本地配置
+local.properties
+dev.properties
+dev.env
