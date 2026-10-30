@@ -110,5 +110,18 @@ for value in (1, 7, 0x123456789abcdef):
     signature = output.raw
     assert signature == independent_sign(secret,public,message), 'Native scalar-key signing differs from the independent formulation'
     vectors.append(dict(secretScalar=secret.hex(),publicKey=public.hex(),message=message.hex(),signature=signature.hex()))
-print(json.dumps(dict(synthetic=True, nativeBinarySHA256=hashlib.sha256(binary).hexdigest(),routine='0x474bab0',vectors=vectors),indent=2))
+# Native voice uint64 formatter (sret std::string, value, radix), also checked on boundary values.
+native_format = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_int)(base + 0x4761890)
+creation_times = []
+for value in (128, 1700000128, 2**63 - 1, 2**63, 2**64 - 1):
+    encoded = int.from_bytes(value.to_bytes(8, 'little'), 'big')
+    result = ctypes.create_string_buffer(24)
+    native_format(result, encoded, 10)
+    # All uint64 decimal strings fit libc++'s 22-byte small string storage.
+    assert not (result.raw[0] & 1)
+    length = result.raw[0] >> 1
+    actual = result.raw[1:1+length].decode('ascii')
+    assert actual == str(encoded), 'Native uint64 formatting differs'
+    creation_times.append(dict(loginValue=str(value), voiceAcTime=actual))
+print(json.dumps(dict(synthetic=True, nativeBinarySHA256=hashlib.sha256(binary).hexdigest(),routine='0x474bab0',vectors=vectors,creationTimes=creation_times),indent=2))
 
