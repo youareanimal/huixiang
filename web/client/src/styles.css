@@ -855,6 +855,7 @@ body {
 
 .member-tile {
   width: 132px;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1959,4 +1960,148 @@ body {
 .stream-stage:-webkit-full-screen .stream-bar {
   top: 16px;
   left: 16px;
+}
+
+/* ====== 音量 ====== */
+
+/* 头像右上角的音量角标：平时藏着，鼠标进来或键盘聚焦才出现，
+   不然每个头像都挂一个按钮，舞台会显得很吵 */
+.tile-vol {
+  position: absolute;
+  top: -2px;
+  right: 16px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-4);
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.9);
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.member-tile:hover .tile-vol,
+.tile-vol:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* 调过的音量要一直看得见，否则「这人怎么特别小声」没法解释 */
+.tile-vol.is-set {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  color: var(--brand);
+  border-color: #ddd4fb;
+  background: var(--brand-soft);
+}
+
+.tile-vol.is-mute {
+  color: var(--danger);
+  border-color: #f6d3d5;
+  background: var(--danger-soft);
+}
+
+.tile-vol:hover {
+  color: var(--text-1);
+  background: var(--bg-fill);
+}
+
+/* 弹层：麦克风和成员共用 */
+.vol-pop {
+  width: 178px;
+  padding: 2px 4px 0;
+}
+
+.vol-pop-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.vol-pop-title {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vol-pop-value {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Semi 把滑块宽度写死成 132px，弹层里要铺满；左右留 10px 给手柄 */
+.vol-pop .vol-slider,
+.vol-pop .semi-slider {
+  width: 100%;
+  padding: 0 10px;
+}
+
+.vol-pop-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 20px;
+  margin-top: -8px;
+}
+
+.vol-pop-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-4);
+}
+
+.vol-pop-hint.is-zero {
+  color: var(--danger);
+}
+
+.vol-reset {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--brand);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vol-reset:hover {
+  background: var(--brand-soft);
+}
+
+/* 底部栏里紧挨麦克风按钮的音量入口 */
+.vol-trigger.is-set {
+  color: var(--brand);
+}
+
+@media (hover: none) {
+  /* 触摸屏没有 hover，角标常显 */
+  .tile-vol {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .tile-vol {
+    right: 8px;
+  }
 }

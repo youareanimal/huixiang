@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
 import { IconClose, IconEdit, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
-import type { ChannelNode, ChatLine, State } from '../protocol';
+import type { ChannelNode, ChatLine, Member, State } from '../protocol';
 import { findChannel, findMember } from '../protocol';
 import type { StreamState } from '../stream';
 import { avatarColor, initial } from '../ui';
@@ -17,6 +17,9 @@ interface Props {
   chat: ChatLine[];
   micOn: boolean;
   micLevel: number;
+  micGain: number;
+  /** 按 uid 记的成员音量。 */
+  volumes: Record<string, number>;
   pttMode: boolean;
   pttHeld: boolean;
   audioReady: boolean;
@@ -26,6 +29,8 @@ interface Props {
   onJoinChannel: (cid: number, password?: string) => void;
   onSay: (text: string) => void;
   onRename: (name: string) => void;
+  onMicGain: (v: number) => void;
+  onMemberVolume: (member: Member, v: number) => void;
   onToggleInput: () => void;
   onToggleOutput: () => void;
   onDisconnect: () => void;
@@ -50,6 +55,8 @@ export default function ServerPage({
   chat,
   micOn,
   micLevel,
+  micGain,
+  volumes,
   pttMode,
   pttHeld,
   audioReady,
@@ -59,6 +66,8 @@ export default function ServerPage({
   onJoinChannel,
   onSay,
   onRename,
+  onMicGain,
+  onMemberVolume,
   onToggleInput,
   onToggleOutput,
   onDisconnect,
@@ -306,8 +315,10 @@ export default function ServerPage({
                 members={people}
                 ownId={state.ownId}
                 channelName={channelTitle}
+                volumes={volumes}
                 watchingId={stream.watching}
                 onWatch={onWatch}
+                onVolume={onMemberVolume}
               />
             )}
 
@@ -336,6 +347,7 @@ export default function ServerPage({
       <ControlBar
         micOn={micOn}
         micLevel={micLevel}
+        micGain={micGain}
         outputMuted={state.outputMuted}
         pttMode={pttMode}
         pttHeld={pttHeld}
@@ -346,6 +358,7 @@ export default function ServerPage({
         onShareScreen={onShareScreen}
         onShareCamera={onShareCamera}
         onStopShare={onStopShare}
+        onMicGain={onMicGain}
         onToggleInput={onToggleInput}
         onToggleOutput={onToggleOutput}
         onTogglePttMode={onTogglePttMode}

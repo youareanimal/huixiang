@@ -1,6 +1,8 @@
 // 下行语音：网关送来的是裸 Opus 帧，浏览器 WebCodecs 解码，Web Audio 排程播放。
 // 每个人一个解码器和一个播放队列——TS 的语音包是先解压再混的，混在一起解会把时间戳搞乱。
 
+import { DEFAULT_GAIN, clampGain } from './gain';
+
 const AudioDecoderCtor: any = (globalThis as any).AudioDecoder;
 const EncodedAudioChunkCtor: any = (globalThis as any).EncodedAudioChunk;
 
@@ -52,8 +54,30 @@ export class VoicePlayer {
   }
 
   setVolume(clientId: number, volume: number) {
-    this.volumes.set(clientId, volume);
-    this.people.get(clientId)?.gain && (this.people.get(clientId)!.gain.gain.value = volume);
+    const v = clampGain(volume);
+    const prev = this.volumes.get(clientId);
+    this.volumes.set(clientId, v);
+    const p = this.people.get(clientId);
+    // 值没变就别再排一次斜坡：名单同步是跟着 state 刷的，会一直调到这儿
+    if (p && prev !== v) p.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02);
+  }
+
+  /**
+   * 把整个名单的音量一次性对齐：新人补上、改过的生效、已经不在名单里的收掉。
+   * clientId 在同一个会话里可能被后来者复用，不清就会把上一个人的音量带给下一个人。
+   */
+  syncVolumes(entries: Array<{ id: number; volume: number }>) {
+    const keep = new Set<number>();
+    for (const { id, volume } of entries) {
+      keep.add(id);
+      this.setVolume(id, volume);
+    }
+    for (const id of [...this.people.keys()]) {
+      if (!keep.has(id)) this.forget(id);
+    }
+    for (const id of [...this.volumes.keys()]) {
+      if (!keep.has(id)) this.volumes.delete(id);
+    }
   }
 
   /** 一帧 Opus。空帧表示这个人停止说话了。 */
@@ -93,7 +117,7 @@ export class VoicePlayer {
     }
 
     const gain = this.ctx.createGain();
-    gain.gain.value = this.volumes.get(clientId) ?? 1;
+    gain.gain.value = this.volumes.get(clientId) ?? DEFAULT_GAIN;
     gain.connect(this.master);
 
     let decoder: any;
@@ -172,6 +196,7 @@ export class VoicePlayer {
   /** 有人离开服务器：把他的解码器和音量节点一起收掉。 */
   forget(clientId: number) {
     this.dispose(clientId);
+    this.volumes.delete(clientId);
   }
 
   close() {

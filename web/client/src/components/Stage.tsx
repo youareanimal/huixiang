@@ -1,14 +1,20 @@
-import { IconMicrophoneOff, IconVolumnSilent } from '@douyinfe/semi-icons';
+import { IconVolume1, IconVolumnSilent, IconMicrophoneOff } from '@douyinfe/semi-icons';
 import type { Member } from '../protocol';
+import { memberKey } from '../protocol';
+import { DEFAULT_GAIN, gainPercent } from '../audio/gain';
 import { avatarColor, initial } from '../ui';
+import VolumePopover from './VolumePopover';
 
 interface Props {
   members: Member[];
   ownId: number;
   channelName: string;
+  /** 按 uid 记的成员音量；没调过的不在表里。 */
+  volumes: Record<string, number>;
   /** 正在看谁（0 = 没在看），用来把按钮标成「看着」。 */
   watchingId?: number;
   onWatch?: (clientId: number) => void;
+  onVolume: (member: Member, v: number) => void;
 }
 
 /** 状态行：说话 > 静音 > 离开 > 身份组，只显示一句，别堆在一起。 */
@@ -24,7 +30,15 @@ function subline(member: Member, me: boolean): { text: string; tone: 'talk' | 'q
  * 频道舞台：主区的第一主角是「谁在说话」，不是输入框。
  * 头像 + 说话环 + 音量条，三重反馈，一眼看出话筒在谁那。
  */
-export default function Stage({ members, ownId, channelName, watchingId = 0, onWatch }: Props) {
+export default function Stage({
+  members,
+  ownId,
+  channelName,
+  volumes,
+  watchingId = 0,
+  onWatch,
+  onVolume,
+}: Props) {
   if (members.length === 0) {
     return (
       <div className="stage">
@@ -43,8 +57,26 @@ export default function Stage({ members, ownId, channelName, watchingId = 0, onW
           const me = m.id === ownId;
           const sub = subline(m, me);
           const watching = watchingId === m.id;
+          const vol = volumes[memberKey(m)] ?? DEFAULT_GAIN;
           return (
             <div className={`member-tile${m.streaming ? ' is-streaming' : ''}`} key={`${m.uid}-${m.id}`}>
+              {!me && (
+                <VolumePopover
+                  title={`${m.nickname} 的音量`}
+                  value={vol}
+                  onChange={(v) => onVolume(m, v)}
+                  zeroHint={`听不到 ${m.nickname}`}
+                >
+                  <button
+                    type="button"
+                    className={`tile-vol${vol !== DEFAULT_GAIN ? ' is-set' : ''}${vol === 0 ? ' is-mute' : ''}`}
+                    title={`${m.nickname} 的音量 ${gainPercent(vol)}%`}
+                    aria-label={`${m.nickname} 的音量 ${gainPercent(vol)}%`}
+                  >
+                    {vol === 0 ? <IconVolumnSilent size="small" /> : <IconVolume1 size="small" />}
+                  </button>
+                </VolumePopover>
+              )}
               <div className={`avatar-ring${m.talking ? ' is-talking' : ''}`}>
                 <div
                   className="avatar"

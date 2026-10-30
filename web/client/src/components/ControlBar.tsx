@@ -3,14 +3,19 @@ import {
   IconExit,
   IconMicrophone,
   IconMicrophoneOff,
+  IconVolume1,
   IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
 import type { ShareKind } from '../stream';
+import { gainPercent } from '../audio/gain';
+import VolumePopover from './VolumePopover';
 
 interface Props {
   micOn: boolean;
   micLevel: number;
+  /** 麦克风增益，0–2。 */
+  micGain: number;
   outputMuted: boolean;
   pttMode: boolean;
   pttHeld: boolean;
@@ -22,6 +27,7 @@ interface Props {
   onShareScreen: () => void;
   onShareCamera: () => void;
   onStopShare: () => void;
+  onMicGain: (v: number) => void;
   onToggleInput: () => void;
   onToggleOutput: () => void;
   onTogglePttMode: () => void;
@@ -36,6 +42,7 @@ interface Props {
 export default function ControlBar({
   micOn,
   micLevel,
+  micGain,
   outputMuted,
   pttMode,
   pttHeld,
@@ -46,6 +53,7 @@ export default function ControlBar({
   onShareScreen,
   onShareCamera,
   onStopShare,
+  onMicGain,
   onToggleInput,
   onToggleOutput,
   onTogglePttMode,
@@ -77,6 +85,22 @@ export default function ControlBar({
           {micOn ? <IconMicrophone /> : <IconMicrophoneOff />}
           <span>{micOn ? '麦克风已开' : '麦克风'}</span>
         </button>
+
+        <VolumePopover
+          title="麦克风音量"
+          value={micGain}
+          onChange={onMicGain}
+          zeroHint="为 0 时对方听不到你"
+        >
+          <button
+            type="button"
+            className={`icon-btn vol-trigger${micGain !== 1 ? ' is-set' : ''}`}
+            title={`麦克风音量 ${gainPercent(micGain)}%`}
+            aria-label={`麦克风音量 ${gainPercent(micGain)}%`}
+          >
+            {micGain === 0 ? <IconVolumnSilent /> : <IconVolume1 />}
+          </button>
+        </VolumePopover>
 
         {micOn && pttMode && (
           <button

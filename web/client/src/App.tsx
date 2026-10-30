@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toast } from '@douyinfe/semi-ui';
 import { Gateway, tokenRequired } from './gateway';
-import { findChannel, store, type ChatLine, type ConnectOptions, type State } from './protocol';
+import {
+  eachMember,
+  findChannel,
+  memberKey,
+  store,
+  type ChatLine,
+  type ConnectOptions,
+  type Member,
+  type State,
+} from './protocol';
+import { clampGain, DEFAULT_GAIN } from './audio/gain';
 import { StreamClient, initialStreamState, type StreamState } from './stream';
 import { VoicePlayer, webCodecsAvailable } from './audio/player';
 import { MicSender, micCodecAvailable } from './audio/mic';
@@ -25,6 +35,10 @@ export default function App() {
   const [micOn, setMicOn] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [audioReady, setAudioReady] = useState(false);
+
+  // 音量都是本地增益：上行改编码前的 PCM，下行改每个人的播放节点，服务器不参与
+  const [micGain, setMicGain] = useState(() => store.micGain());
+  const [volumes, setVolumes] = useState<Record<string, number>>(() => store.volumes());
 
   // 按住说话：默认关（常开麦），打开后按才出声
   const [pttMode, setPttMode] = useState(false);
@@ -60,6 +74,19 @@ export default function App() {
     if (!micOn) return;
     micRef.current?.setSending(pttMode ? pttHeld : true);
   }, [pttMode, pttHeld, micOn]);
+
+  // 名单一变就把每个人的音量对齐：新来的按记下的值起步，走掉的顺手收掉
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!state || !p) return;
+    const entries: Array<{ id: number; volume: number }> = [];
+    eachMember(state.tree, (m) => {
+      // 自己说的话不会从网关回来，不用给自己留节点
+      if (m.id === state.ownId) return;
+      entries.push({ id: m.id, volume: volumes[memberKey(m)] ?? DEFAULT_GAIN });
+    });
+    p.syncVolumes(entries);
+  }, [state, volumes]);
 
   // 串流出错用一条 toast 报掉，不占画面位置；同一条错误只弹一次
   const lastStreamError = useRef<string | null>(null);
@@ -162,6 +189,43 @@ export default function App() {
     );
   }, [doConnect, token, tokenNeeded]);
 
+  // 浏览器把页面放进往返缓存（bfcache，后退/前进时）会硬断开 WebSocket，
+  // 控制台就是那句 Page entered Back-Forward Cache。恢复后这条连接已经是死的：
+  // 界面还显示「已连接」，文字和语音却发不出去。这里在 pagehide 主动收尾，
+  // 在 pageshow（persisted）恢复时自动重连一次。
+  const hadSession = useRef(false);
+
+  useEffect(() => {
+    const onPageHide = () => {
+      hadSession.current = !!stateRef.current;
+      // 串流的 RTCPeerConnection 也要收掉，否则冻结期间还在推画面
+      streamRef.current?.reset();
+      micRef.current?.stop();
+      micRef.current = null;
+      gatewayRef.current?.close();
+      gatewayRef.current = null;
+    };
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted || !hadSession.current) return;
+      hadSession.current = false;
+      setMicOn(false);
+      setMicLevel(0);
+      setPttHeld(false);
+      if (lastAddress.current) {
+        Toast.info('页面从缓存恢复，正在重新连接…');
+        reconnectSame();
+      } else {
+        setState(null);
+      }
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, [reconnectSame]);
+
   const joinChannel = useCallback((cid: number, password = '') => {
     gatewayRef.current?.join(cid, password);
   }, []);
@@ -176,6 +240,26 @@ export default function App() {
     if (!name.trim()) return;
     gatewayRef.current?.rename(name.trim());
     store.setNickname(name.trim());
+  }, []);
+
+  /** 麦克风音量：改采集增益，开麦后立刻生效，并记住下次。 */
+  const changeMicGain = useCallback((v: number) => {
+    const g = clampGain(v);
+    setMicGain(g);
+    store.setMicGain(g);
+    micRef.current?.setVolume(g);
+  }, []);
+
+  /** 个人音量：按 uid 记住，他换频道、重连回来还是这个音量。 */
+  const changeMemberVolume = useCallback((member: Member, v: number) => {
+    const g = clampGain(v);
+    const key = memberKey(member);
+    playerRef.current?.setVolume(member.id, g);
+    setVolumes((prev) => {
+      const next = { ...prev, [key]: g };
+      store.setVolumes(next);
+      return next;
+    });
   }, []);
 
   const toggleOutput = useCallback(() => {
@@ -211,6 +295,8 @@ export default function App() {
       );
       micRef.current = mic;
       setMicOn(true);
+      // 记住的音量在开麦时补上，不然要再拖一次滑块才生效
+      mic.setVolume(micGain);
       // 按住说话模式下，开麦不等于立刻出声
       mic.setSending(!pttMode);
     } catch (e) {
@@ -218,7 +304,7 @@ export default function App() {
       Toast.error(msg.includes('Permission') ? '没有麦克风权限' : `麦克风打不开：${msg}`);
       mic.stop();
     }
-  }, [micOn, pttMode]);
+  }, [micOn, pttMode, micGain]);
 
   const connected = state?.phase === 'connected';
 
@@ -256,6 +342,8 @@ export default function App() {
         chat={chat}
         micOn={micOn}
         micLevel={micLevel}
+        micGain={micGain}
+        volumes={volumes}
         pttMode={pttMode}
         pttHeld={pttHeld}
         audioReady={audioReady}
@@ -265,6 +353,8 @@ export default function App() {
         onJoinChannel={joinChannel}
         onSay={say}
         onRename={rename}
+        onMicGain={changeMicGain}
+        onMemberVolume={changeMemberVolume}
         onToggleInput={toggleInput}
         onToggleOutput={toggleOutput}
         onDisconnect={disconnect}
@@ -285,6 +375,8 @@ export default function App() {
     error,
     micOn,
     micLevel,
+    micGain,
+    volumes,
     pttMode,
     pttHeld,
     audioReady,
@@ -293,6 +385,8 @@ export default function App() {
     joinChannel,
     say,
     rename,
+    changeMicGain,
+    changeMemberVolume,
     toggleInput,
     toggleOutput,
     disconnect,

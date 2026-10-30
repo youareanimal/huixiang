@@ -1,5 +1,7 @@
 // 网关协议的类型。字段和后端 WebSession / Gateway.kt 里推的一致，改一边要改另一边。
 
+import { DEFAULT_GAIN, clampGain } from './audio/gain';
+
 export type Phase = 'idle' | 'connecting' | 'connected';
 
 export interface Member {
@@ -98,6 +100,8 @@ const KEY = {
   token: 'huixiang.token',
   recent: 'huixiang.recent',
   nickname: 'huixiang.nickname',
+  micGain: 'huixiang.micGain',
+  volumes: 'huixiang.volumes',
 };
 
 export const store = {
@@ -136,7 +140,49 @@ export const store = {
   forgetRecent(address: string) {
     localStorage.setItem(KEY.recent, JSON.stringify(store.recent().filter((x) => x !== address)));
   },
+  /** 麦克风增益，0–2。跟这台机器的麦克风绑着，所以只存本地，不跟账号走。 */
+  micGain(): number {
+    const raw = localStorage.getItem(KEY.micGain);
+    if (raw === null) return DEFAULT_GAIN;
+    return clampGain(Number(raw));
+  },
+  setMicGain(v: number) {
+    localStorage.setItem(KEY.micGain, String(clampGain(v)));
+  },
+  /** 成员音量：key 见 memberKey（uid 而不是 clientId）。 */
+  volumes(): Record<string, number> {
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY.volumes) ?? '{}');
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+        out[k] = clampGain(Number(v));
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  },
+  setVolumes(v: Record<string, number>) {
+    localStorage.setItem(KEY.volumes, JSON.stringify(v));
+  },
 };
+
+/**
+ * 音量的持久化键。clientId 每次连接都重新分配，uid 才是「同一个人」，
+ * 所以按 uid 记，换个频道、掉线重连都还是自己调过的音量。
+ */
+export function memberKey(m: Member): string {
+  return m.uid || `id:${m.id}`;
+}
+
+/** 把整棵频道树里的人挨个过一遍：算音量、看谁还在，都用它。 */
+export function eachMember(tree: ChannelNode[], fn: (m: Member) => void) {
+  for (const c of tree) {
+    c.clients.forEach(fn);
+    eachMember(c.children, fn);
+  }
+}
 
 /** 把树摊平，按显示顺序，带深度。渲染频道列表和找人时都用它。 */
 export function flatten(tree: ChannelNode[], depth = 0, out: Array<{ channel: ChannelNode; depth: number }> = []) {
