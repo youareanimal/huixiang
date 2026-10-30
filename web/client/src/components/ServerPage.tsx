@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
-import { IconClose, IconEdit, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
+import { IconClose, IconEdit, IconInfoCircle, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
 import type { ChannelNode, ChatLine, State } from '../protocol';
 import { findChannel } from '../protocol';
 import { avatarColor, initial } from '../ui';
 import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
 import ControlBar from './ControlBar';
+import ServerInfoDrawer from './ServerInfo';
 import Stage from './Stage';
 
 interface Props {
@@ -61,6 +62,7 @@ export default function ServerPage({
   const [joiningChannel, setJoiningChannel] = useState<number | null>(null);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const joinTimer = useRef<number | null>(null);
 
@@ -154,6 +156,15 @@ export default function ServerPage({
         </div>
 
         <div className="head-right">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setInfoOpen(true)}
+            aria-label="服务器信息"
+            title="服务器信息"
+          >
+            <IconInfoCircle />
+          </button>
           <span className="pill" title="服务器总在线人数">
             <IconUserGroup size="small" />
             全服 {state.clientCount} 人
@@ -292,6 +303,16 @@ export default function ServerPage({
           </main>
         </div>
       )}
+
+      <ServerInfoDrawer
+        open={infoOpen}
+        info={state.server ?? null}
+        welcome={state.welcome}
+        address={state.address}
+        clientCount={state.clientCount}
+        channelCount={countChannels(state.tree)}
+        onClose={() => setInfoOpen(false)}
+      />
 
       <ControlBar
         micOn={micOn}

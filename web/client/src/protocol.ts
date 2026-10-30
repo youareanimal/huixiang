@@ -33,6 +33,23 @@ export interface ChannelNode {
   children: ChannelNode[];
 }
 
+/** 服务器自报的家底（virtualserver_*），网关有哪个就给哪个，没有的字段是 null。 */
+export interface ServerInfo {
+  maxClients: number | null;
+  clientsOnline: number | null;
+  channelsOnline: number | null;
+  /** 连上那一刻的运行秒数；配合 receivedAt 在前端算出会跳的实时值。 */
+  uptime: number | null;
+  receivedAt: number | null;
+  createdAt: number | null;
+  platform: string | null;
+  version: string | null;
+  bannerUrl: string | null;
+  bannerLink: string | null;
+  hostbuttonUrl: string | null;
+  hostbuttonTooltip: string | null;
+}
+
 export interface State {
   t: 'state';
   phase: Phase;
@@ -46,6 +63,7 @@ export interface State {
   inputMuted: boolean;
   outputMuted: boolean;
   clientCount: number;
+  server?: ServerInfo | null;
   tree: ChannelNode[];
 }
 

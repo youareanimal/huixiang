@@ -2,10 +2,14 @@ package site.huixiang.web
 
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.Commands
+import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.Identity
 import io.github.korppujauho.pocketts.proto.Json
+import io.github.korppujauho.pocketts.proto.Pictures
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -31,18 +35,29 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
 
     enum class Phase { IDLE, CONNECTING, CONNECTED }
 
-    private companion object {
+    companion object {
         /** How often a changed state may be sent at most: people talk and move faster than a screen needs to know. */
-        const val PUSH_MS = 120L
+        private const val PUSH_MS = 120L
 
         /** Uplink frame: [1] opus · Downlink frame: [2] opus. */
-        const val UP_VOICE = 1
-        const val DOWN_VOICE = 2
+        private const val UP_VOICE = 1
+        private const val DOWN_VOICE = 2
 
-        const val NO_PERMISSION = "2568"
-        const val WRONG_CHANNEL_PASSWORD = "781"
-        const val LEVEL_TOO_LOW = "519"
-        const val IDENTITY_ONLINE = "521"
+        private const val NO_PERMISSION = "2568"
+        private const val WRONG_CHANNEL_PASSWORD = "781"
+        private const val LEVEL_TOO_LOW = "519"
+        private const val IDENTITY_ONLINE = "521"
+
+        /**
+         * The banners of the live sessions, looked up by the token in the state's banner address. One tab per server
+         * downloads its own copy; two tabs on the same server cost one extra file transfer, which is fine at tab scale.
+         */
+        private val banners = ConcurrentHashMap<String, WebSession>()
+
+        /** A banner is an image the server's owner uploaded; anything past this is not a banner. */
+        private const val MAX_BANNER_BYTES = 2L * 1024 * 1024
+
+        fun byBanner(id: String): WebSession? = banners[id]
     }
 
     private val model = ServerModel()
@@ -50,8 +65,17 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         Thread(r, "web-push").apply { isDaemon = true }
     }
     private val dirty = AtomicBoolean(false)
+    private val bannerId = UUID.randomUUID().toString().replace("-", "")
 
     @Volatile private var client: TsClient? = null
+    @Volatile private var ft: FileTransfer? = null
+
+    /** The downloaded ts3image banner, and its content type; null until it is in (or unless it is an https one). */
+    @Volatile private var banner: ByteArray? = null
+    @Volatile private var bannerType = "image/png"
+
+    /** The gfx address the current [banner] belongs to: when the server changes it, the cache goes stale. */
+    @Volatile private var lastBannerUrl: String? = null
 
     /**
      * The last [TsClient] this session made. Kept apart from [client] because a connection that ends by itself
@@ -67,6 +91,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     @Volatile private var closed = false
 
     init {
+        banners[bannerId] = this
         pushTimer.scheduleWithFixedDelay({ if (dirty.getAndSet(false)) push() }, PUSH_MS, PUSH_MS, TimeUnit.MILLISECONDS)
     }
 
@@ -94,6 +119,10 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         owned?.close()
         owned = c
         client = c
+        // 新连接新横幅：上一次的缓存作废，等 initserver 带来新地址再取
+        ft = FileTransfer(c)
+        lastBannerUrl = null
+        banner = null
         c.connect(
             TsClient.Options(
                 host = host,
@@ -111,6 +140,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         val c = client ?: return
         client = null
         c.close()
+        ft?.onDisconnected()
+        ft = null
         phase = Phase.IDLE
         error = null
         dirty.set(true)
@@ -164,6 +195,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
 
     fun close() {
         closed = true
+        banners.remove(bannerId)
         leave()
         owned?.close()
         owned = null
@@ -201,6 +233,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     }
 
     override fun onCommand(cmd: Command) {
+        // 文件传输的应答也走这条命令流，先让 FileTransfer 挑走它的，剩下的才进模型
+        ft?.onCommand(cmd)
         when (cmd.name) {
             // Everyone on the server, not only the people in our own channel.
             "channellistfinished" -> client?.sendCommand("channelsubscribeall")
@@ -230,6 +264,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             }
         }
         if (model.apply(cmd)) dirty.set(true)
+        maybeFetchBanner()
     }
 
     override fun onVoice(voice: TsClient.Voice) {
@@ -241,6 +276,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     override fun onDisconnected(reason: String?) {
         phase = Phase.IDLE
         client = null
+        ft?.onDisconnected()
+        ft = null
         error = reason
         dirty.set(true)
         // Ended by the server or the network: this instance is done with, so its thread can go now rather than
@@ -297,9 +334,76 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             "inputMuted" to inputMuted,
             "outputMuted" to outputMuted,
             "clientCount" to model.clients.values.count { it.type == 0 },
+            "server" to serverInfo(),
             "tree" to model.tree().map { node(it) },
         )
     )
+
+    /**
+     * The details the server told about itself, for the tab's info panel. Everything comes from the
+     * `virtualserver_*` variables [ServerModel] already collected (initserver / servergetvariables), so a server
+     * that keeps them quiet just leaves the fields out and the panel shows less.
+     */
+    private fun serverInfo(): Map<String, Any?> {
+        val v = model.serverVars
+        val gfx = v["virtualserver_hostbanner_gfx_url"]?.trim().orEmpty()
+        // https 的浏览器自己加载；ts3image 的走本会话下载好的字节，还没到就先不给
+        val bannerUrl = when {
+            gfx.startsWith("https://", ignoreCase = true) -> gfx
+            banner != null -> "/server-banner/$bannerId"
+            else -> null
+        }
+        return linkedMapOf(
+            "maxClients" to v["virtualserver_maxclients"]?.toIntOrNull(),
+            "clientsOnline" to v["virtualserver_clientsonline"]?.toIntOrNull(),
+            "channelsOnline" to v["virtualserver_channelsonline"]?.toIntOrNull(),
+            "uptime" to v["virtualserver_uptime"]?.toLongOrNull(),
+            "receivedAt" to v["received_at"]?.toLongOrNull(),
+            "createdAt" to v["virtualserver_created"]?.toLongOrNull(),
+            "platform" to v["virtualserver_platform"],
+            "version" to v["virtualserver_version"],
+            "bannerUrl" to bannerUrl,
+            "bannerLink" to v["virtualserver_hostbanner_url"]?.takeIf { it.startsWith("https://", true) },
+            "hostbuttonUrl" to v["virtualserver_hostbutton_url"]?.takeIf { it.startsWith("http") },
+            "hostbuttonTooltip" to v["virtualserver_hostbutton_tooltip"]?.takeIf { it.isNotBlank() },
+        )
+    }
+
+    /** 服务器换了横幅地址（或刚连上）：https 的直接给浏览器，ts3image 的在后台线程拉字节。 */
+    private fun maybeFetchBanner() {
+        val url = model.serverVars["virtualserver_hostbanner_gfx_url"]?.trim().orEmpty()
+        if (url.isEmpty() || url == lastBannerUrl) return
+        lastBannerUrl = url
+        banner = null
+        val f = ft ?: return
+        if (url.startsWith("https://", ignoreCase = true)) {
+            dirty.set(true)
+            return
+        }
+        val pic = Pictures.channelPicture(url) ?: return
+        Thread {
+            try {
+                val bytes = f.download(pic.cid, pic.path, MAX_BANNER_BYTES)
+                banner = bytes
+                bannerType = bannerContentType(pic.name)
+                dirty.set(true)
+                log("$address: banner ${bytes.size} bytes")
+            } catch (e: Exception) {
+                log("$address: banner download failed: ${e.message}")
+            }
+        }.apply { isDaemon = true; name = "web-banner" }.start()
+    }
+
+    private fun bannerContentType(name: String): String = when {
+        name.endsWith(".png", true) -> "image/png"
+        name.endsWith(".gif", true) -> "image/gif"
+        name.endsWith(".webp", true) -> "image/webp"
+        name.endsWith(".svg", true) -> "image/svg+xml"
+        else -> "image/jpeg"
+    }
+
+    /** The banner bytes for [byBanner], or null when this session has none (yet). */
+    fun bannerData(): Pair<ByteArray, String>? = banner?.let { it to bannerType }
 
     private fun node(n: ServerModel.Node): Map<String, Any?> = linkedMapOf(
         "id" to n.channel.id,

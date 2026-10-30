@@ -13,6 +13,7 @@ import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.origin
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -148,6 +149,19 @@ fun Application.gateway(dist: File, access: Access) {
 
     routing {
         get("/healthz") { call.respondText("ok") }
+
+        /**
+         * A session's downloaded ts3image banner. The address carries a per-session token that only the tab the
+         * state was pushed to knows, so this is not a door to anyone else's transfer.
+         */
+        get("/server-banner/{id}") {
+            val data = WebSession.byBanner(call.parameters["id"].orEmpty())?.bannerData()
+            if (data == null) {
+                call.respond(HttpStatusCode.NotFound, "no banner")
+            } else {
+                call.respondBytes(data.first, io.ktor.http.ContentType.parse(data.second))
+            }
+        }
 
         /** What a front end needs to know before it asks for a token: whether one is needed at all. */
         get("/auth") {
