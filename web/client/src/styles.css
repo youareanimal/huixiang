@@ -837,7 +837,7 @@ body {
 
 .stage {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 132px;
   overflow-y: auto;
   display: flex;
   align-items: center;
@@ -1771,4 +1771,192 @@ body {
   .mic-btn {
     padding: 0 14px;
   }
+}
+
+/* ====== 串流：屏幕 / 摄像头 ======
+   画面直接占掉成员舞台那一块，不另外挤一条面板出来；工具条浮在画面上。 */
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--speaking);
+  box-shadow: 0 0 0 3px rgba(20, 184, 154, 0.18);
+  flex: 0 0 auto;
+}
+
+.live-dot.is-idle {
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+}
+
+.stream-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0 20px 14px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0d0f14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stream-stage video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #0d0f14;
+}
+
+.stream-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 20px);
+  padding: 5px 6px 5px 12px;
+  border-radius: 999px;
+  background: rgba(13, 15, 20, 0.72);
+}
+
+.stream-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #fff;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-sub {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.66);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stream-spacer {
+  flex: 1 1 auto;
+  min-width: 8px;
+}
+
+.stream-btn {
+  height: 26px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.stream-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* 名字和「观看」并排：谁是主播一眼看得见，按钮就在他名字后面 */
+.tile-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.tile-name-row .tile-name {
+  min-width: 0;
+}
+
+.tile-sub.tile-live {
+  color: var(--speaking-ink);
+  font-weight: 500;
+  gap: 5px;
+}
+
+.watch-btn {
+  flex: 0 0 auto;
+  height: 21px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.watch-btn:hover {
+  background: #e7e1fd;
+}
+
+.watch-btn.is-on {
+  background: var(--speaking-soft);
+  color: var(--speaking-ink);
+}
+
+.ghost-btn.is-live {
+  background: var(--speaking-soft);
+  color: var(--speaking-ink);
+}
+
+@media (max-width: 860px) {
+  .stream-stage {
+    margin: 0 12px 10px;
+  }
+
+  .stream-title {
+    max-width: 150px;
+  }
+}
+
+.stream-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+
+/* 全屏：容器整个铺满，工具条跟着进去，所以还能退出、静音 */
+.stream-stage:fullscreen,
+.stream-stage:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.stream-stage:fullscreen video,
+.stream-stage:-webkit-full-screen video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.stream-stage:fullscreen .stream-bar,
+.stream-stage:-webkit-full-screen .stream-bar {
+  top: 16px;
+  left: 16px;
 }

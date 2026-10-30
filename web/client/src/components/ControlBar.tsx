@@ -1,3 +1,4 @@
+import { Dropdown } from '@douyinfe/semi-ui';
 import {
   IconExit,
   IconMicrophone,
@@ -5,6 +6,7 @@ import {
   IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
+import type { ShareKind } from '../stream';
 
 interface Props {
   micOn: boolean;
@@ -14,6 +16,12 @@ interface Props {
   pttHeld: boolean;
   channelName: string;
   clientCount: number;
+  /** 正在共享什么；null 表示没有。 */
+  sharing: ShareKind | null;
+  shareViewers: number;
+  onShareScreen: () => void;
+  onShareCamera: () => void;
+  onStopShare: () => void;
   onToggleInput: () => void;
   onToggleOutput: () => void;
   onTogglePttMode: () => void;
@@ -33,6 +41,11 @@ export default function ControlBar({
   pttHeld,
   channelName,
   clientCount,
+  sharing,
+  shareViewers,
+  onShareScreen,
+  onShareCamera,
+  onStopShare,
   onToggleInput,
   onToggleOutput,
   onTogglePttMode,
@@ -117,6 +130,31 @@ export default function ControlBar({
           {outputMuted ? <IconVolumnSilent /> : <IconVolume2 />}
           <span>{outputMuted ? '已静音' : '声音'}</span>
         </button>
+
+        {sharing ? (
+          <button type="button" className="ghost-btn is-live" onClick={onStopShare} title="停止直播">
+            <span className="live-dot" aria-hidden="true" />
+            <span>
+              {sharing === 2 ? '屏幕直播中' : '摄像头直播中'}
+              {shareViewers > 0 ? ` · ${shareViewers} 人` : ''}
+            </span>
+          </button>
+        ) : (
+          <Dropdown
+            trigger="click"
+            position="top"
+            render={
+              <Dropdown.Menu>
+                <Dropdown.Item onClick={onShareScreen}>直播屏幕</Dropdown.Item>
+                <Dropdown.Item onClick={onShareCamera}>直播摄像头</Dropdown.Item>
+              </Dropdown.Menu>
+            }
+          >
+            <button type="button" className="ghost-btn" title="把你的屏幕或者摄像头播给频道里的人">
+              <span>直播</span>
+            </button>
+          </Dropdown>
+        )}
       </div>
 
       <div className="control-side control-side-right">

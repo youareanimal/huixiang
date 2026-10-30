@@ -71,6 +71,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 改名 | |
 | 静音 | 麦克风和扬声器状态同步到服务器 |
 | 语音 | 双向裸 Opus，浏览器 WebCodecs 编解码 |
+| 屏幕 / 摄像头串流 | WebRTC 直连，能看别人也能自己播；画面不经网关，这里只走信令 |
 | 断开 | 主动离开，之后可再连 |
 
 **还没接**（`tsproto` 里都有现成实现，缺的是网关这一层把它暴露出来）
@@ -82,7 +83,6 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 好友列表 / 云聊天 | 中 | `MyTsAccount.contacts()` + `MatrixCloud`，需要连 Matrix |
 | 文件传输 | 中 | `FileTransfer`，走 TCP 30033，要加一条 WS 通道传字节 |
 | 头像 | 中 | `Pictures`，需要缓存 |
-| 屏幕 / 摄像头串流 | 高 | `Streams`，WebRTC 信令，浏览器侧反而比安卓好做 |
 | 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
 
 ## 部署
@@ -248,6 +248,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"say"}` | `text`，`channel` 频道 id（频道消息）或 `client` 成员 id（私聊） |
 | `{"t":"rename"}` | `name` |
 | `{"t":"mute"}` | `input` `output` 布尔 |
+| `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
 
 `identity` 是身份导出串（`Identity.export()` 的字符串）。**第一次连接前传空，网关会生成一个并通过 `identity` 消息下发**，前端存到 localStorage，之后每次带上——不带的话每次都是新身份，服务器上的权限不会继承。
 
@@ -261,6 +262,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"identity","v":"…"}` | 网关生成的身份，存起来 |
 | `{"t":"state", …}` | 全量状态快照，变化时最多每 120ms 一次 |
 | `{"t":"chat", …}` | 收到文字消息：`from` `name` `channel` `mode` `text` `time` |
+| `{"t":"stream", …}` | 串流事件：`event` 是 `started` / `stopped` / `viewer` / `viewerLeft` / `offer` / `answer` / `candidate` / `ended` / `refused` / `failed` |
 
 二进制下行：`[0x02][codec][clientId:2 大端][opus…]`。`opus` 为空表示这个人停止说话。
 
@@ -298,6 +300,39 @@ ACCESS_TOKEN=你自己想一串
 ```
 
 `spacer: true` 的是 TeamSpeak 的分隔符频道，不要当普通频道渲染。
+
+### 串流（屏幕 / 摄像头）
+
+画面**不经过网关**：浏览器和对方直接 WebRTC 对连，跟两台手机之间是一回事——网关只转发命令和双方的
+SDP / ICE 地址，所以一个千兆小机器能带住很多路。共享是 mesh：每个观众一条连接，各发一份，跟安卓端一样。
+
+上行都是 `{"t":"stream","act":…}`：
+
+| act | 字段 | 说明 |
+|---|---|---|
+| `share` | `kind`(1 摄像头 / 2 屏幕) `name` `audio` | 采集已经在浏览器里做完了，这里只是让服务器开一个流 |
+| `stop` | | 停止共享 |
+| `watch` | `streamer` 对方 client id | 不知道 stream id 也行，网关会先 `requeststreaminfo` 再 join |
+| `unwatch` | | 不看了 |
+| `offer` | `to` 观众 id `sdp` | 我们的 offer，给某个观众 |
+| `answer` | `to` 主播 id `sdp` | 我们对别人 offer 的答案 |
+| `candidate` | `to` `candidate` `mid` `mLine` | ICE 地址，两个方向共用 |
+
+下行 `{"t":"stream","event":…}`：`started`（拿到 stream id）、`stopped`、`viewer`（有人要看，带 `viewer`）、
+`viewerLeft`、`offer`（带 `from` 和 `sdp`，已改好给浏览器）、`answer`（带 `from` 和 `sdp`）、
+`candidate`、`ended`、`refused` / `failed`（带 `reason`）。
+
+**SDP 的几处修补都在网关做**（`StreamBridge`），浏览器只面对干净的 WebRTC：
+
+- 对方发来的 H.264 是 Constrained High（`640cXX`），浏览器不一定列这个 profile，所以给浏览器之前改成
+  `42e0`，answer 回来再还原；
+- 我们发出去的 offer 反过来：H.264 一律标成 `640c`，并去掉 `urn:3gpp:video-orientation`（TeamSpeak 的
+  客户端接受了却不转画面，手机摄像头就会躺倒）和媒体段里没列的 payload 行；
+- answer 的 `o=` 行 session version 要对齐到对方 offer 的，否则 TeamSpeak 的客户端会**一声不响地丢掉**它；
+- answer 的 H.264 level 抬到 5.2（`level-asymmetry-allowed=1`），不抬的话客户端按 3.1 回，把发送卡在 720p。
+
+NAT 打不通时要 TURN。构建时给 `VITE_TURN_URL` / `VITE_TURN_USER` / `VITE_TURN_PASS`，或者往 localStorage
+写 `huixiang.turn`（`{"url":"turn:host:3478","user":"…","pass":"…"}`）。默认只用 TeamSpeak 自己的两个 STUN。
 
 ## 浏览器侧怎么解 Opus
 
@@ -346,4 +381,6 @@ const opusHead = new Uint8Array([
 - 每个连接是一个 UDP socket 加一个线程，扩到几百人需要改成分片或协程。
 - 身份安全等级低于服务器要求时（错误 519）只提示、不自动升级——升级很吃 CPU，放到后台跑要单独设计。
 - 网页关掉连接就断，没有 App 那种后台保活。
-- 文件传输、头像、屏幕串流这一版没接，`tsproto` 里有现成实现，接上是加一条 WS 通道的事。
+- 文件传输、头像这一版没接，`tsproto` 里有现成实现，接上是加一条 WS 通道的事。
+- 串流的画面不经过网关，但共享是 mesh：N 个人看就有 N 份上行从**浏览器**出去（不是网关的带宽）。
+  5 个人看 4 Mbps 的屏幕，发布者要 20 Mbps 上行，家宽基本到顶了。

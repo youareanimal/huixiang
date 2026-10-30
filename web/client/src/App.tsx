@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toast } from '@douyinfe/semi-ui';
 import { Gateway, tokenRequired } from './gateway';
 import { findChannel, store, type ChatLine, type ConnectOptions, type State } from './protocol';
+import { StreamClient, initialStreamState, type StreamState } from './stream';
 import { VoicePlayer, webCodecsAvailable } from './audio/player';
 import { MicSender, micCodecAvailable } from './audio/mic';
 import ConnectPage from './components/ConnectPage';
@@ -29,9 +30,13 @@ export default function App() {
   const [pttMode, setPttMode] = useState(false);
   const [pttHeld, setPttHeld] = useState(false);
 
+  // 串流：画面是浏览器和对方直连的 WebRTC，网关只管信令
+  const [streamState, setStreamState] = useState<StreamState>(initialStreamState);
+
   const gatewayRef = useRef<Gateway | null>(null);
   const playerRef = useRef<VoicePlayer | null>(null);
   const micRef = useRef<MicSender | null>(null);
+  const streamRef = useRef<StreamClient | null>(null);
   const lastAddress = useRef<{ address: string; nickname: string } | null>(null);
   // 回调里要读最新状态，不能靠闭包
   const stateRef = useRef<State | null>(null);
@@ -43,6 +48,7 @@ export default function App() {
   // 离开页面时把连接和麦克风都收掉，别让服务端留着一条僵尸会话
   useEffect(() => {
     return () => {
+      streamRef.current?.reset();
       micRef.current?.stop();
       playerRef.current?.close();
       gatewayRef.current?.close();
@@ -55,6 +61,14 @@ export default function App() {
     micRef.current?.setSending(pttMode ? pttHeld : true);
   }, [pttMode, pttHeld, micOn]);
 
+  // 串流出错用一条 toast 报掉，不占画面位置；同一条错误只弹一次
+  const lastStreamError = useRef<string | null>(null);
+  useEffect(() => {
+    const e = streamState.error;
+    if (e && e !== lastStreamError.current) Toast.error(e);
+    lastStreamError.current = e;
+  }, [streamState.error]);
+
   const ensurePlayer = useCallback(() => {
     if (!playerRef.current) {
       playerRef.current = new VoicePlayer();
@@ -65,6 +79,9 @@ export default function App() {
   }, []);
 
   const disconnect = useCallback(() => {
+    streamRef.current?.reset();
+    streamRef.current = null;
+    setStreamState(initialStreamState);
     micRef.current?.stop();
     micRef.current = null;
     setMicOn(false);
@@ -99,6 +116,7 @@ export default function App() {
           },
           onChat: (line) => setChat((prev) => [...prev, line].slice(-MAX_CHAT)),
           onVoice: (codec, clientId, opus) => player.play(clientId, codec, opus),
+          onStream: (e) => streamRef.current?.onEvent(e),
           onClose: (code, reason) => {
             setConnecting(false);
             if (code === 1008) {
@@ -108,6 +126,12 @@ export default function App() {
           },
         });
         gatewayRef.current = g;
+        streamRef.current?.reset();
+        streamRef.current = new StreamClient({
+          send: (m) => g.stream(m),
+          onChange: setStreamState,
+          log: (m) => console.info('[stream]', m),
+        });
         await g.open();
         g.connect(opts);
       } catch (e) {
@@ -198,6 +222,20 @@ export default function App() {
 
   const connected = state?.phase === 'connected';
 
+  const shareScreen = useCallback(() => {
+    void streamRef.current?.startScreen();
+  }, []);
+
+  const shareCamera = useCallback(() => {
+    void streamRef.current?.startCamera();
+  }, []);
+
+  const stopShare = useCallback(() => streamRef.current?.stopShare(), []);
+
+  const watchStream = useCallback((clientId: number) => streamRef.current?.watch(clientId), []);
+
+  const stopWatch = useCallback(() => streamRef.current?.stopWatch(), []);
+
   const content = useMemo(() => {
     if (!state) {
       return (
@@ -221,6 +259,7 @@ export default function App() {
         pttMode={pttMode}
         pttHeld={pttHeld}
         audioReady={audioReady}
+        stream={streamState}
         onTogglePttMode={() => setPttMode((v) => !v)}
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
@@ -230,6 +269,11 @@ export default function App() {
         onToggleOutput={toggleOutput}
         onDisconnect={disconnect}
         onReconnect={reconnectSame}
+        onShareScreen={shareScreen}
+        onShareCamera={shareCamera}
+        onStopShare={stopShare}
+        onWatch={watchStream}
+        onStopWatch={stopWatch}
       />
     );
   }, [
@@ -244,6 +288,7 @@ export default function App() {
     pttMode,
     pttHeld,
     audioReady,
+    streamState,
     connect,
     joinChannel,
     say,
@@ -252,6 +297,11 @@ export default function App() {
     toggleOutput,
     disconnect,
     reconnectSame,
+    shareScreen,
+    shareCamera,
+    stopShare,
+    watchStream,
+    stopWatch,
   ]);
 
   return <div className={connected ? 'app app-connected' : 'app'}>{content}</div>;

@@ -67,6 +67,17 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     private val dirty = AtomicBoolean(false)
     private val bannerId = UUID.randomUUID().toString().replace("-", "")
 
+    /**
+     * Screen and camera streams: the talking part of them only. The pictures are WebRTC, straight between the tab
+     * and the other end; this just carries the commands and session descriptions, and mends the latter.
+     */
+    private val streams = StreamBridge(
+        sendCommand = { cmd -> client?.sendCommand(cmd) },
+        push = { json -> sink.text(json) },
+        ownId = { model.ownClientId },
+        log = { log("$address: $it") },
+    )
+
     @Volatile private var client: TsClient? = null
     @Volatile private var ft: FileTransfer? = null
 
@@ -139,6 +150,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     fun leave() {
         val c = client ?: return
         client = null
+        streams.reset()
         c.close()
         ft?.onDisconnected()
         ft = null
@@ -192,6 +204,24 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     fun voiceStop(codec: Int) {
         client?.sendVoiceStop(codec)
     }
+
+    // ====== Streams: the talking part (the pictures go straight between the two ends) ======
+
+    /** Start sharing: 1 camera, 2 screen, with the tab's own capture. */
+    fun streamShare(kind: Int, name: String, audio: Boolean) = streams.share(kind, name, audio)
+
+    fun streamStop() = streams.stopShare()
+
+    /** Watch [streamer]: the stream id is asked from the server first, the join follows it. */
+    fun streamWatch(streamer: Int) = streams.watch(streamer)
+
+    fun streamUnwatch() = streams.unwatch()
+
+    fun streamShareOffer(viewer: Int, sdp: String) = streams.shareOffer(viewer, sdp)
+
+    fun streamAnswer(streamer: Int, sdp: String) = streams.answer(streamer, sdp)
+
+    fun streamCandidate(to: Int, candidate: String, mid: String?, mLine: Int?) = streams.candidate(to, candidate, mid, mLine)
 
     fun close() {
         closed = true
@@ -265,6 +295,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         }
         if (model.apply(cmd)) dirty.set(true)
         maybeFetchBanner()
+        // After the model, which also reads these (the streaming flag): the bridge only relays, it hides nothing.
+        streams.onCommand(cmd)
     }
 
     override fun onVoice(voice: TsClient.Voice) {
@@ -276,6 +308,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     override fun onDisconnected(reason: String?) {
         phase = Phase.IDLE
         client = null
+        streams.reset()
         ft?.onDisconnected()
         ft = null
         error = reason

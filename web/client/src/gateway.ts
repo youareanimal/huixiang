@@ -1,4 +1,5 @@
 import type { ChatLine, ConnectOptions, State } from './protocol';
+import type { StreamEvent } from './stream';
 
 export interface GatewayHandlers {
   onOpen?: () => void;
@@ -9,6 +10,8 @@ export interface GatewayHandlers {
   onChat?: (line: ChatLine) => void;
   /** 一帧语音，已去掉 4 字节头：codec 和说话的人。 */
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
+  /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
+  onStream?: (event: StreamEvent) => void;
   /** 服务端关了连接：1008 多半是口令不对或来源不被允许。 */
   onClose?: (code: number, reason: string) => void;
   onError?: (message: string) => void;
@@ -89,6 +92,9 @@ export class Gateway {
           case 'chat':
             this.handlers.onChat?.(m as unknown as ChatLine);
             break;
+          case 'stream':
+            this.handlers.onStream?.(m as unknown as StreamEvent);
+            break;
         }
       };
 
@@ -149,6 +155,11 @@ export class Gateway {
 
   setMuted(input: boolean, output: boolean) {
     this.send({ t: 'mute', input, output });
+  }
+
+  /** 串流的信令。画面不经过这里：那是浏览器和对方之间的 WebRTC。 */
+  stream(msg: Record<string, unknown>) {
+    this.send({ t: 'stream', ...msg });
   }
 
   /** 一帧 Opus（960 采样 / 20ms）。空数组表示停止说话。 */

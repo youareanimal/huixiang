@@ -196,7 +196,8 @@ fun Application.gateway(dist: File, access: Access) {
                         out.trySend(Frame.Binary(true, bytes))
                     }
                 },
-                log = { log.debug("[$ip] $it") },
+                // info 而不是 debug：连接、出错、每次串流的开合都在这里，出问题时这是唯一的现场
+                log = { log.info("[$ip] $it") },
             )
             try {
                 // The password travels in a message, not in the URL, so it stays out of proxy and server logs.
@@ -342,6 +343,36 @@ private fun onText(session: WebSession, text: String, ip: String) {
         "mute" -> {
             session.setInputMuted(m["input"] == true)
             session.setOutputMuted(m["output"] == true)
+        }
+        "stream" -> onStream(session, m)
+    }
+}
+
+/**
+ * Screen and camera streams: the tab's capture and WebRTC live there, so all it sends here is what the TeamSpeak
+ * server has to be told, and the session descriptions it wants mended on the way.
+ */
+private fun onStream(session: WebSession, m: Map<*, *>) {
+    val to = (m["to"] as? Number)?.toInt() ?: 0
+    val sdp = (m["sdp"] as? String).orEmpty()
+    when (m["act"]) {
+        "share" -> session.streamShare(
+            kind = (m["kind"] as? Number)?.toInt() ?: 2,
+            name = (m["name"] as? String)?.take(64).orEmpty(),
+            audio = m["audio"] == true,
+        )
+        "stop" -> session.streamStop()
+        "watch" -> session.streamWatch((m["streamer"] as? Number)?.toInt() ?: 0)
+        "unwatch" -> session.streamUnwatch()
+        // A session description is a few kilobytes; anything much larger is not one, and the command frame has a
+        // ceiling of its own.
+        "offer" -> if (to > 0 && sdp.length in 1..48_000) session.streamShareOffer(to, sdp)
+        "answer" -> if (to > 0 && sdp.length in 1..48_000) session.streamAnswer(to, sdp)
+        "candidate" -> {
+            val candidate = (m["candidate"] as? String).orEmpty()
+            if (to > 0 && candidate.length in 1..2_000) {
+                session.streamCandidate(to, candidate, (m["mid"] as? String), (m["mLine"] as? Number)?.toInt())
+            }
         }
     }
 }

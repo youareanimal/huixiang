@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
 import { IconClose, IconEdit, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
 import type { ChannelNode, ChatLine, State } from '../protocol';
-import { findChannel } from '../protocol';
+import { findChannel, findMember } from '../protocol';
+import type { StreamState } from '../stream';
 import { avatarColor, initial } from '../ui';
 import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
 import ControlBar from './ControlBar';
 import ServerInfoPanel from './ServerInfo';
 import Stage from './Stage';
+import StreamPanel from './StreamPanel';
 
 interface Props {
   state: State;
@@ -18,6 +20,7 @@ interface Props {
   pttMode: boolean;
   pttHeld: boolean;
   audioReady: boolean;
+  stream: StreamState;
   onTogglePttMode: () => void;
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
@@ -27,6 +30,11 @@ interface Props {
   onToggleOutput: () => void;
   onDisconnect: () => void;
   onReconnect: () => void;
+  onShareScreen: () => void;
+  onShareCamera: () => void;
+  onStopShare: () => void;
+  onWatch: (clientId: number) => void;
+  onStopWatch: () => void;
 }
 
 /** 打字时不能把空格当按住说话，否则聊不了天。 */
@@ -45,6 +53,7 @@ export default function ServerPage({
   pttMode,
   pttHeld,
   audioReady,
+  stream,
   onTogglePttMode,
   onPttHold,
   onJoinChannel,
@@ -54,6 +63,11 @@ export default function ServerPage({
   onToggleOutput,
   onDisconnect,
   onReconnect,
+  onShareScreen,
+  onShareCamera,
+  onStopShare,
+  onWatch,
+  onStopWatch,
 }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -128,6 +142,9 @@ export default function ServerPage({
   const people = current?.clients ?? [];
   const connecting = state.phase === 'connecting';
   const channelTag = current?.password ? '有密码' : '公共';
+  const watchingName = stream.watching
+    ? findMember(state.tree, stream.watching)?.nickname || `#${stream.watching}`
+    : '';
 
   return (
     <div className="server-page">
@@ -276,7 +293,23 @@ export default function ServerPage({
               </div>
             </div>
 
-            <Stage members={people} ownId={state.ownId} channelName={channelTitle} />
+            {stream.watching > 0 || stream.sharing !== null ? (
+              <StreamPanel
+                stream={stream}
+                streamerName={watchingName}
+                ownName={state.nickname}
+                onStopShare={onStopShare}
+                onStopWatch={onStopWatch}
+              />
+            ) : (
+              <Stage
+                members={people}
+                ownId={state.ownId}
+                channelName={channelTitle}
+                watchingId={stream.watching}
+                onWatch={onWatch}
+              />
+            )}
 
             <ChatPanel
               lines={chat}
@@ -308,6 +341,11 @@ export default function ServerPage({
         pttHeld={pttHeld}
         channelName={channelTitle}
         clientCount={people.length}
+        sharing={stream.sharing}
+        shareViewers={stream.viewers}
+        onShareScreen={onShareScreen}
+        onShareCamera={onShareCamera}
+        onStopShare={onStopShare}
         onToggleInput={onToggleInput}
         onToggleOutput={onToggleOutput}
         onTogglePttMode={onTogglePttMode}
