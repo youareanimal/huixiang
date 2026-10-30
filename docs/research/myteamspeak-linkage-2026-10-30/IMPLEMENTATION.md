@@ -17,3 +17,11 @@ Actions run [41004024803](https://github.com/youareanimal/huixiang/actions/runs/
 Static trace: `0x27a9d20` parses the local bridge identity; `0x27aa1b0` creates the six voice proof fields; `0x455ce60` derives connection key/nonce; `0x27ab380` builds `updatemytsdata`; `0x2a80410` checks the encrypted private-key SHA-512 envelope.
 
 Regression tests cover native signing vectors, encrypted scalar integrity, public-key mismatch, both handshake IV formats, fresh signatures on reconnect, actual encrypted/fragmented clientinit output, metadata encoding, optional malformed metadata, and badge-service failure. All builds and tests run through GitHub Actions. No local compilation or test execution.
+
+## 0.5.3: unsigned creation-time correction
+
+The initial implementation incorrectly required the byte-swapped uint64 to be positive as a signed Kotlin Long. Valid values with bit 63 set were therefore rejected before any proof could be sent. Keeping all 64 bits and formatting with Long.toUnsignedString matches the native voice formatter at 0x4761890: decimal formatting uses the "%llu" format string at 0x5fa949. The native account conversion still performs bswap at 0x2a3121f.
+
+The earlier synthetic tests chose values below Long.MAX_VALUE and could not detect this. New vectors cover 128 -> 9223372036854775808 and 1700000128 -> 9291299199498846208, as well as signed boundaries and UINT64_MAX, and assert the actual encrypted clientinit text. The manual native comparison also invokes the official uint64 formatter for these synthetic values.
+
+Proof construction now reports PROOF_SENT, not confirmed identity. After initserver the client queries its own client variables and reports SERVER_CONFIRMED only when client_myteamspeak_id matches the expected account. Missing, mismatched, unrelated-client, or denied query data cannot establish confirmation. The own-profile UI exposes these bounded states without logging account IDs, signatures, keys, or tokens. This is not a claim that the full real-account/TS6 avatar flow has been reproduced in CI.

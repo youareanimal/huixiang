@@ -32,6 +32,8 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -162,6 +164,20 @@ internal fun PersonDetails(person: ServerModel.Client, isSelf: Boolean, channelN
                 if (isSelf && person.id == account.clientId && account.username.isNotBlank()) {
                     Text("当前账号：${account.username}", color = Ts.text, fontSize = 13.sp)
                     if (account.email.isNotBlank()) Text("账号邮箱：${account.email}", color = Ts.text, fontSize = 13.sp)
+                }
+                if (isSelf) {
+                    val connection by Session.state.collectAsState()
+                    if (person.id == connection.ownId) {
+                        val link = when (connection.myTsVoiceStatus) {
+                            MyTsVoiceStatus.NOT_REQUESTED -> "未使用账号证明"
+                            MyTsVoiceStatus.MATERIAL_UNAVAILABLE -> "账号证明材料不可用，请重新登录账号"
+                            MyTsVoiceStatus.PROOF_UNAVAILABLE -> "账号证明生成失败"
+                            MyTsVoiceStatus.PROOF_SENT -> "证明已发送，等待服务器确认"
+                            MyTsVoiceStatus.SERVER_CONFIRMED -> "服务器已确认"
+                            MyTsVoiceStatus.SERVER_NOT_CONFIRMED -> "服务器尚未确认"
+                        }
+                        Text("myTeamSpeak 账号关联：$link", color = Ts.text, fontSize = 13.sp)
+                    }
                 }
                 Text("昵称：${person.nickname}", color = Ts.text, fontSize = 13.sp)
                 Text("唯一身份 UID：${value(person.uid)}", color = Ts.text, fontSize = 13.sp)
