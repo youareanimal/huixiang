@@ -1446,37 +1446,16 @@ body {
   flex: 0 0 auto;
 }
 
-/* ====== 服务器信息面板 ====== */
+/* ====== 服务器信息栏（常驻右栏） ====== */
 
-.server-page {
-  position: relative;
-}
-
-.info-drawer {
-  position: absolute;
-  z-index: 30;
-  top: var(--head-h);
-  right: 0;
-  bottom: var(--ctrl-h);
-  width: min(320px, 88vw);
+.info-panel {
+  width: 300px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
+  min-height: 0;
+  background: var(--bg-rail);
   border-left: 1px solid var(--line);
-  box-shadow: -12px 0 32px rgba(48, 30, 115, 0.1);
-  transform: translateX(100%);
-  transition: transform 0.18s ease;
-}
-
-.info-drawer.is-open {
-  transform: translateX(0);
-}
-
-.info-scrim {
-  position: absolute;
-  inset: var(--head-h) 0 var(--ctrl-h) 0;
-  z-index: 20;
-  background: rgba(21, 23, 28, 0.14);
 }
 
 .info-head {
@@ -1484,8 +1463,7 @@ body {
   height: 48px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 12px 0 18px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--line-soft);
 }
 
@@ -1622,6 +1600,14 @@ body {
     --chat-h: 280px;
   }
 
+  .info-panel {
+    width: 232px;
+  }
+
+  .info-body {
+    padding: 14px 14px 18px;
+  }
+
   .stage-grid {
     gap: 22px 26px;
   }
@@ -1683,6 +1669,79 @@ body {
     inset: 0;
     z-index: 10;
     background: rgba(21, 23, 28, 0.28);
+  }
+
+  /* 手机上右栏收成底部一条信息带：始终在，但不抢横向空间 */
+  .server-body {
+    flex-direction: column;
+  }
+
+  .server-content {
+    order: 1;
+  }
+
+  .info-panel {
+    order: 2;
+    width: 100%;
+    flex: 0 0 auto;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .info-head {
+    display: none;
+  }
+
+  .info-body {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .info-banner {
+    flex: 0 0 104px;
+    align-self: stretch;
+  }
+
+  .info-banner img {
+    height: 100%;
+    max-height: 58px;
+    object-fit: cover;
+  }
+
+  .info-welcome,
+  .info-site,
+  .info-version {
+    display: none;
+  }
+
+  .info-rows {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-height: 0;
+    padding: 0;
+    border-bottom: none;
+    white-space: nowrap;
+  }
+
+  .info-row dt {
+    font-size: 10.5px;
+    color: var(--text-4);
+  }
+
+  .info-row dd {
+    font-size: 12px;
+    gap: 6px;
   }
 
   .key-hint,
