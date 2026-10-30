@@ -333,12 +333,6 @@ body {
   color: var(--brand-deep);
 }
 
-.connect-foot {
-  font-size: 11.5px;
-  line-height: 18px;
-  color: var(--text-4);
-}
-
 /* ====== 服务器页骨架 ====== */
 
 .server-page {

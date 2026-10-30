@@ -235,10 +235,6 @@ export default function ConnectPage({
             </div>
           </>
         )}
-
-        <span className="connect-foot">
-          和 TeamSpeak 官方没有关系。关掉页面语音就断，网页版不后台常驻。
-        </span>
       </div>
     </div>
   );
