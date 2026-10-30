@@ -39,6 +39,32 @@ class CloudAccountStoreTest {
         store.writeIdentity(MyTsAccount.Session("new-token", "New"))
         assertNull(store.contacts(identity))
     }
+    @Test fun voiceMaterialIsSealedRestoredAndCannotCrossAccountSessions() {
+        val p = prefs(); val box = SecretBox(SoftwareKey()); val store = CloudAccountStore(p) { box }
+        // Entirely synthetic protobuf: LoginSession #9 id data, #10 certificate, #11 signed avatar.
+        val encoded = java.util.Base64.getEncoder().encodeToString(byteArrayOf(74, 5, 10, 3, 107, 101, 121,
+            82, 3, 10, 1, 99, 90, 3, 26, 1, 115))
+        val material = MyTsVoiceMaterial.decodeFromStorage(encoded)
+        store.writeIdentity(MyTsAccount.Session(account().myTsSession, "Fixture", voiceMaterial = material))
+        assertEquals(encoded, store.identity()!!.voiceMaterial!!.encodeForStorage())
+        assertFalse(p.all.values.joinToString().contains(encoded))
+        assertTrue(p.all.values.all { SecretBox.isSealed(it as String) })
+        store.write(account(), session())
+        assertEquals(encoded, store.identity()!!.voiceMaterial!!.encodeForStorage())
+        store.writeIdentity(MyTsAccount.Session("other-session", "Other"))
+        assertNull(store.identity()!!.voiceMaterial)
+        store.forget()
+        assertNull(store.identity())
+    }
+
+    @Test fun legacySessionsWithoutVoiceMaterialStillRestore() {
+        val p = prefs(); val box = SecretBox(SoftwareKey()); val store = CloudAccountStore(p) { box }
+        p.edit().putString("myts-identity", box.seal(Json.write(mapOf("token" to "legacy-token",
+            "username" to "Legacy")), "cloud/identity")).commit()
+        assertEquals("legacy-token", store.identity()!!.token)
+        assertNull(store.identity()!!.voiceMaterial)
+    }
+
     private fun prefs() = RuntimeEnvironment.getApplication().getSharedPreferences("cloud-store-test", Context.MODE_PRIVATE).also { it.edit().clear().commit() }
     private fun account() = CloudAccountTransfer("chat-2.tmspk.net", "@fixture:chat-2.tmspk.net", "private-chat-password", "private-myts-session", "Fixture")
     private fun session() = MatrixCloud.Session(account().userId, "private-matrix-token", "DEVICE_FIXTURE")

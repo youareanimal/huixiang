@@ -11,7 +11,7 @@ ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends unzip git curl ca-certificates \
+ && apt-get install -y --no-install-recommends unzip git curl ca-certificates python3 \
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p $ANDROID_HOME/cmdline-tools \

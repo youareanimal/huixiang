@@ -28,6 +28,7 @@ class CloudFriendChatControllerTest {
         var matrixCalls = 0; var createCalls = 0; var joins = 0; var receipts = 0
         var created = false; var invited = false; var joined = true
         var failSend = false; var failSync = false
+        var movedHomeserver = false; var credentialRefreshes = 0
         val sendUrls = mutableListOf<String>()
         var mapping = emptyMap<String, Any?>()
         var messages = emptyList<Any?>()
@@ -36,9 +37,23 @@ class CloudFriendChatControllerTest {
                 "content" to mapOf("membership" to if (joined) "join" else "invite", "displayname" to "Fixture", "is_direct" to true)),
             mapOf("type" to "m.room.member", "state_key" to peer, "content" to mapOf("membership" to "join", "displayname" to "好友")))
         override fun request(method: String, url: String, headers: Map<String, String>, body: ByteArray?): CloudReply {
+            if (url.endsWith("/.well-known/matrix/client")) return reply(emptyMap<String, Any?>(), 404)
+            if (url.endsWith("/tschat") && body?.decodeToString()?.contains("createAccount") == true) {
+                credentialRefreshes++
+                assertTrue("A working saved session must not refresh borrowed account credentials", movedHomeserver)
+                return CloudReply(200, bytes(1, byteArrayOf(8, 1)) + bytes(2,
+                    text(1, "chat-6.tmspk.net") + text(2, "fixture") + text(3, "refreshed-password")))
+            }
             if (url.endsWith("/tschat")) return CloudReply(200, bytes(1, text(1, "friend-id") + text(2, "好友") + text(3, peer)) + byteArrayOf(18, 2, 8, 1))
             if (URI(url).host == "clientapi.myteamspeak.com") return CloudReply(503, byteArrayOf())
             matrixCalls++
+            if (movedHomeserver && URI(url).host == domain) return reply(emptyMap<String, Any?>(), 503)
+            if (url.endsWith("/login")) {
+                val login = Json.parse(body!!.decodeToString()) as Map<*, *>
+                assertEquals("refreshed-password", login["password"])
+                assertEquals("@fixture:chat-6.tmspk.net", (login["identifier"] as Map<*, *>)["user"])
+                return reply(mapOf("user_id" to "@fixture:chat-6.tmspk.net", "access_token" to "private-matrix-token", "device_id" to "DEVICE_FIXTURE"))
+            }
             assertEquals("Bearer private-matrix-token", headers["Authorization"])
             val path = URI(url).path.removePrefix("/_matrix/client/r0")
             val data = body?.let { Json.parse(it.decodeToString()) as Map<*, *> }
@@ -92,6 +107,19 @@ class CloudFriendChatControllerTest {
             c.consumeOpenRoom(room); assertNull(c.state.value.openRoomId)
             c.openFriendChat(friend)
             assertEquals(1, server.createCalls); assertEquals(room, c.state.value.openRoomId)
+            assertEquals(0, server.credentialRefreshes)
+        } finally { c.close() }
+    }
+
+    @Test fun gatewayFailureRefreshesAStaleHomeserverOnlyFromTheAccountService() {
+        val server = Server().apply { movedHomeserver = true }; val c = controller(server)
+        try {
+            c.connectCloud()
+            assertTrue(c.state.value.cloudConnected)
+            assertEquals("@fixture:chat-6.tmspk.net", c.state.value.cloudUserId)
+            assertEquals(1, server.credentialRefreshes)
+            assertNull(c.state.value.cloudError)
+            assertTrue(c.state.value.hasAccount)
         } finally { c.close() }
     }
 

@@ -1,0 +1,702 @@
+{
+  "source": "Installed official TeamSpeak.dll static protobuf descriptors; definitions only, no account data",
+  "dllSHA256": "b4888a71b8e7a029e7124950737874e124aff7404f126ed8140b55273113edcb",
+  "protobufTypes": {
+    "9": "string",
+    "12": "bytes",
+    "4": "uint64",
+    "3": "int64",
+    "11": "message",
+    "14": "enum"
+  },
+  "definitions": [
+    {
+      "file": "client/connection.proto",
+      "package": "teamspeak.servermessages.connection",
+      "message": {
+        "name": "ClientInitRequest",
+        "fields": [
+          {
+            "name": "client_nickname",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "client_version",
+            "number": 2,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "client_platform",
+            "number": 3,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "client_input_hardware",
+            "number": 4,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "client_output_hardware",
+            "number": 5,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "client_server_password",
+            "number": 6,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "shared/client.proto",
+      "package": "teamspeak.servermessages.client",
+      "message": {
+        "name": "ClientSelfSettableProperties",
+        "fields": [
+          {
+            "name": "name",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "input_muted",
+            "number": 2,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "output_muted",
+            "number": 3,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "outputonly_muted",
+            "number": 4,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "input_deactivated",
+            "number": 5,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "meta_data",
+            "number": 6,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "away",
+            "number": 7,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "away_message",
+            "number": 8,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "flag_avatar",
+            "number": 9,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "nickname_phonetic",
+            "number": 10,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "default_token",
+            "number": 11,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "is_channel_commander",
+            "number": 12,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "badges",
+            "number": 13,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "myteamspeak_id",
+            "number": 14,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "integrations",
+            "number": 15,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "active_integrations_info",
+            "number": 16,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "signed_badges",
+            "number": 17,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "user_tag",
+            "number": 18,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "client/integration.proto",
+      "package": "teamspeak.servermessages.integration",
+      "message": {
+        "name": "UpdateMyTSIDRequest",
+        "fields": [
+          {
+            "name": "myts_id",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_user.proto",
+      "package": "com.teamspeak.myteamspeak.proto.user",
+      "message": {
+        "name": "Session",
+        "fields": [
+          {
+            "name": "session",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_user.proto",
+      "package": "com.teamspeak.myteamspeak.proto.user",
+      "message": {
+        "name": "UserBadge",
+        "fields": [
+          {
+            "name": "uuid",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "received",
+            "number": 2,
+            "label": 1,
+            "type": 3
+          },
+          {
+            "name": "name",
+            "number": 3,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "description",
+            "number": 4,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "url",
+            "number": 5,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_user.proto",
+      "package": "com.teamspeak.myteamspeak.proto.user",
+      "message": {
+        "name": "SignedUserBadge",
+        "fields": [
+          {
+            "name": "badge",
+            "number": 1,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.user.UserBadge"
+          },
+          {
+            "name": "sign",
+            "number": 2,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "sign_timestamp",
+            "number": 3,
+            "label": 1,
+            "type": 4
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_user.proto",
+      "package": "com.teamspeak.myteamspeak.proto.user",
+      "message": {
+        "name": "UserBadgesSignedResponse",
+        "fields": [
+          {
+            "name": "list",
+            "number": 1,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.user.UserBadgesSignedList"
+          },
+          {
+            "name": "error_code",
+            "number": 2,
+            "label": 1,
+            "type": 14,
+            "typeName": ".com.teamspeak.myteamspeak.proto.user.ErrorReturnCode"
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_user.proto",
+      "package": "com.teamspeak.myteamspeak.proto.user",
+      "message": {
+        "name": "UserBadgesSignedList",
+        "fields": [
+          {
+            "name": "badges",
+            "number": 1,
+            "label": 3,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.user.SignedUserBadge"
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_avatar_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "AvatarData",
+        "fields": [
+          {
+            "name": "info",
+            "number": 1,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.AvatarInfo"
+          },
+          {
+            "name": "timestamp",
+            "number": 2,
+            "label": 1,
+            "type": 4
+          },
+          {
+            "name": "sign",
+            "number": 3,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "optional",
+            "number": 4,
+            "label": 1,
+            "type": 11,
+            "typeName": ".google.protobuf.Any"
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_avatar_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "AvatarInfo",
+        "fields": [
+          {
+            "name": "map",
+            "number": 1,
+            "label": 3,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.AvatarInfo.AvatarMap"
+          }
+        ],
+        "nested": [
+          {
+            "name": "AvatarMap",
+            "fields": [
+              {
+                "name": "state",
+                "number": 1,
+                "label": 1,
+                "type": 14,
+                "typeName": ".com.teamspeak.myteamspeak.proto.AvatarState"
+              },
+              {
+                "name": "name",
+                "number": 2,
+                "label": 1,
+                "type": 9
+              }
+            ],
+            "nested": []
+          }
+        ]
+      }
+    },
+    {
+      "file": "myteamspeak_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "MyTeamSpeakIdData",
+        "fields": [
+          {
+            "name": "user_public_key",
+            "number": 1,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "user_private_key",
+            "number": 2,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.MyTeamSpeakIdData.UserPrivateKey"
+          },
+          {
+            "name": "account_creation_time",
+            "number": 3,
+            "label": 1,
+            "type": 4
+          },
+          {
+            "name": "my_teamspeak_id",
+            "number": 4,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "public_signature",
+            "number": 5,
+            "label": 1,
+            "type": 12
+          }
+        ],
+        "nested": [
+          {
+            "name": "UserPrivateKey",
+            "fields": [
+              {
+                "name": "encrypted_user_private_key",
+                "number": 1,
+                "label": 1,
+                "type": 12
+              },
+              {
+                "name": "decrypted_user_private_key",
+                "number": 2,
+                "label": 1,
+                "type": 12
+              }
+            ],
+            "nested": []
+          }
+        ]
+      }
+    },
+    {
+      "file": "myteamspeak_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "MyTSUserCertificate",
+        "fields": [
+          {
+            "name": "cert",
+            "number": 1,
+            "label": 1,
+            "type": 12
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "myteamspeak_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "LoginSession",
+        "fields": [
+          {
+            "name": "key",
+            "number": 1,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "session",
+            "number": 2,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "uuid",
+            "number": 4,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "limits",
+            "number": 3,
+            "label": 3,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.Limits"
+          },
+          {
+            "name": "purge",
+            "number": 6,
+            "label": 1,
+            "type": 3
+          },
+          {
+            "name": "addon_dev",
+            "number": 7,
+            "label": 1,
+            "type": 14,
+            "typeName": ".com.teamspeak.myteamspeak.proto.AddonDevStatus"
+          },
+          {
+            "name": "username",
+            "number": 8,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "error",
+            "number": 5,
+            "label": 1,
+            "type": 14,
+            "typeName": ".com.teamspeak.myteamspeak.proto.ErrorCommon"
+          },
+          {
+            "name": "myts_id_data",
+            "number": 9,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.MyTeamSpeakIdData"
+          },
+          {
+            "name": "mytsid_user_cert",
+            "number": 10,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.MyTSUserCertificate"
+          },
+          {
+            "name": "user_avatar",
+            "number": 11,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.AvatarData"
+          },
+          {
+            "name": "push_token",
+            "number": 12,
+            "label": 1,
+            "type": 9
+          },
+          {
+            "name": "permission",
+            "number": 13,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.Permissions"
+          },
+          {
+            "name": "user_data",
+            "number": 14,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.UserData"
+          },
+          {
+            "name": "alternative_login_info",
+            "number": 16,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.LoginSession.AlternativeLoginInformation"
+          },
+          {
+            "name": "deletion_info",
+            "number": 17,
+            "label": 1,
+            "type": 11,
+            "typeName": ".com.teamspeak.myteamspeak.proto.DeletionInfo"
+          },
+          {
+            "name": "remaining_recovery_keys",
+            "number": 18,
+            "label": 1,
+            "type": 5
+          },
+          {
+            "name": "recovery_keys_used_count",
+            "number": 19,
+            "label": 1,
+            "type": 5
+          },
+          {
+            "name": "remaining_recovery_keys_known",
+            "number": 20,
+            "label": 1,
+            "type": 8
+          },
+          {
+            "name": "recovery_key_count",
+            "number": 21,
+            "label": 1,
+            "type": 5
+          }
+        ],
+        "nested": [
+          {
+            "name": "AlternativeLoginInformation",
+            "fields": [
+              {
+                "name": "renewal_token",
+                "number": 1,
+                "label": 1,
+                "type": 9
+              },
+              {
+                "name": "otp_renewal_token",
+                "number": 2,
+                "label": 1,
+                "type": 9
+              },
+              {
+                "name": "device_id",
+                "number": 3,
+                "label": 1,
+                "type": 9
+              }
+            ],
+            "nested": []
+          }
+        ]
+      }
+    },
+    {
+      "file": "myteamspeak_common.proto",
+      "package": "com.teamspeak.myteamspeak.proto",
+      "message": {
+        "name": "Session",
+        "fields": [
+          {
+            "name": "session",
+            "number": 1,
+            "label": 1,
+            "type": 9
+          }
+        ],
+        "nested": []
+      }
+    },
+    {
+      "file": "Account_Serializing.proto",
+      "package": "com.teamspeak.account.proto",
+      "message": {
+        "name": "MyTSID_Verification_Token",
+        "fields": [
+          {
+            "name": "verification_sign",
+            "number": 1,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "sign_timestamp",
+            "number": 2,
+            "label": 1,
+            "type": 4
+          },
+          {
+            "name": "user_pub_key",
+            "number": 3,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "pub_sign",
+            "number": 4,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "pub_sign_cert",
+            "number": 5,
+            "label": 1,
+            "type": 12
+          },
+          {
+            "name": "ac_time",
+            "number": 6,
+            "label": 1,
+            "type": 4
+          },
+          {
+            "name": "mytsid",
+            "number": 7,
+            "label": 1,
+            "type": 12
+          }
+        ],
+        "nested": []
+      }
+    }
+  ]
+}

@@ -116,6 +116,7 @@ class CloudAccountController(
         val imported = CloudAccountTransfer.parse(bytes.toString(Charsets.UTF_8))
         // An existing account remains usable when parsing, encryption or connection of the replacement fails.
         val candidate = MatrixCloud(imported.domain, http)
+        candidate.discoverServer()
         val candidateSession = candidate.login(imported, deviceId)
         val first = candidate.sync(candidateSession)
         store.write(imported, candidateSession)
@@ -124,7 +125,7 @@ class CloudAccountController(
         pending.clear(); readEvents.clear()
         ConnectionEntry(app).clearGuest()
         Settings(app).applyAccountUsername(imported.username, overwrite = true)
-        identity = imported.myTsSession.takeIf { it.isNotBlank() }?.let { MyTsAccount.Session(it, imported.username) }
+        identity = store.identity()
         mutable.value = State(
             hasAccount = true, username = imported.username, busy = true, notice = "聊天配置已导入并安全保存。",
             rooms = first.rooms, directRooms = first.directRooms,
@@ -329,23 +330,44 @@ class CloudAccountController(
 
     fun connectCloud() = cloudOperation { connectCloudNow() }
     private fun connectCloudNow() {
-        val updated = account ?: run {
+        fun freshCredentials(): CloudAccountTransfer {
             val current = identity ?: throw CloudFailure("MYTS_103")
-            val credentials = MyTsAccount(http).chatCredentials(current)
-            CloudAccountTransfer(credentials.domain, credentials.userId, credentials.password, current.token, current.username)
+            val credentials = chatStage("CREDENTIALS") { MyTsAccount(http).chatCredentials(current) }
+            return CloudAccountTransfer(credentials.domain, credentials.userId, credentials.password, current.token, current.username)
         }
-        val candidate = MatrixCloud(updated.domain, http)
-        val saved = store.session(updated.userId, deviceId)
-        var candidateSession = saved ?: candidate.login(updated, deviceId)
-        val first = try { candidate.sync(candidateSession) } catch (e: CloudFailure) {
-            if (e.code != "M_UNKNOWN_TOKEN" || saved == null) throw e
-            candidateSession = candidate.login(updated, deviceId)
-            candidate.sync(candidateSession)
+        fun connect(value: CloudAccountTransfer): Triple<MatrixCloud, MatrixCloud.Session, MatrixCloud.Snapshot> {
+            val candidate = MatrixCloud(value.domain, http)
+            candidate.discoverServer()
+            val saved = store.session(value.userId, deviceId)
+            var candidateSession = saved ?: chatStage("LOGIN") { candidate.login(value, deviceId) }
+            val first = try { chatStage("SYNC") { candidate.sync(candidateSession) } } catch (e: CloudFailure) {
+                if (e.code != "M_UNKNOWN_TOKEN" || saved == null) throw e
+                candidateSession = chatStage("LOGIN") { candidate.login(value, deviceId) }
+                chatStage("SYNC") { candidate.sync(candidateSession) }
+            }
+            return Triple(candidate, candidateSession, first)
+        }
+        val cached = account
+        var updated = cached ?: freshCredentials()
+        val (candidate, candidateSession, first) = try { connect(updated) } catch (e: CloudFailure) {
+            // Keep valid saved Matrix sessions usable even if an imported myTS session has expired. Only a failed
+            // explicit connection needs to refresh persisted routing/credentials from the account service.
+            if (cached == null || identity == null || !e.code.matches(Regex("CHAT_(LOGIN|SYNC)_(HTTP_50[234]|NETWORK)"))) throw e
+            val fresh = freshCredentials()
+            if (fresh.domain == updated.domain && fresh.userId == updated.userId && fresh.password == updated.password) throw e
+            updated = fresh
+            connect(updated)
         }
         store.write(updated, candidateSession)
         account = updated; api = candidate; session = candidateSession; cursor = first.cursor
         mutable.update { it.copy(cloudConnected = true, cloudUserId = candidateSession.userId, cloudError = null,
             rooms = first.rooms, directRooms = first.directRooms) }
+    }
+
+    private inline fun <T> chatStage(stage: String, block: () -> T): T = try { block() } catch (e: CloudFailure) {
+        if (e.code in setOf("HTTP_502", "HTTP_503", "HTTP_504", "NETWORK"))
+            throw CloudFailure("CHAT_${stage}_${e.code}")
+        throw e
     }
 
     fun forget() = operation {

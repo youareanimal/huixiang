@@ -1,0 +1,28 @@
+name: Verify synthetic TS6 voice signing vectors
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Compare synthetic signatures with pinned public beta5
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p extracted evidence
+          curl --fail --show-error --location --max-time 180 --retry 2 -o client.tar.xz https://files.teamspeak-services.com/pre_releases/client/6.0.0-beta5/teamspeak-client.tar.xz
+          echo '394472a25ee9c2419c44a5e71a401c21bffecf2fdcb27fbe2173d0fffd1875a4  client.tar.xz' | sha256sum -c -
+          tar -xJf client.tar.xz -C extracted
+          echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  extracted/TeamSpeak' | sha256sum -c -
+          python3 scripts/research/myts-native-vectors.py extracted/TeamSpeak > evidence/native-vectors.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: TS6-synthetic-signing-vectors
+          path: evidence/native-vectors.json
+          retention-days: 7
