@@ -23,7 +23,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import subprocess, shutil
-          markers = [b'MyTSID_Verification_Token', b'verification_sign', b'updatemytsid']
+          markers = [b'MyTSID_Verification_Token', b'updatemytsid']
           for path in Path('extracted').rglob('*'):
               if not path.is_file(): continue
               with path.open('rb') as f:
@@ -38,7 +38,7 @@ jobs:
               strings = subprocess.run(['strings','-t','x',str(path)], capture_output=True, text=True)
               Path('evidence', stem + '.strings.txt').write_text('\n'.join(s for s in strings.stdout.splitlines() if any(m in s.lower() for m in ['myts','myteam','badge','avatar','ed25519','verification'])))
           PY
-          tar -cJf native.tar.xz -C native .
+          tar -cf - -C native . | xz -1 > native.tar.xz
           split -b 24M -d native.tar.xz native-part-
           ls -lh native-part-*
       - uses: actions/upload-artifact@v7
