@@ -9,6 +9,8 @@ import io.github.korppujauho.pocketts.proto.Commands
 import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.MessageText
+import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
+import io.github.korppujauho.pocketts.proto.MyTsAccount
 import io.github.korppujauho.pocketts.proto.ServerAddress
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
@@ -113,6 +115,7 @@ object Session : TsClient.Listener {
     private lateinit var app: Context
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "session").apply { isDaemon = true } }
     private var client: TsClient? = null
+    @Volatile private var voiceAccount: MyTsAccount.Session? = null
     @Volatile private var files: FileTransfer? = null
     private var engine: StreamEngine? = null
 
@@ -343,6 +346,14 @@ object Session : TsClient.Listener {
                 restoreHistory(address)
             }
             startAudio()
+            val accountIdentity = try {
+                voiceAccount = CloudAccountStore(cloudSecretPrefs(app)).identity()
+                voiceAccount?.let { MyTsVoiceIdentity.fromSession(it) }
+            } catch (_: Exception) {
+                voiceAccount = null
+                AppLog.log("myTeamSpeak voice identity unavailable (MYTS_VOICE_IDENTITY_INVALID)")
+                null
+            }
             client = TsClient(this) { AppLog.log(it) }.also {
                 files = FileTransfer(it, portOverride = filePort)
                 it.connect(
@@ -350,6 +361,7 @@ object Session : TsClient.Listener {
                         host = target.host, port = target.port, identity = identity,
                         nickname = nickname.ifBlank { "PocketTS user" }, serverPassword = serverPassword,
                         defaultChannel = t.channel, defaultChannelPassword = t.channelPassword,
+                        myTsIdentity = accountIdentity,
                     )
                 )
             }
@@ -800,6 +812,17 @@ object Session : TsClient.Listener {
 
     override fun onConnected(clientId: Int) {
         AppLog.log("Connected as client $clientId")
+        val connectedClient = client
+        val connectedAccount = voiceAccount
+        if (connectedClient != null && connectedAccount != null) worker.execute {
+            try {
+                val data = MyTsAccount().voiceData(connectedAccount)
+                if (client === connectedClient && voiceAccount === connectedAccount &&
+                    CloudAccountStore(cloudSecretPrefs(app)).identity()?.token == connectedAccount.token) {
+                    data?.let { connectedClient.sendMyTsData(it) }
+                }
+            } catch (_: Exception) { AppLog.log("myTeamSpeak metadata unavailable (MYTS_VOICE_DATA_UNAVAILABLE)") }
+        }
         val s = _state.value
         retries = 0
         oldWaits = 0

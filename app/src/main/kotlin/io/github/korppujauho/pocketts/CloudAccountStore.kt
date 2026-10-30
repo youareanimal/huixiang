@@ -8,6 +8,7 @@ import io.github.korppujauho.pocketts.proto.MatrixCloud
 import io.github.korppujauho.pocketts.proto.MyTsAccount
 import io.github.korppujauho.pocketts.proto.MyTsBookmarks
 import io.github.korppujauho.pocketts.proto.MyTsProfile
+import io.github.korppujauho.pocketts.proto.MyTsVoiceMaterial
 import java.util.Base64
 
 /** Both secrets are sealed before a replacement is committed; encryption failures never save plaintext. */
@@ -23,8 +24,12 @@ class CloudAccountStore(private val prefs: SharedPreferences, private val box: (
         val key = if (encodedKey.isNullOrEmpty()) null else try {
             Base64.getDecoder().decode(encodedKey).also { if (it.size != 32) throw CloudFailure("LOCAL_STORE") }
         } catch (_: Exception) { throw CloudFailure("LOCAL_STORE") }
+        val material = (data["voiceMaterial"] as? String)?.let {
+            try { MyTsVoiceMaterial.decodeFromStorage(it) } catch (_: Exception) { throw CloudFailure("LOCAL_STORE") }
+        }
         return MyTsAccount.Session(token, username, key, bookmarkKeyError = data["bookmarkKeyError"] as? String,
-            email = data["email"] as? String ?: "")
+            email = data["email"] as? String ?: "", voiceMaterial = material,
+            voiceMaterialError = data["voiceMaterialError"] as? String)
     }
 
     /** Commit account authentication without needing any chat service. Clear the previous account's chat secrets. */
@@ -38,7 +43,9 @@ class CloudAccountStore(private val prefs: SharedPreferences, private val box: (
     private fun sealIdentity(identity: MyTsAccount.Session) = box().seal(
         Json.write(mapOf("token" to identity.token, "username" to identity.username,
             "syncKey" to identity.syncKey?.let { Base64.getEncoder().encodeToString(it) },
-            "bookmarkKeyError" to identity.bookmarkKeyError, "email" to identity.email)), "cloud/identity")
+            "bookmarkKeyError" to identity.bookmarkKeyError, "email" to identity.email,
+            "voiceMaterial" to identity.voiceMaterial?.encodeForStorage(),
+            "voiceMaterialError" to identity.voiceMaterialError)), "cloud/identity")
 
     fun profile(identity: MyTsAccount.Session): MyTsProfile.Data? {
         val stored = prefs.getString("myts-profile", null) ?: return null

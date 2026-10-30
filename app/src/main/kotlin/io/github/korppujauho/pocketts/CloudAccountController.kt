@@ -125,7 +125,7 @@ class CloudAccountController(
         pending.clear(); readEvents.clear()
         ConnectionEntry(app).clearGuest()
         Settings(app).applyAccountUsername(imported.username, overwrite = true)
-        identity = imported.myTsSession.takeIf { it.isNotBlank() }?.let { MyTsAccount.Session(it, imported.username) }
+        identity = store.identity()
         mutable.value = State(
             hasAccount = true, username = imported.username, busy = true, notice = "聊天配置已导入并安全保存。",
             rooms = first.rooms, directRooms = first.directRooms,
