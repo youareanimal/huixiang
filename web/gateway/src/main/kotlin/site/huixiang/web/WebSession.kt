@@ -54,8 +54,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
          */
         private val banners = ConcurrentHashMap<String, WebSession>()
 
-        /** A banner is an image the server's owner uploaded; anything past this is not a banner. */
-        private const val MAX_BANNER_BYTES = 2L * 1024 * 1024
+        /** Same ceiling tsproto applies to pictures in the chat: a banner is one of those files. */
+        private const val MAX_BANNER_BYTES = Pictures.PICTURE_MAX_BYTES
 
         fun byBanner(id: String): WebSession? = banners[id]
     }
