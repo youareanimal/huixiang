@@ -11,7 +11,8 @@ import javax.crypto.spec.PBEKeySpec
 /** Account authentication and contact listing, independently implemented from observed wire fields. */
 class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
     class Session(val token: String, val username: String, val syncKey: ByteArray? = null,
-        internal val wrappedSyncKey: ByteArray? = null, val bookmarkKeyError: String? = null, val email: String = "") {
+        internal val wrappedSyncKey: ByteArray? = null, val bookmarkKeyError: String? = null, val email: String = "",
+        val voiceMaterial: MyTsVoiceMaterial? = null, val voiceMaterialError: String? = null) {
         override fun toString() = "MyTsSession(redacted)"
     }
     class ChatCredentials(val domain: String, val username: String, val password: String) {
@@ -52,15 +53,18 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
         val result = loginDigest(email.trim(), passwordDigest(email.trim(), password), otp, deviceId)
         val wrapped = result.wrappedSyncKey
         if (wrapped == null || wrapped.isEmpty())
-            return Session(result.token, result.username, bookmarkKeyError = "BOOKMARK_KEY_MISSING", email = email.trim())
+            return Session(result.token, result.username, bookmarkKeyError = "BOOKMARK_KEY_MISSING", email = email.trim(),
+                voiceMaterial = result.voiceMaterial, voiceMaterialError = result.voiceMaterialError)
         var passwordKey: ByteArray? = null
         return try {
             passwordKey = try { MyTsBookmarks.encryptionPassword(email.trim(), password) }
                 catch (_: Exception) { throw CloudFailure("BOOKMARK_KDF_UNAVAILABLE") }
-            Session(result.token, result.username, MyTsBookmarks.unlockKey(wrapped, passwordKey), email = email.trim())
+            Session(result.token, result.username, MyTsBookmarks.unlockKey(wrapped, passwordKey), email = email.trim(),
+                voiceMaterial = result.voiceMaterial, voiceMaterialError = result.voiceMaterialError)
         } catch (e: CloudFailure) {
             // Preserve the exact safe error instead of asking for another login after every failure.
-            Session(result.token, result.username, bookmarkKeyError = e.code, email = email.trim())
+            Session(result.token, result.username, bookmarkKeyError = e.code, email = email.trim(),
+                voiceMaterial = result.voiceMaterial, voiceMaterialError = result.voiceMaterialError)
         } finally { passwordKey?.fill(0) }
     }
 
@@ -73,7 +77,14 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
         if (code != 200L) throw CloudFailure("MYTS_${code ?: 0}")
         val token = fields.string(2)
         if (token.isBlank()) throw CloudFailure("MYTS_NO_SESSION")
-        return Session(token, fields.string(8), wrappedSyncKey = fields.firstOrNull { it.number == 1 }?.bytes, email = email.trim())
+        var materialError: String? = null
+        val material = try { MyTsVoiceMaterial.fromLogin(fields) } catch (_: Exception) {
+            // Optional voice material must not turn a valid account login into an authentication failure.
+            materialError = "MYTS_VOICE_MATERIAL_INVALID"
+            null
+        }
+        return Session(token, fields.string(8), wrappedSyncKey = fields.firstOrNull { it.number == 1 }?.bytes,
+            email = email.trim(), voiceMaterial = material, voiceMaterialError = materialError)
     }
 
     fun valid(session: Session): Boolean =
