@@ -1,0 +1,28 @@
+# Newer versions of what PocketTS is built from, as pull requests. Small updates come together in one pull request per
+# kind; a major version (which may need changes) comes on its own. Security fixes come as soon as they're known
+# (Dependabot security updates, on in the repository's settings), not on this schedule.
+version: 2
+updates:
+  # The libraries and Gradle plugins (gradle/libs.versions.toml)
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      libraries:
+        update-types: [minor, patch]
+
+  # The actions the workflows use
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        update-types: [minor, patch]
+
+  # The build image's base (Java)
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: monthly

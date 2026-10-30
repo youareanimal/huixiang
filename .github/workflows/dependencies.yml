@@ -1,0 +1,30 @@
+# The libraries PocketTS is built from, sent to GitHub's dependency graph: GitHub doesn't read Gradle builds by itself,
+# so without this Dependabot alerts (known vulnerabilities) wouldn't see most of them.
+name: Dependencies
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "**/*.gradle.kts"
+      - "gradle/**"
+      - ".github/workflows/dependencies.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write  # sending the list
+
+jobs:
+  submit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/dependency-submission@v6
+        with:
+          # Only what goes into the app, not the build's own tools
+          dependency-graph-include-configurations: ".*[rR]untimeClasspath"

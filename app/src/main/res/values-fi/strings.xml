@@ -1,0 +1,557 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Finnish. TeamSpeak's own words follow the TeamSpeak 5 client's Finnish translation (MIT), see TRANSLATIONS.md. -->
+<resources>
+    <!-- Shared -->
+    <string name="cancel">Peruuta</string>
+    <string name="save">Tallenna</string>
+    <string name="delete">Poista</string>
+    <string name="edit">Muokkaa</string>
+    <string name="remove">Poista</string>
+    <string name="close">Sulje</string>
+    <string name="advanced">Lisäasetukset</string>
+    <string name="connect">Yhdistä</string>
+    <string name="link_title">Yhdistetäänkö palvelimeen %1$s?</string>
+    <string name="link_subtitle">TeamSpeak-linkistä</string>
+    <string name="link_channel">Kanava</string>
+    <string name="link_password">Palvelimen salasana</string>
+    <string name="link_password_given">linkissä</string>
+    <string name="link_leaving">Poistut ensin palvelimelta %1$s.</string>
+    <string name="link_use_key">Käytä linkin oikeusavainta</string>
+    <string name="link_use_key_desc">Se antaa sinulle oikeuksia tällä palvelimella, kuten ylläpitäjän. Käytä sitä vain, jos luotat linkin lähettäjään.</string>
+    <string name="disconnect">Katkaise</string>
+    <string name="nickname">Nimimerkki</string>
+    <string name="server_address">Palvelimen osoite tai nimimerkki</string>
+    <string name="server_password">Palvelimen salasana</string>
+    <string name="remember_password">Muista salasana</string>
+    <string name="channel_password">Kanavan salasana</string>
+    <string name="join">Liity</string>
+
+    <!-- Connect screen -->
+    <string name="favourites">Suosikit</string>
+    <string name="connect_title">Yhdistä palvelimeen</string>
+    <string name="favourites_in">Suosikeissa</string>
+    <string name="favourites_save">Tallenna suosikkeihin</string>
+    <string name="favourite_edit">Muokkaa suosikkia</string>
+    <string name="favourite_add">Lisää suosikkeihin</string>
+    <string name="favourite_name">Nimi listoissasi</string>
+    <string name="favourite_nickname">Nimimerkkisi tällä palvelimella</string>
+    <string name="favourite_auto">Yhdistä automaattisesti, kun sovellus avataan</string>
+    <string name="favourite_file_port">Tiedonsiirron portti</string>
+    <string name="favourite_file_port_hint">Palvelimen oma (yleensä 30033)</string>
+    <string name="favourite_file_port_desc">Vain jos palvelimen kuvat ja profiilikuvat eivät lataudu: sen tiedonsiirto on toisessa portissa.</string>
+    <string name="update_title">回响 %1$s on julkaistu</string>
+    <string name="update_text">Tätä (%1$s) uudempi versio on GitHubissa.</string>
+    <string name="not_now">Ei nyt</string>
+    <string name="download">Lataa</string>
+
+    <!-- Server screen: header and controls -->
+    <string name="settings">Asetukset</string>
+    <string name="hold_to_talk">Pidä pohjassa puhuaksesi</string>
+    <string name="microphone">Mikrofoni</string>
+    <string name="sound">Ääni</string>
+    <string name="share">Jaa</string>
+
+    <!-- Channel list -->
+    <string name="channel_has_password">Salasana</string>
+    <string name="person_sound_off">Ääni pois</string>
+    <string name="person_mic_off">Mikrofoni pois</string>
+    <string name="person_cant_talk">Ei voi puhua tällä kanavalla</string>
+    <string name="person_streaming">Striimaa</string>
+    <string name="tag_afk">AFK</string>
+    <string name="tag_you">SINÄ</string>
+
+    <!-- Chat -->
+    <string name="event_connected">%1$s yhdisti palvelimelle</string>
+    <string name="event_joined_from">%1$s tuli kanavalta %2$s</string>
+    <string name="event_you_moved_to">Sinut siirrettiin kanavalle %1$s</string>
+    <string name="event_you_kicked_from">Sinut potkaistiin kanavalta %1$s</string>
+    <string name="event_moved_here_from">%1$s siirrettiin tänne kanavalta %2$s</string>
+    <string name="event_kicked_from">%1$s potkaistiin kanavalta %2$s</string>
+    <string name="event_moved_to">%1$s siirrettiin kanavalle %2$s</string>
+    <string name="event_kicked_from_channel">%1$s potkaistiin kanavalta</string>
+    <string name="event_left_to">%1$s siirtyi kanavalle %2$s</string>
+    <string name="event_you_kicked_from_server">Sinut potkaistiin palvelimelta</string>
+    <string name="event_you_banned">Sait porttikiellon</string>
+    <string name="event_lost_connection">%1$s menetti yhteyden</string>
+    <string name="event_kicked_from_server">%1$s potkaistiin palvelimelta</string>
+    <string name="event_banned">%1$s sai porttikiellon</string>
+    <string name="event_disconnected">%1$s katkaisi yhteyden</string>
+    <string name="event_by">" (tekijä: %1$s)"</string>
+    <string name="event_because">" (%1$s)"</string>
+    <string name="event_another_channel">(nimetön)</string>
+    <string name="chat_channel">Kanava</string>
+    <string name="chat_empty_channel">Tällä kanavalla ei ole vielä viestejä.</string>
+    <string name="chat_empty_private">Ei vielä viestejä.</string>
+    <string name="chat_message_to">Viesti: %1$s…</string>
+    <string name="chat_message_to_channel">Viesti kanavalle…</string>
+    <string name="chat_message_to_them">Viesti hänelle…</string>
+    <string name="chat_system">Järjestelmä</string>
+    <string name="chat_link_open">Avaa: %1$s</string>
+    <plurals name="chat_pictures_max">
+        <item quantity="one">Enintään %1$d kuva kerrallaan.</item>
+        <item quantity="other">Enintään %1$d kuvaa kerrallaan.</item>
+    </plurals>
+    <string name="chat_camera_needed">Kuvan ottamiseen tarvitaan lupa kameraan.</string>
+    <string name="chat_sending_picture">Lähetetään kuvaa %1$d/%2$d…</string>
+    <string name="chat_attached_picture">Liitetty kuva</string>
+    <string name="chat_remove_picture">Poista kuva</string>
+    <string name="chat_send_picture">Lähetä kuva</string>
+    <string name="chat_choose_pictures">Valitse kuvia</string>
+    <string name="chat_take_photo">Ota kuva</string>
+    <string name="chat_send">Lähetä</string>
+
+    <!-- A picture on the whole screen -->
+    <string name="picture_save">Tallenna galleriaan</string>
+    <string name="picture_saved">Tallennettu: %1$s</string>
+    <string name="picture_failed">Se ei onnistunut: %1$s</string>
+
+    <!-- Streams: watching -->
+    <string name="stream_watch">KATSO</string>
+    <string name="stream_small_window">Pieni ikkuna</string>
+    <string name="stream_full_screen">Koko näyttö</string>
+    <string name="stream_resize">Vedä muuttaaksesi striimin kokoa</string>
+    <string name="stream_mini">Pieni striimi: napauta suurentaaksesi, vedä siirtääksesi</string>
+    <string name="stream_leave_full_screen">Poistu koko näytöstä</string>
+    <string name="stream_stop_watching">Lopeta katselu</string>
+    <string name="stream_sound_on">Ääni päälle</string>
+    <string name="stream_sound_off">Ääni pois</string>
+    <string name="stream_requesting">Pyydetään lupaa…</string>
+    <string name="stream_connecting">Yhdistetään…</string>
+    <string name="stream_paused">Tauolla</string>
+    <string name="stream_waiting_picture">Yhdistetty, odotetaan kuvaa…</string>
+    <string name="stream_trying">Yhteysongelma, yritetään yhä…</string>
+    <string name="stream_connection_lost">Yhteys katkesi.</string>
+    <string name="stream_open_failed">Striimiä ei voitu avata.</string>
+    <string name="stream_denied">Striimin katselupyyntö hylättiin.</string>
+    <string name="stream_ended">Striimi päättyi.</string>
+    <string name="stream_ended_left_channel">Striimi päättyi (et ole enää samalla kanavalla).</string>
+
+    <!-- Streams: sharing -->
+    <string name="share_camera_title">Jaa kamerasi</string>
+    <string name="share_screen_title">Jaa näyttösi</string>
+    <string name="share_subtitle">Kaikki kanavallasi voivat katsoa</string>
+    <string name="start">Aloita</string>
+    <string name="stop">Lopeta</string>
+    <string name="share_what">Mitä</string>
+    <string name="share_camera">Kamera</string>
+    <string name="share_screen">Näyttö</string>
+    <string name="share_both_cameras">Molemmat kamerat</string>
+    <string name="camera_front">Etu</string>
+    <string name="camera_back">Taka</string>
+    <string name="camera_both">Molemmat</string>
+    <string name="share_both_desc">Takakamera isona, etukamera pienenä kulmassa. Vaihda-painike vaihtaa ne päittäin.</string>
+    <string name="share_quality">Laatu</string>
+    <string name="share_quality_480">Datansäästö: vähiten dataa, mobiiliverkkoihin.</string>
+    <string name="share_quality_720">HD: tarkka ja riittävän kevyt useimmille yhteyksille.</string>
+    <string name="share_quality_1080">Full HD: tarkin, vaatii hyvän yhteyden molemmissa päissä.</string>
+    <string name="share_sound">Striimin ääni</string>
+    <string name="share_sound_on_desc">Katsojat kuulevat mikrofonisi kuvan kanssa. Se hiljenee, kun mikrofonisi on mykistetty ja kun puhut kanavalla, jotta sinua ei kuulla kahdesti.</string>
+    <string name="share_sound_off_desc">Kuva ilman ääntä: puhu kanavalla tavalliseen tapaan.</string>
+    <string name="share_screen_sound">Puhelimen ääni</string>
+    <string name="share_screen_sound_on_desc">Katsojat kuulevat, mitä puhelimesi toistaa, kuten videon tai pelin. Jotkin sovellukset eivät salli sitä ja pysyvät hiljaa. Kanavan äänet eivät tule mukaan.</string>
+    <string name="share_screen_sound_off_desc">Kuva ilman ääntä.</string>
+    <string name="share_screen_sound_watching">Ei käytettävissä, kun katsot striimiä: lopeta katselu, niin voit jakaa myös puhelimen äänen.</string>
+    <string name="share_screen_desc">Android kysyy vielä kerran ennen aloitusta. Kaikki näytölläsi näkyvä näytetään, myös ilmoitukset.</string>
+    <string name="share_sound_quiet">Striimin ääni hiljaa</string>
+    <string name="share_sound_live">Striimin ääni päällä</string>
+    <string name="share_starting">aloitetaan…</string>
+    <string name="share_paused_call">tauolla puhelun ajan</string>
+    <string name="share_watching">Katsojia</string>
+    <string name="share_swap_cameras">Vaihda kamerat päittäin</string>
+    <string name="share_switch_camera">Vaihda kameraa</string>
+    <string name="share_turn_locked">Asento lukittu (napauta: seuraa puhelinta)</string>
+    <string name="share_turn_follows">Asento seuraa puhelinta (napauta: lukitse)</string>
+    <string name="share_light_on">Rengasvalo päällä (napauta: pois)</string>
+    <string name="share_light_off">Rengasvalo: kirkas valkoinen näyttö valaisee kasvosi</string>
+    <string name="share_both_unsupported">Tämä puhelin ei voi käyttää molempia kameroita yhtä aikaa.</string>
+    <string name="share_failed">Jakamista ei voitu aloittaa.</string>
+    <string name="share_refused">TeamSpeak hylkäsi jakamisen: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_general">Yleiset</string>
+    <string name="settings_playback">Toisto</string>
+    <string name="settings_capture">Äänitys</string>
+    <string name="settings_ui">Käyttöliittymä</string>
+    <string name="settings_save">Tallenna ja ota käyttöön</string>
+    <string name="cant_be_undone">Tätä ei voi perua</string>
+    <string name="quiet">Hiljaa</string>
+    <string name="loud">Kovaa</string>
+
+    <!-- Settings › General -->
+    <string name="avatar_title">Profiilikuva</string>
+    <string name="avatar_change">Vaihda</string>
+    <string name="avatar_desc">Muut näkevät sen tällä palvelimella. Se sovitetaan kokoon 320 × 320.</string>
+    <string name="general_floating_ptt">Kelluva puhepainike</string>
+    <string name="general_floating_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike pysyy 回响:n näytön alareunassa, joten voit puhua selatessasi keskustelua. Painike muiden sovellusten päällä (alla) on erillinen asetus.</string>
+    <string name="general_overlay_ptt">Puhepainike muiden sovellusten päällä</string>
+    <string name="general_overlay_ptt_desc">Paina puhuaksesi -tilassa pyöreä painike näkyy, kun siirryt muihin sovelluksiin (ei itse 回响:ssä). Pidä sitä pohjassa puhuaksesi, vedä siirtääksesi. Android pyytää kerran luvan näyttää 回响 muiden sovellusten päällä.</string>
+    <string name="general_volume_ptt">Äänenvoimakkuuspainikkeet ovat puhepainikkeita</string>
+    <string name="general_volume_ptt_desc">Paina puhuaksesi -tilassa äänenvoimakkuuspainikkeen pitäminen pohjassa lähettää puhetta, kun sovellus on näytöllä (äänenvoimakkuuden muuttamisen sijaan).</string>
+    <string name="general_headset_ptt">Kuulokkeiden painike on puhepainike</string>
+    <string name="general_headset_ptt_desc">Paina puhuaksesi -tilassa kuulokkeidesi painike aloittaa puhumisen ja toinen painallus lopettaa sen. Toimii myös näytön ollessa pois päältä. Kun tämä on päällä, painike ei toista eikä keskeytä musiikkia.</string>
+    <string name="general_call_mute">Mykistä puhelun ajaksi</string>
+    <string name="general_call_mute_desc">Kun puhelin soi tai puhelu alkaa, mikrofoni ja ääni menevät pois päältä (myös katsomasi striimin ääni) ja palaavat, kun puhelu päättyy. Jakamasi striimi tauotetaan, jotta katsojat eivät näe puhelua. Itse mykistämäsi pysyy mykistettynä.</string>
+    <string name="general_updates">Tarkista päivitykset</string>
+    <string name="general_updates_desc">Kerran päivässä 回响 kysyy GitHubilta, onko uudempi versio julkaistu, ja kertoo siitä yhdistämisnäkymässä. Sinusta ei lähetetä mitään.</string>
+    <string name="general_screen_on">Pidä näyttö päällä</string>
+    <string name="general_screen_on_desc">Näyttö ei sammu, kun olet yhdistettynä ja sovellus on auki. Kun jaat tai katsot striimiä, se pysyy päällä joka tapauksessa.</string>
+    <string name="general_spacers">Salli liittyminen välikappaleisiin</string>
+    <string name="general_spacers_desc">Välikappaleen (kanavalistan erotinviivan tai otsikon) napauttaminen liittyy siihen kuten mihin tahansa kanavaan. Jotkin palvelimet käyttävät sellaista AFK-kanavanaan. Pois päältä välikappaleisiin ei voi liittyä vahingossa napauttamalla.</string>
+    <string name="history_title">Keskusteluhistoria</string>
+    <string name="history_desc">Kanavakeskustelut, yksityiset keskustelut ja tiedot liittyneistä ja poistuneista säilytetään tässä puhelimessa salattuina, ja ne näytetään uudelleen, kun yhdistät samaan palvelimeen: viimeiset %1$s, enintään %2$s keskustelua kohden. Tökkäyksiä ei säilytetä.</string>
+    <plurals name="history_days">
+        <item quantity="one">%1$d päivä</item>
+        <item quantity="other">%1$d päivää</item>
+    </plurals>
+    <plurals name="history_lines">
+        <item quantity="one">%1$d rivi</item>
+        <item quantity="other">%1$d riviä</item>
+    </plurals>
+    <string name="history_clear">Tyhjennä keskusteluhistoria</string>
+    <string name="history_cleared">Tyhjennetty.</string>
+    <string name="history_clear_title">Tyhjennetäänkö keskusteluhistoria?</string>
+    <string name="history_clear_button">Tyhjennä</string>
+    <string name="history_clear_desc">Kaikkien palvelimien tallennetut keskustelut poistetaan tästä puhelimesta, samoin nyt näytöllä oleva keskustelu.</string>
+
+    <!-- Settings › Playback -->
+    <string name="playback_voice_volume">Puheen äänenvoimakkuus</string>
+    <string name="playback_test_sound">Toista testiääni</string>
+    <string name="playback_event_sounds">Tapahtumaäänet</string>
+    <string name="playback_event_sounds_desc">Lyhyet äänet, kun joku tulee kanavallesi tai poistuu siltä, viesteistä, tökkäyksistä ja striimeistä sekä mikrofoni- ja äänipainikkeista.</string>
+    <string name="playback_sound_volume">Äänien voimakkuus</string>
+    <string name="playback_play_sound">Toista ääni</string>
+    <string name="playback_call_volume">Kun kaiunpoisto on päällä, äänet seuraavat puhelun äänenvoimakkuutta: paina äänenvoimakkuuspainiketta yhdistettynä.</string>
+    <string name="playback_media_volume">Äänet seuraavat median äänenvoimakkuutta.</string>
+
+    <!-- Settings › Capture -->
+    <string name="capture_mic_volume">Mikrofonin äänenvoimakkuus</string>
+    <string name="capture_activation">Aktivointi</string>
+    <string name="capture_vad">Puheaktivointi</string>
+    <string name="capture_ptt">Paina puhuaksesi</string>
+    <string name="capture_continuous">Jatkuva lähetys</string>
+    <string name="capture_ptt_desc">Pidä \"Pidä pohjassa puhuaksesi\" -painiketta pohjassa puhuessasi.</string>
+    <string name="capture_level">Taso</string>
+    <string name="capture_level_desc">Palkki näyttää mikrofonisi tason, kun nämä asetukset ovat auki; sillä välin mitään ei lähetetä.</string>
+    <string name="capture_vad_level">Puheaktivoinnin taso</string>
+    <string name="capture_vad_level_desc">Liu\'uta oikealle estääksesi taustamelun. Jos äänesi katkeilee, liu\'uta vasemmalle.</string>
+    <string name="capture_vad_delay">Viive ennen katkaisua</string>
+    <string name="capture_processing">Signaalinkäsittely</string>
+    <string name="capture_noise">Poista taustamelu</string>
+    <string name="capture_echo">Kaiunpoisto</string>
+    <string name="capture_agc">Automaattinen vahvistuksen säätö</string>
+    <string name="capture_echo_desc">Kaiunpoisto toistaa äänet kuin puhelussa (kaiuttimesta tai kuulokemikrofonista). Kytke se pois, niin saat parhaan äänen kuulokkeilla.</string>
+
+    <!-- Settings › UI -->
+    <string name="ui_admin">Näytä ylläpitotoiminnot</string>
+    <string name="ui_controls_bottom">Painikkeet alareunassa</string>
+    <string name="ui_controls_bottom_desc">Mikrofoni-, ääni- ja jakopainikkeet sekä Kanavat/Keskustelu-valitsin ovat näytön alareunassa, peukalosi ulottuvilla.</string>
+    <string name="ui_language">Kieli</string>
+    <string name="ui_language_phone">Puhelimen kieli</string>
+    <string name="ui_admin_desc">Henkilön valikossa voi myös siirtää hänet toiselle kanavalle, potkaista hänet kanavalta tai palvelimelta ja antaa porttikiellon. Palvelin päättää, onko sinulla lupa: ilman käyttöoikeutta se kieltäytyy.</string>
+
+    <!-- Settings › Advanced -->
+    <string name="relay_title">Videoyhteys</string>
+    <string name="relay_desc">Striimit kulkevat suoraan sinun ja toisen pään välillä. Joidenkin verkkojen takaa ne tarvitsevat välityspalvelimen (TURN-palvelin): syötä se tähän, jos sinulla on sellainen.</string>
+    <string name="relay_address">Välityspalvelin (turn:osoite:portti)</string>
+    <string name="relay_user">Välityspalvelimen käyttäjänimi</string>
+    <string name="relay_password">Välityspalvelimen salasana</string>
+    <string name="relay_only">Aina välityspalvelimen kautta</string>
+    <string name="advanced_file_port">Palvelimelle, jonka tiedonsiirto on toisessa portissa (sen kuvat ja profiilikuvat eivät lataudu), voi asettaa oman portin suosikin Lisäasetukset-osassa.</string>
+    <string name="passwords_title">Kanavien salasanat</string>
+    <string name="passwords_desc">Muistettaviksi valitsemasi salasanat liittävät kanaville yhdellä napautuksella. Ne säilytetään tässä puhelimessa salattuina.</string>
+    <string name="passwords_forget">Unohda tallennetut salasanat</string>
+    <string name="passwords_forgotten">Unohdettu.</string>
+    <string name="identity_title">TeamSpeak-identiteetti</string>
+    <string name="identity_desc">Identiteettisi on se, kuka olet palvelimille (ryhmäsi ja käyttöoikeutesi). Pidä siitä kopio tai käytä toisen TeamSpeak-sovelluksen identiteettiä.</string>
+    <string name="identity_wipe">Poista</string>
+    <string name="identity_export">Vie</string>
+    <string name="identity_import">Tuo</string>
+    <string name="identity_imported">Tuotu. Se otetaan käyttöön seuraavasta yhdistämisestä.</string>
+    <string name="identity_saved">Tallennettu. Säilytä tiedosto paikassa, johon vain sinä pääset.</string>
+    <string name="identity_wiped">Poistettu. Uusi identiteetti luodaan seuraavalla yhdistämiskerralla.</string>
+    <string name="identity_export_title">Vie identiteettisi</string>
+    <string name="identity_export_subtitle">Pidä se yksityisenä</string>
+    <string name="identity_save_file">Tallenna tiedostoon</string>
+    <string name="identity_export_what">Tiedosto on itse identiteettisi: kuka tahansa, jolla se on, on sinä jokaisella palvelimella ryhmineen ja käyttöoikeuksineen, kuten palvelimen ylläpitäjän oikeuksineen. Eroa ei voi huomata.</string>
+    <string name="identity_export_where">Tallenna se paikkaan, johon vain sinä pääset, kuten tähän puhelimeen tai yksityiselle asemalle. Älä lähetä sitä keskustelussa tai sähköpostissa äläkä julkaise sitä. TeamSpeak-sovellus voi avata sen, samoin 回响 toisessa puhelimessa.</string>
+    <string name="identity_wipe_title">Poistetaanko identiteettisi?</string>
+    <string name="identity_wipe_what">Tämän puhelimen identiteetti poistetaan, ja uusi luodaan, kun seuraavan kerran yhdistät. Jokaiselle palvelimelle olet silloin uusi henkilö: ryhmäsi, käyttöoikeutesi ja kaikki vanhalle identiteetillesi annettu (kuten ylläpitäjän oikeudet) eivät siirry mukana.</string>
+    <string name="identity_wipe_back">Ainoa tie takaisin on viety kopio. Jos saatat tarvita sitä vielä, peruuta ja vie se ensin.</string>
+    <string name="identity_import_title">Tuo identiteetti</string>
+    <string name="identity_import_subtitle">TeamSpeak-sovelluksesta</string>
+    <string name="identity_import_desc">Liitä TeamSpeak-sovelluksen viemä identiteetti tai valitse sen tallentama tiedosto (.ini). Se korvaa tämän puhelimen oman identiteetin seuraavasta yhdistämisestä alkaen.</string>
+    <string name="identity_field">Identiteetti</string>
+    <string name="identity_choose_file">Valitse tiedosto…</string>
+    <string name="level_title">Turvallisuustaso</string>
+    <string name="level_desc">Jotkin palvelimet päästävät sisään vain identiteetit, joiden taso on vähintään tietty. Tason nostaminen säilyttää saman identiteetin ryhmineen ja käyttöoikeuksineen.</string>
+    <string name="level_raise_button">Nosta tasoa</string>
+
+    <!-- A person's menu -->
+    <string name="person_you">Sinä</string>
+    <string name="person_away">Poissa</string>
+    <string name="person_away_message">Poissa: %1$s</string>
+    <string name="person_volume">Äänenvoimakkuus sinulle</string>
+    <string name="away_message_field">Poissaoloviesti (valinnainen)</string>
+    <string name="away_back">Olen takaisin</string>
+    <string name="away_update">Päivitä</string>
+    <string name="away_set">Aseta poissa</string>
+    <string name="poke">Tökkää</string>
+    <string name="chat">Keskustelu</string>
+    <string name="poke_title">Tökkää: %1$s</string>
+    <string name="poke_subtitle">Hän saa ponnahdusikkunan viestisi kanssa</string>
+    <string name="poke_message_field">Viesti (valinnainen)</string>
+    <string name="poked_you">%1$s tökkäsi sinua</string>
+    <string name="dismiss">Sulje</string>
+
+    <!-- A person's menu: admin functions (Settings › UI) -->
+    <string name="admin_row">Ylläpito</string>
+    <string name="admin_move">Siirrä</string>
+    <string name="admin_kick">Potkaise</string>
+    <string name="admin_ban">Porttikielto</string>
+    <string name="admin_move_title">Siirrä: %1$s</string>
+    <string name="admin_move_subtitle">Valitse kanava</string>
+    <string name="admin_here_now">Täällä nyt</string>
+    <string name="admin_has_password">Salasanasuojattu</string>
+    <string name="admin_kick_title">Potkaise: %1$s</string>
+    <string name="admin_kick_subtitle">Hän näkee syyn</string>
+    <string name="admin_kick_channel">Kanavalta (oletuskanavalle)</string>
+    <string name="admin_kick_server">Palvelimelta</string>
+    <string name="admin_reason">Syy (valinnainen)</string>
+    <string name="admin_ban_title">Porttikielto: %1$s</string>
+    <string name="admin_ban_subtitle">Kieltää hänen identiteettinsä ja IP-osoitteensa</string>
+    <string name="ban_10_minutes">10 minuuttia</string>
+    <string name="ban_1_hour">1 tunti</string>
+    <string name="ban_1_day">1 päivä</string>
+    <string name="ban_1_week">1 viikko</string>
+    <string name="ban_permanently">Pysyvästi</string>
+
+    <!-- Server info -->
+    <string name="info_title">Palvelimen tiedot</string>
+    <string name="info_users">Käyttäjät</string>
+    <string name="info_channels">Kanavat</string>
+    <string name="info_uptime">Käynnissä</string>
+    <string name="info_created">Luotu</string>
+    <string name="info_ago">%1$s sitten</string>
+    <plurals name="span_minutes">
+        <item quantity="one">%1$d minuutti</item>
+        <item quantity="other">%1$d minuuttia</item>
+    </plurals>
+    <plurals name="span_hours">
+        <item quantity="one">%1$d tunti</item>
+        <item quantity="other">%1$d tuntia</item>
+    </plurals>
+    <plurals name="span_days">
+        <item quantity="one">%1$d päivä</item>
+        <item quantity="other">%1$d päivää</item>
+    </plurals>
+    <plurals name="span_months">
+        <item quantity="one">%1$d kuukausi</item>
+        <item quantity="other">%1$d kuukautta</item>
+    </plurals>
+    <plurals name="span_years">
+        <item quantity="one">%1$d vuosi</item>
+        <item quantity="other">%1$d vuotta</item>
+    </plurals>
+
+    <!-- Raising the security level -->
+    <string name="level_needed_title">Tarvitaan turvallisuustaso %1$d</string>
+    <string name="level_raise_title">Nosta turvallisuustasoa</string>
+    <string name="level_needed_subtitle">Tämä palvelin vaatii sen. Sinun tasosi on %1$d.</string>
+    <string name="level_yours">Sinun tasosi on %1$d</string>
+    <string name="level_raise">Nosta</string>
+    <string name="level_estimate">Tällä puhelimella se kestää keskimäärin %1$s. Se voi olla nopeampaa tai hitaampaa.</string>
+    <string name="level_measuring">Selvitetään, kuinka kauan se kestää tällä puhelimella…</string>
+    <string name="level_desc_raise">Nostaminen tehdään vain kerran. Identiteettisi pysyy samana: ryhmäsi ja käyttöoikeutesi säilyvät, ja korkeampi taso toimii kaikilla palvelimilla. Pidä sovellus auki sen työskennellessä; Lopeta säilyttää tähän mennessä saavutetun tason.</string>
+    <string name="level_progress">Taso %1$d/%2$d</string>
+    <string name="level_running_desc">Pidä sovellus auki. Jokainen taso kestää noin kaksi kertaa niin kauan kuin edellinen.</string>
+    <string name="level_done">Valmis: turvallisuustasosi on %1$d.</string>
+    <string name="level_done_connecting">Valmis: turvallisuustasosi on %1$d. Yhdistetään uudelleen…</string>
+    <string name="level_stopped">Pysähtyi tasolle %1$d. Uusi nosto jatkuu siitä.</string>
+    <string name="about_under_minute">alle minuutin</string>
+    <plurals name="about_minutes">
+        <item quantity="one">noin minuutin</item>
+        <item quantity="other">noin %1$d minuuttia</item>
+    </plurals>
+    <plurals name="about_hours">
+        <item quantity="one">noin tunnin</item>
+        <item quantity="other">noin %1$d tuntia</item>
+    </plurals>
+    <plurals name="about_days">
+        <item quantity="one">noin päivän</item>
+        <item quantity="other">noin %1$d päivää</item>
+    </plurals>
+
+    <!-- Server screen -->
+    <string name="servers">Palvelimet</string>
+    <string name="connected">Yhdistetty</string>
+    <string name="connecting_to">Yhdistetään: %1$s…</string>
+    <string name="reconnecting_old">Yhdistetään uudelleen… Palvelimella on vielä vanha yhteytesi: odotetaan, että se vapautuu.</string>
+    <string name="reconnecting_try">Yhteys katkesi. Yhdistetään uudelleen… (yritys %1$d)</string>
+    <string name="channel_password_subtitle">Tällä kanavalla on salasana</string>
+    <string name="view_channels">Kanavat</string>
+    <string name="stream_title">Striimi: %1$s</string>
+    <string name="stream_title_unknown">Striimi</string>
+    <string name="not_an_address">Tuo ei näytä palvelimen osoitteelta</string>
+    <string name="private_left">%1$s poistui palvelimelta</string>
+    <string name="private_left_unknown">Hän poistui palvelimelta</string>
+    <string name="level_not_connected">Ei yhdistetty: palvelin vaatii identiteetin turvallisuustason %1$d. Voit nostaa omaasi kohdassa Asetukset › Lisäasetukset.</string>
+
+    <!-- Why a connection ended -->
+    <string name="end_no_answer">Yhdistäminen epäonnistui: palvelin ei vastaa. Tarkista osoite ja portti.</string>
+    <string name="end_no_such_host">Yhdistäminen epäonnistui: osoitteesta \"%1$s\" ei löytynyt palvelinta. Tarkista osoite.</string>
+    <string name="end_cant_connect">Yhdistäminen epäonnistui: %1$s</string>
+    <string name="end_network_error">Verkkovirhe: %1$s</string>
+    <string name="end_network_changed">Verkko vaihtui</string>
+    <string name="end_network_gone">Verkko katosi</string>
+    <string name="end_server_silent">Palvelin ei vastannut</string>
+    <string name="end_server_stopped">Palvelin lakkasi vastaamasta</string>
+    <string name="end_lost">Yhteys katkesi</string>
+    <string name="end_handshake">Yhteyttä palvelimeen ei voitu muodostaa.</string>
+    <string name="end_by_server">Palvelin katkaisi yhteyden</string>
+    <string name="end_kicked_channel">Potkaistu kanavalta</string>
+    <string name="end_kicked_channel_reason">Potkaistu kanavalta: %1$s</string>
+    <string name="end_kicked">Potkaistu palvelimelta</string>
+    <string name="end_kicked_reason">Potkaistu palvelimelta: %1$s</string>
+    <string name="end_banned">Porttikielto palvelimelle</string>
+    <string name="end_banned_reason">Porttikielto palvelimelle: %1$s</string>
+    <string name="end_shut_down">Palvelin sammui</string>
+    <string name="end_shut_down_reason">Palvelin sammui: %1$s</string>
+
+    <!-- Admin actions the server refused -->
+    <string name="admin_no_permission_move">Sinulla ei ole lupaa siirtää käyttäjää %1$s.</string>
+    <string name="admin_no_permission_kick_channel">Sinulla ei ole lupaa potkaista käyttäjää %1$s kanavalta.</string>
+    <string name="admin_no_permission_kick_server">Sinulla ei ole lupaa potkaista käyttäjää %1$s palvelimelta.</string>
+    <string name="admin_no_permission_ban">Sinulla ei ole lupaa antaa porttikieltoa käyttäjälle %1$s.</string>
+    <string name="admin_failed_move">Käyttäjää %1$s ei voitu siirtää: %2$s</string>
+    <string name="admin_failed_kick_channel">Käyttäjää %1$s ei voitu potkaista kanavalta: %2$s</string>
+    <string name="admin_failed_kick_server">Käyttäjää %1$s ei voitu potkaista palvelimelta: %2$s</string>
+    <string name="admin_failed_ban">Käyttäjälle %1$s ei voitu antaa porttikieltoa: %2$s</string>
+    <string name="channel_no_permission_create">Sinulla ei ole lupaa luoda kanavaa %1$s.</string>
+    <string name="channel_no_permission_edit">Sinulla ei ole lupaa muuttaa kanavaa %1$s.</string>
+    <string name="channel_no_permission_reorder">Sinulla ei ole lupaa siirtää kanavaa %1$s.</string>
+    <string name="channel_no_permission_delete">Sinulla ei ole lupaa poistaa kanavaa %1$s.</string>
+    <string name="channel_failed_create">Kanavaa %1$s ei voitu luoda: %2$s</string>
+    <string name="channel_failed_edit">Kanavaa %1$s ei voitu muuttaa: %2$s</string>
+    <string name="channel_failed_reorder">Kanavaa %1$s ei voitu siirtää: %2$s</string>
+    <string name="channel_failed_delete">Kanavaa %1$s ei voitu poistaa: %2$s</string>
+    <string name="channels_editing">Kanavien muokkaus</string>
+    <string name="channels_add">Lisää</string>
+    <string name="channels_done">Valmis</string>
+    <string name="channels_edit_hint">Pidä kanavaa pohjassa ja vedä siirtääksesi sitä. Napauta muuttaaksesi tai poistaaksesi sen.</string>
+    <string name="files_title">Tiedostot</string>
+    <string name="files_refresh">Päivitä</string>
+    <string name="files_up">Ylempään kansioon</string>
+    <string name="files_folder">Kansio</string>
+    <string name="files_download">Lataa</string>
+    <string name="files_empty">Kansio on tyhjä.</string>
+    <string name="files_downloading">Ladataan %1$s…</string>
+    <string name="files_saved">Tallennettu: %1$s</string>
+    <string name="files_download_cancelled">Lataus keskeytetty: %1$s</string>
+    <string name="files_download_failed">Tiedostoa %1$s ei voitu ladata: %2$s</string>
+    <string name="files_needs_password">Kanavalla on salasana. Liity sille kerran salasanalla ja muista se, niin näet sen tiedostot.</string>
+    <string name="files_no_permission">Sinulla ei ole oikeutta nähdä näitä tiedostoja.</string>
+    <string name="files_not_found">Kansiota ei ole enää.</string>
+    <string name="files_not_connected">Ei yhteyttä palvelimeen.</string>
+    <string name="files_upload">Lähetä</string>
+    <string name="files_new_folder">Uusi kansio</string>
+    <string name="files_create">Luo</string>
+    <string name="files_rename">Nimeä uudelleen</string>
+    <string name="files_rename_title">Nimeä %1$s uudelleen</string>
+    <string name="files_name">Nimi</string>
+    <string name="files_uploading">Lähetetään %1$s…</string>
+    <string name="files_uploaded">Lähetetty: %1$s</string>
+    <string name="files_upload_cancelled">Lähetys keskeytetty: %1$s</string>
+    <string name="files_upload_failed">Tiedostoa %1$s ei voitu lähettää: %2$s</string>
+    <string name="files_unreadable">Tiedostoa ei voitu lukea.</string>
+    <string name="files_no_permission_change">Palvelin ei salli sitä täällä.</string>
+    <string name="files_gone">Sitä ei ole enää.</string>
+    <string name="files_exists">Samanniminen on jo täällä.</string>
+    <string name="files_delete_title">Poistetaanko %1$s?</string>
+    <string name="files_delete_file">Tiedosto poistuu palvelimelta kaikilta.</string>
+    <string name="files_delete_folder">Kansio ja kaikki sen sisältö poistuvat palvelimelta kaikilta.</string>
+    <string name="files_replace_title">Korvataanko %1$s?</string>
+    <string name="files_replace_text">Samanniminen tiedosto on jo täällä. Korvaaminen poistaa vanhan kaikilta.</string>
+    <string name="files_replace">Korvaa</string>
+    <string name="channel_info_here">Olet tällä kanavalla</string>
+    <string name="channel_info_talk_power">Vaadittu puheoikeuden taso</string>
+    <string name="channel_info_default">Palvelimen oletuskanava</string>
+    <string name="channel_info_no_description">Ei kuvausta</string>
+    <string name="channel_info_loading">Ladataan…</string>
+    <string name="channel_info_arrange">Järjestä</string>
+    <plurals name="channel_people">
+        <item quantity="one">%d henkilö</item>
+        <item quantity="other">%d henkilöä</item>
+    </plurals>
+    <string name="channel_new_title">Uusi kanava</string>
+    <string name="channel_new_subtitle">Palvelin päättää, millaisia kanavia saat luoda.</string>
+    <string name="channel_edit_subtitle">Kanavan asetukset</string>
+    <string name="channel_create">Luo</string>
+    <string name="channel_name">Nimi</string>
+    <string name="channel_description">Kuvaus</string>
+    <string name="channel_kind">Tyyppi</string>
+    <string name="channel_kind_permanent">Pysyvä</string>
+    <string name="channel_kind_semi">Puolipysyvä</string>
+    <string name="channel_kind_temporary">Väliaikainen</string>
+    <string name="channel_kind_permanent_desc">Pysyy, kunnes se poistetaan.</string>
+    <string name="channel_kind_semi_desc">Pysyy, kunnes palvelin käynnistyy uudelleen.</string>
+    <string name="channel_kind_temporary_desc">Katoaa, kun viimeinen henkilö poistuu. Sinut siirretään siihen, kun se luodaan.</string>
+    <string name="channel_password_on">Salasana</string>
+    <string name="channel_password_keep">Jätä tyhjäksi, niin nykyinen säilyy</string>
+    <string name="channel_codec">Äänikoodekki</string>
+    <string name="channel_codec_voice">Opus Voice</string>
+    <string name="channel_codec_music">Opus Music</string>
+    <string name="channel_quality">Laatu: %1$d</string>
+    <string name="channel_unlimited">Rajattomasti käyttäjiä</string>
+    <string name="channel_max_users">Käyttäjiä enintään</string>
+    <string name="channel_parent">Sijainti</string>
+    <string name="channel_top_level">Ylin taso</string>
+    <string name="channel_parent_change">Vaihda</string>
+    <string name="channel_parent_title">Valitse sijainti</string>
+    <string name="channel_delete_title">Poistetaanko %1$s?</string>
+    <string name="channel_delete_subtitle">Tätä ei voi perua.</string>
+    <plurals name="channel_delete_subs">
+        <item quantity="one">Myös sen %d alikanava poistetaan.</item>
+        <item quantity="other">Myös sen %d alikanavaa poistetaan.</item>
+    </plurals>
+    <plurals name="channel_delete_people">
+        <item quantity="one">%d henkilö siirretään oletuskanavalle.</item>
+        <item quantity="other">%d henkilöä siirretään oletuskanavalle.</item>
+    </plurals>
+    <string name="channel_delete_empty">Siellä ei ole ketään.</string>
+    <string name="admin_move_needs_password">Käyttäjää %1$s ei voitu siirtää: kanava vaatii salasanansa. Liity siihen kerran salasanalla ja muista salasana, niin voit siirtää ihmisiä sinne.</string>
+
+    <!-- Sending pictures -->
+    <string name="picture_not_sent">Kuvaa ei lähetetty: %1$s</string>
+    <string name="pictures_not_sent">Kuvaa %1$d/%2$d ei lähetetty: %3$s</string>
+    <string name="picture_no_permission">%1$s (ei käyttöoikeutta tällä kanavalla)</string>
+    <string name="picture_too_big">Kuva on liian suuri (yli %1$d Mt).</string>
+
+    <!-- Profile picture -->
+    <string name="avatar_uploading">Lähetetään…</string>
+    <string name="avatar_set">Profiilikuva asetettu.</string>
+    <string name="avatar_too_big">Tämä palvelin sallii vain hyvin pienen profiilikuvan tai ei lainkaan.</string>
+    <string name="avatar_not_allowed">Tämä palvelin ei salli sinulle profiilikuvaa.</string>
+    <string name="avatar_failed">Profiilikuvaa ei asetettu: %1$s</string>
+    <string name="avatar_removed">Profiilikuva poistettu.</string>
+
+    <!-- The identity -->
+    <string name="identity_not_valid">Tuo ei ole TeamSpeak-identiteetti.</string>
+    <string name="identity_unreadable">Tallennettua identiteettiä ei voi avata tällä puhelimella. Tuo omasi kohdassa Asetukset › Lisäasetukset › TeamSpeak-identiteetti tai luo siellä uusi.</string>
+    <string name="identity_export_unreadable">Identiteettiä ei voi lukea, joten sitä ei voi tallentaa.</string>
+    <string name="file_not_written">Tiedostoa ei voitu kirjoittaa.</string>
+    <string name="file_not_opened">Tiedostoa ei voi avata.</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel">Yhteys</string>
+    <string name="notification_mute">Mykistä</string>
+    <string name="notification_unmute">Poista mykistys</string>
+    <string name="notification_sound_off">Ääni pois</string>
+    <string name="notification_sound_on">Ääni päälle</string>
+    <string name="notification_messages">Viestit ja tökkäykset</string>
+    <string name="notification_connected">Yhdistetty: %1$s</string>
+    <string name="notification_connecting">Yhdistetään: %1$s</string>
+    <string name="notification_reconnecting">Yhdistetään uudelleen: %1$s…</string>
+    <string name="notification_sharing_camera">Jaat kameraasi</string>
+    <string name="notification_sharing_cameras">Jaat kameroitasi</string>
+    <string name="notification_sharing_screen">Jaat näyttöäsi</string>
+</resources>

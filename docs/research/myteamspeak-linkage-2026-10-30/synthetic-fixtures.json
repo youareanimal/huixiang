@@ -1,0 +1,72 @@
+{
+  "synthetic": true,
+  "wireEncodingConfirmed": false,
+  "LoginSession_relevant_fields_only": {
+    "myts_id_data": {
+      "user_public_key": "<BYTES_PUBLIC_KEY>",
+      "user_private_key": {
+        "encrypted_user_private_key": "<BYTES_ENCRYPTED_PRIVATE_KEY>"
+      },
+      "account_creation_time": 0,
+      "my_teamspeak_id": "<BYTES_ACCOUNT_ID>",
+      "public_signature": "<BYTES_PUBLIC_SIGNATURE>"
+    },
+    "mytsid_user_cert": {
+      "cert": "<BYTES_CERTIFICATE>"
+    },
+    "user_avatar": {
+      "info": {
+        "map": [
+          {
+            "state": "<AvatarState_ENUM>",
+            "name": "<AVATAR_OBJECT_NAME>"
+          }
+        ]
+      },
+      "timestamp": 0,
+      "sign": "<BYTES_AVATAR_SIGNATURE>",
+      "optional": {
+        "type_url": "<ANY_TYPE_URL>",
+        "value": "<BYTES_EXTENSION>"
+      }
+    }
+  },
+  "MyTSID_Verification_Token": {
+    "verification_sign": "<BYTES_VERIFICATION_SIGNATURE>",
+    "sign_timestamp": 0,
+    "user_pub_key": "<BYTES_PUBLIC_KEY>",
+    "pub_sign": "<BYTES_PUBLIC_SIGNATURE>",
+    "pub_sign_cert": "<BYTES_CERTIFICATE>",
+    "ac_time": 0,
+    "mytsid": "<BYTES_ACCOUNT_ID>"
+  },
+  "getSignedBadges_request": {
+    "session": "<SESSION_PLACEHOLDER>"
+  },
+  "getSignedBadges_response": {
+    "list": {
+      "badges": [
+        {
+          "badge": {
+            "uuid": "<BADGE_UUID>",
+            "received": 0,
+            "name": "<BADGE_NAME>",
+            "description": "<BADGE_DESCRIPTION>",
+            "url": "<BADGE_ASSET_URL>"
+          },
+          "sign": "<BYTES_BADGE_SIGNATURE>",
+          "sign_timestamp": 0
+        }
+      ]
+    },
+    "error_code": "<ErrorReturnCode_ENUM>"
+  },
+  "legacy_clientinit_fields_to_investigate": {
+    "client_myteamspeak_id": "<ENCODED_ACCOUNT_PROOF_FORMAT_UNCONFIRMED>",
+    "client_myteamspeak_avatar": "<ENCODED_SIGNED_AVATAR_FORMAT_UNCONFIRMED>",
+    "client_signed_badges": "<ENCODED_SIGNED_BADGES_FORMAT_UNCONFIRMED>"
+  },
+  "UpdateMyTSIDRequest": {
+    "myts_id": "<STRING_ENCODED_PROOF_FORMAT_UNCONFIRMED>"
+  }
+}

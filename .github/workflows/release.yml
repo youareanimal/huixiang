@@ -1,0 +1,113 @@
+# The release: pushing a tag v<version> (the same as versionName in app/build.gradle.kts) builds the signed APK from
+# that commit, records where it was built (a build attestation anyone can check), and makes a draft release with the
+# APK attached. The Google Play version (an app bundle) is built too and kept with the run.
+# The bundle goes to the closed test on Google Play as a draft (scripts/play-upload.sh, once its service account is
+# set up). Publishing the GitHub draft and sending the Play draft for review stay a person's steps. See DEVELOPING.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write      # the draft release
+  id-token: write      # signing the attestation
+  attestations: write  # storing it
+
+jobs:
+  release:
+    # Upstream reference only. A fork must configure its own signing and publishing workflow.
+    if: github.repository == 'KorppuJauho/pocketts'
+    runs-on: ubuntu-24.04
+    # The release key is in this environment's secrets, which only v* tags can use
+    environment: release
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the version
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME but versionName is $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      # The same build environment as scripts/dev.sh uses
+      - name: Build image
+        run: docker build -f docker/build.Dockerfile -t pocketts-build --build-arg ACCEPT_ANDROID_SDK_LICENSE=yes docker
+
+      - name: Build the signed APK and the Play bundle
+        env:
+          KEYSTORE_BASE64: ${{ secrets.POCKETTS_KEYSTORE_BASE64 }}
+          POCKETTS_KEYSTORE_PASSWORD: ${{ secrets.POCKETTS_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys" out
+          trap 'rm -rf "$RUNNER_TEMP/keys"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/keys/release.keystore"
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$RUNNER_TEMP/keys":/keys:ro \
+            -e POCKETTS_BUILD_ROOT=/out \
+            -e POCKETTS_KEYSTORE_FILE=/keys/release.keystore -e POCKETTS_KEYSTORE_PASSWORD \
+            pocketts-build ./gradlew --no-daemon --console=plain :app:testDebugUnitTest :tsproto:test :app:assembleRelease :app:bundlePlay
+          mkdir dist play
+          cp out/app/outputs/apk/release/app-release.apk "dist/PocketTS-$VERSION.apk"
+          cp out/app/outputs/bundle/play/app-play.aab "play/PocketTS-$VERSION-play.aab"
+
+      - name: Check the signature
+        run: |
+          APKSIGNER=$(docker run --rm pocketts-build bash -c 'ls /opt/android-sdk/build-tools/*/apksigner | head -1')
+          CERTS=$(docker run --rm -v "$PWD/dist":/dist pocketts-build "$APKSIGNER" verify --print-certs "/dist/PocketTS-$VERSION.apk")
+          grep -q "CN=PocketTS" <<< "$CERTS" || { echo "::error::The APK isn't signed with the release key"; exit 1; }
+          BUNDLE=$(docker run --rm -v "$PWD/play":/play pocketts-build keytool -printcert -jarfile "/play/PocketTS-$VERSION-play.aab")
+          grep -q "CN=PocketTS" <<< "$BUNDLE" || { echo "::error::The Play bundle isn't signed with the release key"; exit 1; }
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/PocketTS-${{ env.VERSION }}.apk
+            play/PocketTS-${{ env.VERSION }}-play.aab
+
+      # For uploading to Google Play by hand (Actions › this run › Artifacts)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: PocketTS-${{ env.VERSION }}-play
+          path: play/PocketTS-${{ env.VERSION }}-play.aab
+          retention-days: 90
+          if-no-files-found: error
+
+      # To the closed test on Google Play, as a draft: "Send for review" in Play Console stays a person's step.
+      # Skipped (with a note) until the service account's key is in this environment's secrets.
+      - name: Upload to Google Play
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: alpha
+          PLAY_RELEASE_STATUS: draft
+        run: |
+          # Play's release notes: this version's headlines from the changelog (at most 500 characters)
+          TITLES=$(awk -v v="## $VERSION" 'index($0, v) == 1 {on = 1; next} /^## / {on = 0} on' CHANGELOG.md \
+            | sed -n 's/^- \*\*\([^*]*\)\*\*.*/\1/p' | sed 's/:$//' | grep -v '^For developers' | paste -sd ',' - | sed 's/,/, /g')
+          NOTES="New in $VERSION: ${TITLES:-fixes and improvements}. All changes: https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+          scripts/play-upload.sh "play/PocketTS-$VERSION-play.aab" "${NOTES:0:500}"
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="dist/PocketTS-$VERSION.apk"
+          SHA=$(sha256sum "$APK" | cut -d' ' -f1)
+          # This version's lines from the changelog
+          CHANGES=$(awk -v v="## $VERSION" 'index($0, v) == 1 {on = 1; next} /^## / {on = 0} on' CHANGELOG.md)
+          {
+            echo "$CHANGES"
+            echo
+            echo "## Install"
+            echo
+            echo "Download **PocketTS-$VERSION.apk** below and open it on the phone (Android 10 or newer)."
+            echo
+            echo "SHA-256: \`$SHA\`"
+            echo
+            echo "This APK was built by GitHub Actions from the tagged commit. To check that, with the GitHub CLI:"
+            echo "\`gh attestation verify PocketTS-$VERSION.apk --repo $GITHUB_REPOSITORY\`"
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" "$APK" --draft --verify-tag --title "PocketTS $VERSION" --notes-file notes.md

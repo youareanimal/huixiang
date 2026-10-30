@@ -1,0 +1,27 @@
+# Build output
+build/
+.gradle/
+.tooling/
+.ci-gradle/
+out/
+*.tsaccount
+.kotlin/
+dist/
+*.apk
+*.aab
+
+# Local settings, never committed: addresses, signing keys, SDK paths
+local.properties
+dev.properties
+dev.env
+keystore.properties
+*.jks
+*.keystore
+*.jks
+
+# Editors and OS
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.log

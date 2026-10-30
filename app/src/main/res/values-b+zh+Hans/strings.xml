@@ -1,0 +1,549 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simplified Chinese. TeamSpeak's own words follow the TeamSpeak 5 client's Chinese translation (MIT), see TRANSLATIONS.md. -->
+<resources>
+    <string name="welcome_title">随时回到你的频道</string>
+    <string name="welcome_description">连接 TeamSpeak 3 / 6 服务器，与伙伴语音、聊天。输入服务器地址和昵称即可开始。</string>
+    <string name="connection_help">连接指南</string>
+    <string name="connection_help_body">填写域名或 IP 地址，可在末尾加上 :9987（默认语音端口）。如果管理员配置了其他端口，请填写实际语音端口，不要使用 ServerQuery 或文件传输端口。\n\n也可以在地址栏粘贴 ts3server:// 或 teamspeak:// 邀请链接，确认内容后再加入。\n\n应用在手机上创建本地 TeamSpeak 身份。在“账号与云聊天”中使用 myTeamSpeak 邮箱和密码登录，可同步好友与已有云端会话。发言时需要授予麦克风权限。</string>
+    <string name="fork_attribution">基于 PocketTS 的独立客户端 · GPL-3.0，与 TeamSpeak 官方无关联。</string>
+    <!-- Shared -->
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="edit">编辑</string>
+    <string name="remove">移除</string>
+    <string name="close">关闭</string>
+    <string name="advanced">高级</string>
+    <string name="connect">连接</string>
+    <string name="link_title">连接到 %1$s？</string>
+    <string name="link_subtitle">来自 TeamSpeak 链接</string>
+    <string name="link_channel">频道</string>
+    <string name="link_password">服务器密码</string>
+    <string name="link_password_given">在链接中</string>
+    <string name="link_leaving">你将先离开 %1$s。</string>
+    <string name="link_use_key">使用链接中的权限密钥</string>
+    <string name="link_use_key_desc">它会给你这个服务器上的权限，例如管理员权限。只有在你信任链接发送者时才使用。</string>
+    <string name="disconnect">断开连接</string>
+    <string name="nickname">昵称</string>
+    <string name="account_nickname_hint">默认使用账号用户名：%1$s，可为服务器单独修改。</string>
+    <string name="server_address">服务器地址或昵称</string>
+    <string name="server_password">服务器密码</string>
+    <string name="remember_password">记住密码</string>
+    <string name="channel_password">频道密码</string>
+    <string name="join">加入</string>
+
+    <!-- Connect screen -->
+    <string name="favourites">收藏</string>
+    <string name="connect_title">连接到服务器</string>
+    <string name="favourites_in">已收藏</string>
+    <string name="favourites_save">保存到收藏</string>
+    <string name="favourite_edit">编辑收藏</string>
+    <string name="favourite_add">添加到收藏</string>
+    <string name="favourite_name">在列表中显示的名称</string>
+    <string name="favourite_nickname">你在此服务器上的昵称</string>
+    <string name="favourite_auto">打开应用时自动连接</string>
+    <string name="favourite_file_port">文件传输端口</string>
+    <string name="favourite_file_port_hint">服务器自己的端口（通常为 30033）</string>
+    <string name="favourite_file_port_desc">仅当服务器的图片和头像无法加载时：它的文件传输使用了其他端口。</string>
+    <string name="update_title">回响 %1$s 已发布</string>
+    <string name="update_text">GitHub 上有比当前版本（%1$s）更新的版本。</string>
+    <string name="not_now">以后再说</string>
+    <string name="download">下载</string>
+
+    <!-- Server screen: header and controls -->
+    <string name="settings">设置</string>
+    <string name="hold_to_talk">按住说话</string>
+    <string name="microphone">麦克风</string>
+    <string name="sound">声音</string>
+    <string name="share">分享</string>
+
+    <!-- Channel list -->
+    <string name="channel_has_password">密码</string>
+    <string name="person_sound_off">声音已关闭</string>
+    <string name="person_mic_off">麦克风已关闭</string>
+    <string name="person_cant_talk">不能在此频道发言</string>
+    <string name="person_streaming">正在直播</string>
+    <string name="tag_afk">AFK</string>
+    <string name="tag_you">你</string>
+
+    <!-- Chat -->
+    <string name="event_connected">%1$s 已连接</string>
+    <string name="event_joined_from">%1$s 从 %2$s 进入</string>
+    <string name="event_you_moved_to">你被移到了 %1$s</string>
+    <string name="event_you_kicked_from">你被踢出了 %1$s</string>
+    <string name="event_moved_here_from">%1$s 被从 %2$s 移到这里</string>
+    <string name="event_kicked_from">%1$s 被踢出了 %2$s</string>
+    <string name="event_moved_to">%1$s 被移到了 %2$s</string>
+    <string name="event_kicked_from_channel">%1$s 被踢出了频道</string>
+    <string name="event_left_to">%1$s 去了 %2$s</string>
+    <string name="event_you_kicked_from_server">你被踢出了服务器</string>
+    <string name="event_you_banned">你被封禁了</string>
+    <string name="event_lost_connection">%1$s 连接中断</string>
+    <string name="event_kicked_from_server">%1$s 被踢出了服务器</string>
+    <string name="event_banned">%1$s 被封禁了</string>
+    <string name="event_disconnected">%1$s 已断开连接</string>
+    <string name="event_by">（操作者：%1$s）</string>
+    <string name="event_because">（%1$s）</string>
+    <string name="event_another_channel">另一个频道</string>
+    <string name="chat_channel">频道</string>
+    <string name="chat_empty_channel">此频道还没有消息。</string>
+    <string name="chat_empty_private">还没有消息。</string>
+    <string name="chat_message_to">发消息给 %1$s…</string>
+    <string name="chat_message_to_channel">发消息到频道…</string>
+    <string name="chat_message_to_them">发消息给对方…</string>
+    <string name="chat_system">系统</string>
+    <string name="chat_link_open">打开：%1$s</string>
+    <plurals name="chat_pictures_max">
+        <item quantity="other">一次最多 %1$d 张图片。</item>
+    </plurals>
+    <string name="chat_camera_needed">拍照需要允许使用相机。</string>
+    <string name="chat_sending_picture">正在发送第 %1$d 张图片，共 %2$d 张…</string>
+    <string name="chat_attached_picture">附加的图片</string>
+    <string name="chat_remove_picture">移除图片</string>
+    <string name="chat_send_picture">发送图片</string>
+    <string name="chat_choose_pictures">选择图片</string>
+    <string name="chat_take_photo">拍照</string>
+    <string name="chat_send">发送</string>
+
+    <!-- A picture on the whole screen -->
+    <string name="picture_save">保存到相册</string>
+    <string name="picture_saved">已保存到 %1$s</string>
+    <string name="picture_failed">操作失败：%1$s</string>
+
+    <!-- Streams: watching -->
+    <string name="stream_watch">观看</string>
+    <string name="stream_small_window">小窗口</string>
+    <string name="stream_full_screen">全屏</string>
+    <string name="stream_resize">拖动以调整直播大小</string>
+    <string name="stream_mini">小窗直播：轻触放大，拖动移动</string>
+    <string name="stream_leave_full_screen">退出全屏</string>
+    <string name="stream_stop_watching">停止观看</string>
+    <string name="stream_sound_on">打开声音</string>
+    <string name="stream_sound_off">关闭声音</string>
+    <string name="stream_requesting">正在请求访问…</string>
+    <string name="stream_connecting">正在连接…</string>
+    <string name="stream_paused">已暂停</string>
+    <string name="stream_waiting_picture">已连接，正在等待画面…</string>
+    <string name="stream_trying">连接出现问题，仍在尝试…</string>
+    <string name="stream_connection_lost">连接已断开。</string>
+    <string name="stream_open_failed">无法打开直播。</string>
+    <string name="stream_denied">观看直播的请求被拒绝。</string>
+    <string name="stream_ended">直播已结束。</string>
+    <string name="stream_ended_left_channel">直播已结束（你已不在同一个频道）。</string>
+
+    <!-- Streams: sharing -->
+    <string name="share_camera_title">分享你的摄像头</string>
+    <string name="share_screen_title">分享你的屏幕</string>
+    <string name="share_subtitle">你所在频道的所有人都可以观看</string>
+    <string name="start">开始</string>
+    <string name="stop">停止</string>
+    <string name="share_what">分享内容</string>
+    <string name="share_camera">摄像头</string>
+    <string name="share_screen">屏幕</string>
+    <string name="share_both_cameras">两个摄像头</string>
+    <string name="camera_front">前置</string>
+    <string name="camera_back">后置</string>
+    <string name="camera_both">两个</string>
+    <string name="share_both_desc">后置摄像头画面大，前置摄像头画面小，位于角落。「互换」可交换两者。</string>
+    <string name="share_quality">画质</string>
+    <string name="share_quality_480">省流量：数据最少，适合移动网络。</string>
+    <string name="share_quality_720">高清：清晰，且对大多数网络足够轻量。</string>
+    <string name="share_quality_1080">全高清：最清晰，需要双方都有良好的网络。</string>
+    <string name="share_sound">直播声音</string>
+    <string name="share_sound_on_desc">观众会在画面中听到你的麦克风。当你的麦克风静音或你在频道中说话时，它会静音，这样别人不会听到你两次。</string>
+    <string name="share_sound_off_desc">画面不带声音：照常在频道中说话。</string>
+    <string name="share_screen_sound">手机声音</string>
+    <string name="share_screen_sound_on_desc">观众会听到你手机播放的内容，例如视频或游戏。有些应用不允许这样做，会保持静音。频道中的语音不包括在内。</string>
+    <string name="share_screen_sound_off_desc">画面不带声音。</string>
+    <string name="share_screen_sound_watching">观看直播时不可用：停止观看后即可同时分享手机声音。</string>
+    <string name="share_screen_desc">开始前 Android 会再询问一次。屏幕上的所有内容都会显示，包括通知。</string>
+    <string name="share_sound_quiet">直播声音已静音</string>
+    <string name="share_sound_live">直播声音已开启</string>
+    <string name="share_starting">正在开始…</string>
+    <string name="share_paused_call">通话期间已暂停</string>
+    <string name="share_watching">观看人数</string>
+    <string name="share_swap_cameras">互换摄像头</string>
+    <string name="share_switch_camera">切换摄像头</string>
+    <string name="share_turn_locked">方向已锁定（轻触以跟随手机）</string>
+    <string name="share_turn_follows">方向跟随手机（轻触以锁定）</string>
+    <string name="share_light_on">补光灯已开启（轻触关闭）</string>
+    <string name="share_light_off">补光灯：明亮的白色屏幕照亮你的脸</string>
+    <string name="share_both_unsupported">这部手机不能同时使用两个摄像头。</string>
+    <string name="share_failed">无法开始分享。</string>
+    <string name="share_refused">TeamSpeak 拒绝了分享：%1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_general">常规</string>
+    <string name="settings_playback">播放</string>
+    <string name="settings_capture">采集</string>
+    <string name="settings_ui">界面</string>
+    <string name="settings_save">保存并应用</string>
+    <string name="cant_be_undone">此操作无法撤销</string>
+    <string name="quiet">小</string>
+    <string name="loud">大</string>
+
+    <!-- Settings › General -->
+    <string name="avatar_title">头像</string>
+    <string name="avatar_change">更换</string>
+    <string name="avatar_desc">其他人会在此服务器上看到它。它会被裁剪为 320 × 320。</string>
+    <string name="general_floating_ptt">悬浮按键说话按钮</string>
+    <string name="general_floating_ptt_desc">在按键说话模式下，一个圆形按钮会停留在 回响 屏幕底部，让你在滚动聊天时也能说话。显示在其他应用上方的按钮（见下方）是单独的设置。</string>
+    <string name="general_overlay_ptt">在其他应用上方显示说话按钮</string>
+    <string name="general_overlay_ptt_desc">在按键说话模式下，当你切换到其他应用时（回响 本身内不显示）会出现一个圆形按钮。按住它说话，拖动它可移动位置。Android 会询问一次是否允许 回响 显示在其他应用上方。</string>
+    <string name="general_volume_ptt">音量键用于按键说话</string>
+    <string name="general_volume_ptt_desc">在按键说话模式下，当应用显示在屏幕上时，按住音量键即可说话（而不是调节音量）。</string>
+    <string name="general_headset_ptt">耳机按钮用于按键说话</string>
+    <string name="general_headset_ptt_desc">在按键说话模式下，按一下耳机上的按钮开始说话，再按一下停止。屏幕关闭时也有效。开启后，该按钮不会播放或暂停音乐。</string>
+    <string name="general_call_mute">通话时静音</string>
+    <string name="general_call_mute_desc">来电响铃或通话开始时，麦克风和声音会关闭（包括你正在观看的直播的声音），通话结束后恢复。你共享的直播会暂停，观众看不到来电。你自己静音的仍保持静音。</string>
+    <string name="general_updates">检查更新</string>
+    <string name="general_updates_desc">回响 每天会向 GitHub 询问一次是否有新版本，并在连接界面上提示。不会发送任何关于你的信息。</string>
+    <string name="general_screen_on">保持屏幕常亮</string>
+    <string name="general_screen_on_desc">在你已连接且应用打开时，屏幕不会变暗。在你分享或观看直播时，屏幕总是保持常亮。</string>
+    <string name="general_spacers">允许加入间隔频道</string>
+    <string name="general_spacers_desc">轻触间隔（频道列表中的分隔线或标题）会像加入普通频道一样加入它。有些服务器把它用作 AFK 频道。关闭时，误触不会加入间隔。</string>
+    <string name="history_title">聊天记录</string>
+    <string name="history_desc">频道聊天、私聊以及谁加入或离开的记录会加密保存在这部手机上，当你连接到同一个服务器时会再次显示：保留最近 %1$s，每个会话最多 %2$s。戳一下不会保存。</string>
+    <plurals name="history_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <plurals name="history_lines">
+        <item quantity="other">%1$d 条</item>
+    </plurals>
+    <string name="history_clear">清除聊天记录</string>
+    <string name="history_cleared">已清除。</string>
+    <string name="history_clear_title">清除聊天记录？</string>
+    <string name="history_clear_button">清除</string>
+    <string name="history_clear_desc">所有服务器保存的聊天记录都会从这部手机上删除，当前屏幕上的聊天也会清除。</string>
+
+    <!-- Settings › Playback -->
+    <string name="playback_voice_volume">语音音量</string>
+    <string name="playback_test_sound">播放测试音</string>
+    <string name="playback_event_sounds">事件提示音</string>
+    <string name="playback_event_sounds_desc">有人进入或离开你的频道、收到消息、戳一下和直播时，以及按麦克风和声音按钮时播放简短的提示音。</string>
+    <string name="playback_sound_volume">提示音音量</string>
+    <string name="playback_play_sound">播放提示音</string>
+    <string name="playback_call_volume">开启回声消除时，语音跟随通话音量：连接后按音量键即可调节。</string>
+    <string name="playback_media_volume">语音跟随媒体音量。</string>
+
+    <!-- Settings › Capture -->
+    <string name="capture_mic_volume">麦克风音量</string>
+    <string name="capture_activation">激活方式</string>
+    <string name="capture_vad">语音激活</string>
+    <string name="capture_ptt">按键说话</string>
+    <string name="capture_continuous">持续传输</string>
+    <string name="capture_ptt_desc">说话时按住「按住说话」按钮。</string>
+    <string name="capture_level">音量电平</string>
+    <string name="capture_level_desc">打开这些设置时，进度条会显示你的麦克风电平；在此期间不会发送任何声音。</string>
+    <string name="capture_vad_level">语音激活阈值</string>
+    <string name="capture_vad_level_desc">向右滑动可屏蔽背景噪音。如果你的声音断断续续，请向左滑动。</string>
+    <string name="capture_vad_delay">停用前的延迟</string>
+    <string name="capture_processing">信号处理</string>
+    <string name="capture_noise">消除背景噪音</string>
+    <string name="capture_echo">回声消除</string>
+    <string name="capture_agc">自动增益控制</string>
+    <string name="capture_echo_desc">回声消除会像通话一样播放语音（扬声器或你的耳麦）。使用耳机时关闭它可获得最佳音质。</string>
+
+    <!-- Settings › UI -->
+    <string name="ui_admin">显示管理功能</string>
+    <string name="ui_controls_bottom">按钮置于底部</string>
+    <string name="ui_controls_bottom_desc">麦克风、声音和分享按钮以及「频道/聊天」切换位于屏幕底部，拇指即可够到。</string>
+    <string name="ui_language">语言</string>
+    <string name="ui_language_phone">跟随手机语言</string>
+    <string name="ui_admin_desc">用户菜单中还会提供将其移动到其他频道、将其从频道或服务器中踢出以及封禁的功能。由服务器决定你是否有权这样做：没有权限时会被拒绝。</string>
+
+    <!-- Settings › Advanced -->
+    <string name="relay_title">视频连接</string>
+    <string name="relay_desc">直播在你和对方之间直接传输。在某些网络环境下需要中继（TURN 服务器）：如果你有中继，请在此填写。</string>
+    <string name="relay_address">中继（turn:主机:端口）</string>
+    <string name="relay_user">中继用户名</string>
+    <string name="relay_password">中继密码</string>
+    <string name="relay_only">始终通过中继</string>
+    <string name="advanced_file_port">如果某个服务器的文件传输使用其他端口（其图片和头像无法加载），可以在该收藏的「高级」部分为它设置专用端口。</string>
+    <string name="passwords_title">频道密码</string>
+    <string name="passwords_desc">你选择记住的密码可一键加入对应频道。它们会加密保存在这部手机上。</string>
+    <string name="passwords_forget">忘记已保存的密码</string>
+    <string name="passwords_forgotten">已忘记。</string>
+    <string name="identity_title">TeamSpeak 身份</string>
+    <string name="identity_desc">你的身份代表你在服务器上的身份（你的组和权限）。请保留一份副本，或使用其他 TeamSpeak 应用中的身份。</string>
+    <string name="identity_wipe">清除</string>
+    <string name="identity_export">导出</string>
+    <string name="identity_import">导入</string>
+    <string name="identity_imported">已导入。将从下次连接起使用。</string>
+    <string name="identity_saved">已保存。请将文件保存在只有你能访问的地方。</string>
+    <string name="identity_wiped">已清除。下次连接时会创建新身份。</string>
+    <string name="identity_export_title">导出你的身份</string>
+    <string name="identity_export_subtitle">请妥善保密</string>
+    <string name="identity_save_file">保存到文件</string>
+    <string name="identity_export_what">该文件就是你的身份本身：任何拥有它的人在每个服务器上都会被当作你，拥有你的组和权限，例如服务器管理员的权限。没有人能分辨出区别。</string>
+    <string name="identity_export_where">请将它保存在只有你能访问的地方，例如这部手机或私人存储。不要通过聊天或电子邮件发送，也不要公开发布。TeamSpeak 应用可以打开它，另一部手机上的 回响 也可以。</string>
+    <string name="identity_wipe_title">清除你的身份？</string>
+    <string name="identity_wipe_what">这部手机的身份将被删除，下次连接时会创建新身份。对于每个服务器来说，你将成为一个新用户：你的组、权限以及授予旧身份的一切（例如管理员权限）都不会保留。</string>
+    <string name="identity_wipe_back">唯一的恢复方法是已导出的副本。如果你以后可能还需要它，请取消并先导出。</string>
+    <string name="identity_import_title">导入身份</string>
+    <string name="identity_import_subtitle">来自 TeamSpeak 应用</string>
+    <string name="identity_import_desc">粘贴 TeamSpeak 应用导出的身份，或选择它保存的文件（.ini）。从下次连接起，它将替换这部手机自己的身份。</string>
+    <string name="identity_field">身份</string>
+    <string name="identity_choose_file">选择文件…</string>
+    <string name="level_title">安全级别</string>
+    <string name="level_desc">有些服务器只允许达到一定级别的身份进入。提升级别会保留同一个身份及其组和权限。</string>
+    <string name="level_raise_button">提升级别</string>
+
+    <!-- A person's menu -->
+    <string name="person_you">你</string>
+    <string name="person_away">离开</string>
+    <string name="person_away_message">离开：%1$s</string>
+    <string name="person_volume">对你的音量</string>
+    <string name="away_message_field">离开消息（可选）</string>
+    <string name="away_back">我回来了</string>
+    <string name="away_update">更新</string>
+    <string name="away_set">设为离开</string>
+    <string name="poke">戳一下</string>
+    <string name="chat">聊天</string>
+    <string name="poke_title">戳一下 %1$s</string>
+    <string name="poke_subtitle">对方会收到带有你消息的弹窗</string>
+    <string name="poke_message_field">消息（可选）</string>
+    <string name="poked_you">%1$s 戳了你一下</string>
+    <string name="dismiss">关闭</string>
+
+    <!-- A person's menu: admin functions (Settings › UI) -->
+    <string name="admin_row">管理</string>
+    <string name="admin_move">移动</string>
+    <string name="admin_kick">踢出</string>
+    <string name="admin_ban">封禁</string>
+    <string name="admin_move_title">移动 %1$s</string>
+    <string name="admin_move_subtitle">选择频道</string>
+    <string name="admin_here_now">当前所在</string>
+    <string name="admin_has_password">有密码</string>
+    <string name="admin_kick_title">踢出 %1$s</string>
+    <string name="admin_kick_subtitle">对方会看到原因</string>
+    <string name="admin_kick_channel">踢出频道（移到默认频道）</string>
+    <string name="admin_kick_server">踢出服务器</string>
+    <string name="admin_reason">原因（可选）</string>
+    <string name="admin_ban_title">封禁 %1$s</string>
+    <string name="admin_ban_subtitle">封禁其身份和 IP 地址</string>
+    <string name="ban_10_minutes">10 分钟</string>
+    <string name="ban_1_hour">1 小时</string>
+    <string name="ban_1_day">1 天</string>
+    <string name="ban_1_week">1 周</string>
+    <string name="ban_permanently">永久</string>
+
+    <!-- Server info -->
+    <string name="info_title">服务器信息</string>
+    <string name="info_users">用户</string>
+    <string name="info_channels">频道</string>
+    <string name="info_uptime">运行时间</string>
+    <string name="info_created">创建于</string>
+    <string name="info_ago">%1$s前</string>
+    <plurals name="span_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
+    <plurals name="span_hours">
+        <item quantity="other">%1$d 小时</item>
+    </plurals>
+    <plurals name="span_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <plurals name="span_months">
+        <item quantity="other">%1$d 个月</item>
+    </plurals>
+    <plurals name="span_years">
+        <item quantity="other">%1$d 年</item>
+    </plurals>
+
+    <!-- Raising the security level -->
+    <string name="level_needed_title">需要安全级别 %1$d</string>
+    <string name="level_raise_title">提升安全级别</string>
+    <string name="level_needed_subtitle">此服务器要求该级别。你的级别是 %1$d。</string>
+    <string name="level_yours">你的级别是 %1$d</string>
+    <string name="level_raise">提升</string>
+    <string name="level_estimate">在这部手机上平均需要%1$s。实际可能更快或更慢。</string>
+    <string name="level_measuring">正在估算这部手机所需的时间…</string>
+    <string name="level_desc_raise">提升只需进行一次。你的身份保持不变：你的组和权限都会保留，更高的级别在所有服务器上都有效。处理期间请保持应用打开；「停止」会保留目前已达到的级别。</string>
+    <string name="level_progress">级别 %1$d / %2$d</string>
+    <string name="level_running_desc">请保持应用打开。每一级所需时间大约是前一级的两倍。</string>
+    <string name="level_done">完成：你的安全级别为 %1$d。</string>
+    <string name="level_done_connecting">完成：你的安全级别为 %1$d。正在重新连接…</string>
+    <string name="level_stopped">已停在级别 %1$d。再次提升会从这里继续。</string>
+    <string name="about_under_minute">不到一分钟</string>
+    <plurals name="about_minutes">
+        <item quantity="other">大约 %1$d 分钟</item>
+    </plurals>
+    <plurals name="about_hours">
+        <item quantity="other">大约 %1$d 小时</item>
+    </plurals>
+    <plurals name="about_days">
+        <item quantity="other">大约 %1$d 天</item>
+    </plurals>
+
+    <!-- Server screen -->
+    <string name="servers">服务器</string>
+    <string name="connected">已连接</string>
+    <string name="connecting_to">正在连接到 %1$s…</string>
+    <string name="reconnecting_old">正在重新连接… 服务器上仍保留着你的旧连接：正在等待它释放。</string>
+    <string name="reconnecting_try">连接已断开。正在重新连接…（第 %1$d 次尝试）</string>
+    <string name="channel_password_subtitle">此频道设有密码</string>
+    <string name="view_channels">频道</string>
+    <string name="stream_title">%1$s 的直播</string>
+    <string name="stream_title_unknown">直播</string>
+    <string name="not_an_address">这看起来不像服务器地址</string>
+    <string name="private_left">%1$s 已离开服务器</string>
+    <string name="private_left_unknown">对方已离开服务器</string>
+    <string name="level_not_connected">未连接：服务器要求身份安全级别达到 %1$d。你可以在「设置 › 高级」中提升你的级别。</string>
+
+    <!-- Why a connection ended -->
+    <string name="end_no_answer">无法连接：服务器没有响应。请检查地址和端口。</string>
+    <string name="end_no_such_host">无法连接：在「%1$s」找不到服务器。请检查地址。</string>
+    <string name="end_cant_connect">无法连接：%1$s</string>
+    <string name="end_network_error">网络错误：%1$s</string>
+    <string name="end_network_changed">网络已变更</string>
+    <string name="end_network_gone">网络已断开</string>
+    <string name="end_server_silent">服务器没有响应</string>
+    <string name="end_server_stopped">服务器停止响应</string>
+    <string name="end_lost">连接已断开</string>
+    <string name="end_handshake">无法与服务器建立连接。</string>
+    <string name="end_by_server">被服务器断开连接</string>
+    <string name="end_kicked_channel">已被踢出频道</string>
+    <string name="end_kicked_channel_reason">已被踢出频道：%1$s</string>
+    <string name="end_kicked">已被踢出服务器</string>
+    <string name="end_kicked_reason">已被踢出服务器：%1$s</string>
+    <string name="end_banned">已被服务器封禁</string>
+    <string name="end_banned_reason">已被服务器封禁：%1$s</string>
+    <string name="end_shut_down">服务器已关闭</string>
+    <string name="end_shut_down_reason">服务器已关闭：%1$s</string>
+
+    <!-- Admin actions the server refused -->
+    <string name="admin_no_permission_move">你没有移动 %1$s 的权限。</string>
+    <string name="admin_no_permission_kick_channel">你没有将 %1$s 踢出频道的权限。</string>
+    <string name="admin_no_permission_kick_server">你没有将 %1$s 踢出服务器的权限。</string>
+    <string name="admin_no_permission_ban">你没有封禁 %1$s 的权限。</string>
+    <string name="admin_failed_move">无法移动 %1$s：%2$s</string>
+    <string name="admin_failed_kick_channel">无法将 %1$s 踢出频道：%2$s</string>
+    <string name="admin_failed_kick_server">无法将 %1$s 踢出服务器：%2$s</string>
+    <string name="admin_failed_ban">无法封禁 %1$s：%2$s</string>
+    <string name="channel_no_permission_create">你没有创建频道 %1$s 的权限。</string>
+    <string name="channel_no_permission_edit">你没有修改 %1$s 的权限。</string>
+    <string name="channel_no_permission_reorder">你没有移动 %1$s 的权限。</string>
+    <string name="channel_no_permission_delete">你没有删除 %1$s 的权限。</string>
+    <string name="channel_failed_create">无法创建 %1$s：%2$s</string>
+    <string name="channel_failed_edit">无法修改 %1$s：%2$s</string>
+    <string name="channel_failed_reorder">无法移动 %1$s：%2$s</string>
+    <string name="channel_failed_delete">无法删除 %1$s：%2$s</string>
+    <string name="channels_editing">正在编辑频道</string>
+    <string name="channels_add">添加</string>
+    <string name="channels_done">完成</string>
+    <string name="channels_edit_hint">按住频道并拖动即可移动。轻触频道可修改或删除。</string>
+    <string name="files_title">文件</string>
+    <string name="files_refresh">刷新</string>
+    <string name="files_up">上一级文件夹</string>
+    <string name="files_folder">文件夹</string>
+    <string name="files_download">下载</string>
+    <string name="files_empty">此文件夹为空。</string>
+    <string name="files_downloading">正在下载 %1$s…</string>
+    <string name="files_saved">已保存 %1$s</string>
+    <string name="files_download_cancelled">已停止下载 %1$s</string>
+    <string name="files_download_failed">无法下载 %1$s：%2$s</string>
+    <string name="files_needs_password">此频道有密码。用密码加入一次并记住它，即可查看其文件。</string>
+    <string name="files_no_permission">你没有权限查看这些文件。</string>
+    <string name="files_not_found">此文件夹已不存在。</string>
+    <string name="files_not_connected">未连接到服务器。</string>
+    <string name="files_upload">上传</string>
+    <string name="files_new_folder">新建文件夹</string>
+    <string name="files_create">创建</string>
+    <string name="files_rename">重命名</string>
+    <string name="files_rename_title">重命名 %1$s</string>
+    <string name="files_name">名称</string>
+    <string name="files_uploading">正在上传 %1$s…</string>
+    <string name="files_uploaded">已上传 %1$s</string>
+    <string name="files_upload_cancelled">已停止上传 %1$s</string>
+    <string name="files_upload_failed">无法上传 %1$s：%2$s</string>
+    <string name="files_unreadable">无法读取该文件。</string>
+    <string name="files_no_permission_change">服务器不允许你在这里这样做。</string>
+    <string name="files_gone">它已不存在。</string>
+    <string name="files_exists">这里已有同名的项目。</string>
+    <string name="files_delete_title">删除 %1$s？</string>
+    <string name="files_delete_file">该文件将从服务器上删除，对所有人生效。</string>
+    <string name="files_delete_folder">该文件夹及其中的所有内容将从服务器上删除，对所有人生效。</string>
+    <string name="files_replace_title">替换 %1$s？</string>
+    <string name="files_replace_text">这里已有同名文件。替换后，旧文件将对所有人删除。</string>
+    <string name="files_replace">替换</string>
+    <string name="channel_info_here">你在这个频道中</string>
+    <string name="channel_info_talk_power">所需发言权限</string>
+    <string name="channel_info_default">服务器的默认频道</string>
+    <string name="channel_info_no_description">没有描述</string>
+    <string name="channel_info_loading">正在加载…</string>
+    <string name="channel_info_arrange">整理</string>
+    <plurals name="channel_people">
+        <item quantity="other">%d 人</item>
+    </plurals>
+    <string name="channel_new_title">新频道</string>
+    <string name="channel_new_subtitle">服务器决定你可以创建哪些类型的频道。</string>
+    <string name="channel_edit_subtitle">频道设置</string>
+    <string name="channel_create">创建</string>
+    <string name="channel_name">名称</string>
+    <string name="channel_description">描述</string>
+    <string name="channel_kind">类型</string>
+    <string name="channel_kind_permanent">永久</string>
+    <string name="channel_kind_semi">半永久</string>
+    <string name="channel_kind_temporary">临时</string>
+    <string name="channel_kind_permanent_desc">一直保留，直到被删除。</string>
+    <string name="channel_kind_semi_desc">保留到服务器重启为止。</string>
+    <string name="channel_kind_temporary_desc">最后一个人离开时消失。创建时你会被移入其中。</string>
+    <string name="channel_password_on">密码</string>
+    <string name="channel_password_keep">留空则保留当前密码</string>
+    <string name="channel_codec">语音编解码器</string>
+    <string name="channel_codec_voice">Opus Voice</string>
+    <string name="channel_codec_music">Opus Music</string>
+    <string name="channel_quality">质量：%1$d</string>
+    <string name="channel_unlimited">不限用户数</string>
+    <string name="channel_max_users">最大用户数</string>
+    <string name="channel_parent">位于</string>
+    <string name="channel_top_level">顶层</string>
+    <string name="channel_parent_change">更改</string>
+    <string name="channel_parent_title">放到哪里</string>
+    <string name="channel_delete_title">删除 %1$s？</string>
+    <string name="channel_delete_subtitle">此操作无法撤销。</string>
+    <plurals name="channel_delete_subs">
+        <item quantity="other">它的 %d 个子频道也会被删除。</item>
+    </plurals>
+    <plurals name="channel_delete_people">
+        <item quantity="other">%d 人会被移到默认频道。</item>
+    </plurals>
+    <string name="channel_delete_empty">里面没有人。</string>
+    <string name="admin_move_needs_password">无法移动 %1$s：该频道需要密码。请先用密码加入一次并记住密码，之后即可把人移到那里。</string>
+
+    <!-- Sending pictures -->
+    <string name="picture_not_sent">图片未发送：%1$s</string>
+    <string name="pictures_not_sent">第 %1$d 张图片（共 %2$d 张）未发送：%3$s</string>
+    <string name="picture_no_permission">%1$s（在此频道没有权限）</string>
+    <string name="picture_too_big">图片太大（超过 %1$d MB）。</string>
+
+    <!-- Profile picture -->
+    <string name="avatar_uploading">正在上传…</string>
+    <string name="avatar_set">头像已设置。</string>
+    <string name="avatar_too_big">此服务器只允许很小的头像，或不允许头像。</string>
+    <string name="avatar_not_allowed">此服务器不允许你使用头像。</string>
+    <string name="avatar_failed">头像未设置：%1$s</string>
+    <string name="avatar_removed">头像已移除。</string>
+
+    <!-- The identity -->
+    <string name="identity_not_valid">这不是 TeamSpeak 身份。</string>
+    <string name="identity_unreadable">无法在这部手机上打开已保存的身份。请在「设置 › 高级 › TeamSpeak 身份」中导入你的身份，或在那里新建一个。</string>
+    <string name="identity_export_unreadable">无法读取身份，因此无法保存。</string>
+    <string name="file_not_written">无法写入该文件。</string>
+    <string name="file_not_opened">无法打开该文件。</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel">连接</string>
+    <string name="notification_mute">静音</string>
+    <string name="notification_unmute">取消静音</string>
+    <string name="notification_sound_off">关闭声音</string>
+    <string name="notification_sound_on">打开声音</string>
+    <string name="notification_messages">消息和戳一下</string>
+    <string name="notification_connected">已连接到 %1$s</string>
+    <string name="notification_connecting">正在连接到 %1$s</string>
+    <string name="notification_reconnecting">正在重新连接到 %1$s…</string>
+    <string name="notification_sharing_camera">正在分享你的摄像头</string>
+    <string name="notification_sharing_cameras">正在分享你的摄像头</string>
+    <string name="notification_sharing_screen">正在分享你的屏幕</string>
+</resources>

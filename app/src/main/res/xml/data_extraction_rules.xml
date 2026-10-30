@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What Android may copy of the app's data (Android 12 and later; cloud backup is off anyway, android:allowBackup).
+  The secrets (the identity and the passwords) stay behind when moving to a new phone: they're encrypted with a key
+  that never leaves this one, so they couldn't be opened there. The identity can be exported and imported instead.
+  The chat history needs no rule: it is in the no-backup folder (noBackupFilesDir), which Android never copies.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="secrets.xml" />
+        <exclude domain="sharedpref" path="cloud-secrets.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="secrets.xml" />
+        <exclude domain="sharedpref" path="cloud-secrets.xml" />
+    </device-transfer>
+</data-extraction-rules>

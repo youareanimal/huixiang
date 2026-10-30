@@ -1,0 +1,145 @@
+{
+  "eax": [
+    {
+      "key": "10765fd6e4b0b7bf9ecbdea0f3a66953",
+      "nonce": "9bfc33a047e8e033abcbe4146e9fc308",
+      "header": "d7794a4078",
+      "plain": "",
+      "ciphertext": "",
+      "mac": "47ceae0f0fa52b06"
+    },
+    {
+      "key": "e4bfdaf10712c6201ff525db20e87384",
+      "nonce": "7f18664849f728b23cf4529dbe3c198d",
+      "header": "198d2d314b",
+      "plain": "9b268736d5",
+      "ciphertext": "81b8c9ff71",
+      "mac": "810ab51334872dcb"
+    },
+    {
+      "key": "5b5d04626177fcb8d1b0d8cc4a953582",
+      "nonce": "28ca1fd6192ac1c8f790e4ee5656f553",
+      "header": "02890bfe88",
+      "plain": "a0461ae4ecadcc4da25f2f28589c35b6",
+      "ciphertext": "18ed1471c3c88eb89dfc8bb36ab86011",
+      "mac": "17e89c84d2500cb3"
+    },
+    {
+      "key": "4d17ae3f95d58f45d68c1cdb9ffd1822",
+      "nonce": "9c6f342a511c2043358e224962967cd7",
+      "header": "8e1032ad4b",
+      "plain": "916536a9b4c930b8a01dafda0078d3e654a39f715d65a8fc3e79b50f04a9b1e84c",
+      "ciphertext": "4f29b5da1afa796c161250b162a4e454b87841271e10e853b81ab6c1cffa9434ab",
+      "mac": "d8c6d4521e274919"
+    },
+    {
+      "key": "365373ee4618ee094c799890aba3bd04",
+      "nonce": "6e7f5240caedbc4ab08ae3c682b72df9",
+      "header": "f36fe3b1e7",
+      "plain": "276abf3604ea13bcefd16773d786b625657536904aa47241e3ed9d3692889aee818e690afbd1bd737b91d814a91edb4c5ff1d6b33807b5c9e8b6415cbaa9d044",
+      "ciphertext": "2ace7d046de2539f5831a1cb10a9e3d6ca6bab694db4632403b016eacb2a8339bc442a20aba6ea437fa511bfc8acd8ff4e6cd06a84bb660b8976e5f886834a48",
+      "mac": "288a505ca2a044c3"
+    }
+  ],
+  "keyNonce": [
+    {
+      "iv": "8e944ba1c13e2afc06ef83fc6d920ce5e23ceb31",
+      "fromServer": true,
+      "packetId": 20690,
+      "gen": 1,
+      "type": 2,
+      "key": "494b691c1ce8a4f394749eafc917d52b",
+      "nonce": "46ba4f8e5cc10b1ba63151f50a9b4ba7"
+    },
+    {
+      "iv": "3053db6abc6ba5c20a13bbfed8facf4da70a2bc5",
+      "fromServer": false,
+      "packetId": 7469,
+      "gen": 1,
+      "type": 2,
+      "key": "13b1cec7ad51c905c40d1a3f43b563f3",
+      "nonce": "ae195e5aae83e7a8acdc2d7b6bd4423e"
+    },
+    {
+      "iv": "ec72cff0482fba74e0d802caa694c31e74b9d6be8f5f69f2a1741d54410fda5ac7a2dd6a50380e3e1e76af795da0b19b47b297975b1d8bc181d67e14d714ee44",
+      "fromServer": true,
+      "packetId": 46960,
+      "gen": 2,
+      "type": 2,
+      "key": "0eb99790bec19da5498650f99743b76a",
+      "nonce": "ae12e30c6e6d17b8c06f05c017feac6b"
+    },
+    {
+      "iv": "3144790280e596f0c62a1a1009c4884b96219419801bce189ceda8e7cdb38ecb68accddf11558467037cbbfe00c002e69986146922150b8cd3e69819256a6ad2",
+      "fromServer": false,
+      "packetId": 27298,
+      "gen": 1,
+      "type": 2,
+      "key": "e5abf77ae6c5af13efe15706570817b7",
+      "nonce": "3bfd3bcb58044c23e250aa3de310b519"
+    }
+  ],
+  "identities": {
+    "a": {
+      "scalar": "1947a2bdc801e3964e4ffe69a92a91f49febfba37280fdc95f568b5917c8f196",
+      "offset": "333",
+      "publicKeyString": "MEwDAgcAAgEgAiEAhxedHmZfrk11YREjzpcfyHo+IVAwU4YVkPjXsPzZzJYCIBP4cIZNz+/gMUqLLasR2cp8DMjve2UzRQFiU8ipfzga",
+      "uid": "uSNL62jX8r/sFATzTN/g0K3vBUo="
+    },
+    "b": {
+      "scalar": "3d117cba8a1f6d6c582cd1a99dd156830ee4659a68edb8fbfeb1c0997d00124e",
+      "offset": "129",
+      "publicKeyString": "MEwDAgcAAgEgAiEA5XjVb0Gdd0p36JS5ZN4Cwp4WNMzc8lvnU4hvt/LizFQCIEwi6e+13bYPgv9adWU+d92rKBbu7dzUC55jYsXRrsY8",
+      "uid": "rAuVR9Hhv+vmuzBxH+XJs8S5jpc="
+    },
+    "sharedSecretAB": "710337e3b968c65248aca7514071b72f51d08118",
+    "signedData": "ad14b59450227530e7eb4add7b7ecfa15812509a6b5266356ab4447802a3e12d99ea981d2c939766",
+    "signatureA": "3046022100c2f788a90566f820927e9199e069e6cec5e80c1b7f864e84fc4cb4c6171f65d9022100dea679d88f17e956d9e4217034485ef74dbef42685300a95b417eb6f666aa380"
+  },
+  "tsExport": {
+    "exported": "333VzLXCHlklrCk3fYohw+OpwKZMYCx9C2tWS19QADpjcF8fR1dRSnpYSSpkJxJgUGxnCGVbakNiSTwff20ie3pgBlN4an5OThZXLDFAKC0AEjcDU0cNIHhZFFJWYE1jMnVZMAhfQ2Z6Z2FBaUFaUjZLOXlBSGpsazVQL21tcEtwSDBuK3Y3bzNLQS9jbGZWb3RaRjhqeGxnPT0=",
+    "scalar": "1947a2bdc801e3964e4ffe69a92a91f49febfba37280fdc95f568b5917c8f196",
+    "uid": "uSNL62jX8r/sFATzTN/g0K3vBUo="
+  },
+  "license": {
+    "license": "0100e9ec888a104c53c43b1fdeaae367989ecc33d7de62aeac8e51163afba7c8a0d700aa889c8220a72f4f2f96f8ab5465737400003a3db68c028a86936ae8000ef25e3f56402e37568cda2dfde514adef35c089d0208ff39ce7c9048146",
+    "serverKey": "82601dd99f9ef213de4802a47759b4c7ca7ab1debd156bf253fba81fecbed806",
+    "tempPrivate": "6054693a002cdbcf0870d6f3aaf52867d4a36f64d12127372d3b6bdffbbb075a",
+    "tempPublic": "407a22011bbe19584961399732d172ee6a5853a101c97e1b1a489f87fdb3d37d",
+    "sharedSecret": "e36226482b3479906058bce7038834ca0ed6da1718a427a1c5e5f59dbfc57dcd04f7185b8f96438ddb9d3e755b66d6513a2348dbf115b98ce8eb5cc0b927a6f9"
+  },
+  "cmd": {
+    "built": "sendtextmessage targetmode=2 target=1 msg=Hei\\s\\p\\smaailma\\s\\/\\s\\\\\\säö\\n",
+    "hashedPassword": "CNj27N428T2bkVZzSnzFHOKg/KI="
+  },
+  "files": {
+    "uid": "uSNL62jX8r/sFATzTN/g0K3vBUo=",
+    "avatarNames": [
+      "/avatar_ljcdelolginhpclpombeaepdemnpoanaknopafek",
+      "/avatar_ldbaclligbojdhdggnoaldclcmliekjfjojnfkdbnlifgllajeecdpcbekgpgple",
+      "/avatar_dgknahppkghcdgopacbekgndnebkijmmmpkldgcnlbniemdgmgjeadipjcpnnakb"
+    ],
+    "serverNamed": [
+      "/avatar_abcdefghijklmnopabcdefghijklmnop",
+      "/avatar_ljcdelolginhpclpombeaepdemnpoanaknopafek",
+      "/avatar_ldbaclligbojdhdggnoaldclcmliekjfjojnfkdbnlifgllajeecdpcbekgpgple",
+      "/avatar_dgknahppkghcdgopacbekgndnebkijmmmpkldgcnlbniemdgmgjeadipjcpnnakb"
+    ],
+    "icon": "/icon_3000000000",
+    "builtinIcon": null,
+    "pictureMessage": "[img]ts3image://2026-10-12_18-35-01_a7k3f9.jpg?channel=5&path=/webTS[/img]"
+  },
+  "sdp": {
+    "offer": "v=0\r\no=- 4611731400430051336 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "answer": "v=0\r\no=- 99 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "answerWithVersion": "v=0\r\no=- 99 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "shareRelabelled": "v=0\r\no=- 4611731400430051336 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c1f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "shareOriginal": {
+      "102": "42e01f"
+    },
+    "restored": "v=0\r\no=- 4611731400430051336 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "sendLevel": "v=0\r\no=- 4611731400430051336 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e034\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c34\r\na=rtcp-fb:104 nack\r\na=fmtp:104 apt=999\r\n",
+    "withoutStray": "v=0\r\no=- 4611731400430051336 7 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 102 103\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 nack\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:102 H264/90000\r\na=fmtp:102 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:103 H264/90000\r\na=fmtp:103 packetization-mode=1;profile-level-id=640c1f\r\n",
+    "candidate": "candidate:1 1 udp 2122260223 192.0.2.10 50000 typ host"
+  }
+}

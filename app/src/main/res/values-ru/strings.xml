@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Russian. TeamSpeak's own words follow the TeamSpeak 5 client's Russian translation (MIT), see TRANSLATIONS.md. -->
+<resources>
+    <!-- Shared -->
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="edit">Изменить</string>
+    <string name="remove">Убрать</string>
+    <string name="close">Закрыть</string>
+    <string name="advanced">Дополнительно</string>
+    <string name="connect">Подключиться</string>
+    <string name="link_title">Подключиться к %1$s?</string>
+    <string name="link_subtitle">Из ссылки TeamSpeak</string>
+    <string name="link_channel">Канал</string>
+    <string name="link_password">Пароль сервера</string>
+    <string name="link_password_given">в ссылке</string>
+    <string name="link_leaving">Сначала вы покинете %1$s.</string>
+    <string name="link_use_key">Использовать ключ привилегий из ссылки</string>
+    <string name="link_use_key_desc">Он даёт вам права на этом сервере, например администратора. Используйте его, только если доверяете отправителю ссылки.</string>
+    <string name="disconnect">Отключиться</string>
+    <string name="nickname">Никнейм</string>
+    <string name="server_address">Адрес или никнейм сервера</string>
+    <string name="server_password">Пароль сервера</string>
+    <string name="remember_password">Запомнить пароль</string>
+    <string name="channel_password">Пароль канала</string>
+    <string name="join">Войти</string>
+
+    <!-- Connect screen -->
+    <string name="favourites">Избранное</string>
+    <string name="connect_title">Подключение к серверу</string>
+    <string name="favourites_in">В избранном</string>
+    <string name="favourites_save">Сохранить в избранное</string>
+    <string name="favourite_edit">Изменить избранное</string>
+    <string name="favourite_add">Добавить в избранное</string>
+    <string name="favourite_name">Название в ваших списках</string>
+    <string name="favourite_nickname">Ваш никнейм на этом сервере</string>
+    <string name="favourite_auto">Подключаться автоматически при открытии приложения</string>
+    <string name="favourite_file_port">Порт передачи файлов</string>
+    <string name="favourite_file_port_hint">Порт сервера (обычно 30033)</string>
+    <string name="favourite_file_port_desc">Только если картинки и аватары сервера не загружаются: его передача файлов работает на другом порту.</string>
+    <string name="update_title">Вышел 回响 %1$s</string>
+    <string name="update_text">На GitHub есть версия новее этой (%1$s).</string>
+    <string name="not_now">Не сейчас</string>
+    <string name="download">Скачать</string>
+
+    <!-- Server screen: header and controls -->
+    <string name="settings">Настройки</string>
+    <string name="hold_to_talk">Удерживайте, чтобы говорить</string>
+    <string name="microphone">Микрофон</string>
+    <string name="sound">Звук</string>
+    <string name="share">Трансляция</string>
+
+    <!-- Channel list -->
+    <string name="channel_has_password">Пароль</string>
+    <string name="person_sound_off">Звук выключен</string>
+    <string name="person_mic_off">Микрофон выключен</string>
+    <string name="person_cant_talk">Не может говорить в этом канале</string>
+    <string name="person_streaming">Ведёт трансляцию</string>
+    <string name="tag_afk">AFK</string>
+    <string name="tag_you">ВЫ</string>
+
+    <!-- Chat -->
+    <string name="event_connected">%1$s подключился</string>
+    <string name="event_joined_from">%1$s пришёл из %2$s</string>
+    <string name="event_you_moved_to">Вас переместили в %1$s</string>
+    <string name="event_you_kicked_from">Вас выгнали из %1$s</string>
+    <string name="event_moved_here_from">%1$s перемещён сюда из %2$s</string>
+    <string name="event_kicked_from">%1$s выгнан из %2$s</string>
+    <string name="event_moved_to">%1$s перемещён в %2$s</string>
+    <string name="event_kicked_from_channel">%1$s выгнан из канала</string>
+    <string name="event_left_to">%1$s ушёл в %2$s</string>
+    <string name="event_you_kicked_from_server">Вас выгнали с сервера</string>
+    <string name="event_you_banned">Вас забанили</string>
+    <string name="event_lost_connection">%1$s потерял соединение</string>
+    <string name="event_kicked_from_server">%1$s выгнан с сервера</string>
+    <string name="event_banned">%1$s забанен</string>
+    <string name="event_disconnected">%1$s отключился</string>
+    <string name="event_by">" (кем: %1$s)"</string>
+    <string name="event_because">" (%1$s)"</string>
+    <string name="event_another_channel">(канал без названия)</string>
+    <string name="chat_channel">Канал</string>
+    <string name="chat_empty_channel">В этом канале пока нет сообщений.</string>
+    <string name="chat_empty_private">Пока нет сообщений.</string>
+    <string name="chat_message_to">Сообщение для %1$s…</string>
+    <string name="chat_message_to_channel">Сообщение в канал…</string>
+    <string name="chat_message_to_them">Сообщение собеседнику…</string>
+    <string name="chat_system">Система</string>
+    <string name="chat_link_open">Открыть: %1$s</string>
+    <plurals name="chat_pictures_max">
+        <item quantity="one">Не больше %1$d картинки за раз.</item>
+        <item quantity="few">Не больше %1$d картинок за раз.</item>
+        <item quantity="many">Не больше %1$d картинок за раз.</item>
+        <item quantity="other">Не больше %1$d картинки за раз.</item>
+    </plurals>
+    <string name="chat_camera_needed">Чтобы сделать фото, нужно разрешить доступ к камере.</string>
+    <string name="chat_sending_picture">Отправка картинки %1$d из %2$d…</string>
+    <string name="chat_attached_picture">Прикреплённая картинка</string>
+    <string name="chat_remove_picture">Убрать картинку</string>
+    <string name="chat_send_picture">Отправить картинку</string>
+    <string name="chat_choose_pictures">Выбрать картинки</string>
+    <string name="chat_take_photo">Сделать фото</string>
+    <string name="chat_send">Отправить</string>
+
+    <!-- A picture on the whole screen -->
+    <string name="picture_save">Сохранить в галерею</string>
+    <string name="picture_saved">Сохранено в %1$s</string>
+    <string name="picture_failed">Не получилось: %1$s</string>
+
+    <!-- Streams: watching -->
+    <string name="stream_watch">СМОТРЕТЬ</string>
+    <string name="stream_small_window">Маленькое окно</string>
+    <string name="stream_full_screen">Во весь экран</string>
+    <string name="stream_resize">Потяните, чтобы изменить размер трансляции</string>
+    <string name="stream_mini">Маленькая трансляция: нажмите, чтобы увеличить, потяните, чтобы переместить</string>
+    <string name="stream_leave_full_screen">Выйти из полноэкранного режима</string>
+    <string name="stream_stop_watching">Перестать смотреть</string>
+    <string name="stream_sound_on">Включить звук</string>
+    <string name="stream_sound_off">Выключить звук</string>
+    <string name="stream_requesting">Запрос доступа…</string>
+    <string name="stream_connecting">Подключение…</string>
+    <string name="stream_paused">На паузе</string>
+    <string name="stream_waiting_picture">Подключено, ждём изображение…</string>
+    <string name="stream_trying">Проблема с соединением, пробуем снова…</string>
+    <string name="stream_connection_lost">Соединение потеряно.</string>
+    <string name="stream_open_failed">Не удалось открыть трансляцию.</string>
+    <string name="stream_denied">Запрос на просмотр трансляции отклонён.</string>
+    <string name="stream_ended">Трансляция завершена.</string>
+    <string name="stream_ended_left_channel">Трансляция завершена (вы больше не в том же канале).</string>
+
+    <!-- Streams: sharing -->
+    <string name="share_camera_title">Трансляция камеры</string>
+    <string name="share_screen_title">Трансляция экрана</string>
+    <string name="share_subtitle">Смотреть может любой в вашем канале</string>
+    <string name="start">Начать</string>
+    <string name="stop">Стоп</string>
+    <string name="share_what">Что</string>
+    <string name="share_camera">Камера</string>
+    <string name="share_screen">Экран</string>
+    <string name="share_both_cameras">Обе камеры</string>
+    <string name="camera_front">Фронтальная</string>
+    <string name="camera_back">Основная</string>
+    <string name="camera_both">Обе</string>
+    <string name="share_both_desc">Основная камера крупно, фронтальная маленькой в углу. «Поменять» меняет их местами.</string>
+    <string name="share_quality">Качество</string>
+    <string name="share_quality_480">Экономия трафика: меньше всего данных, для мобильных сетей.</string>
+    <string name="share_quality_720">HD: чётко и достаточно легко для большинства соединений.</string>
+    <string name="share_quality_1080">Full HD: чётче всего, нужно хорошее соединение с обеих сторон.</string>
+    <string name="share_sound">Звук трансляции</string>
+    <string name="share_sound_on_desc">Зрители слышат ваш микрофон вместе с изображением. Он затихает, пока ваш микрофон выключен и пока вы говорите в канале, чтобы вас не было слышно дважды.</string>
+    <string name="share_sound_off_desc">Изображение без звука: говорите в канале как обычно.</string>
+    <string name="share_screen_sound">Звук телефона</string>
+    <string name="share_screen_sound_on_desc">Зрители слышат то, что воспроизводит ваш телефон, например видео или игру. Некоторые приложения этого не разрешают и остаются без звука. Голоса канала не передаются.</string>
+    <string name="share_screen_sound_off_desc">Изображение без звука.</string>
+    <string name="share_screen_sound_watching">Недоступно, пока вы смотрите трансляцию: перестаньте смотреть, чтобы передавать и звук телефона.</string>
+    <string name="share_screen_desc">Перед началом Android спросит ещё раз. Показывается всё, что на экране, включая уведомления.</string>
+    <string name="share_sound_quiet">Звук трансляции приглушён</string>
+    <string name="share_sound_live">Звук трансляции включён</string>
+    <string name="share_starting">запуск…</string>
+    <string name="share_paused_call">на паузе во время звонка</string>
+    <string name="share_watching">Смотрят</string>
+    <string name="share_swap_cameras">Поменять камеры местами</string>
+    <string name="share_switch_camera">Сменить камеру</string>
+    <string name="share_turn_locked">Поворот зафиксирован (нажмите, чтобы следовать за телефоном)</string>
+    <string name="share_turn_follows">Поворот следует за телефоном (нажмите, чтобы зафиксировать)</string>
+    <string name="share_light_on">Кольцевая подсветка включена (нажмите, чтобы выключить)</string>
+    <string name="share_light_off">Кольцевая подсветка: яркий белый экран освещает ваше лицо</string>
+    <string name="share_both_unsupported">Этот телефон не может использовать обе камеры одновременно.</string>
+    <string name="share_failed">Не удалось начать трансляцию.</string>
+    <string name="share_refused">TeamSpeak отклонил трансляцию: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_general">Общие</string>
+    <string name="settings_playback">Воспроизведение</string>
+    <string name="settings_capture">Запись</string>
+    <string name="settings_ui">Интерфейс</string>
+    <string name="settings_save">Сохранить и применить</string>
+    <string name="cant_be_undone">Это нельзя отменить</string>
+    <string name="quiet">Тихо</string>
+    <string name="loud">Громко</string>
+
+    <!-- Settings › General -->
+    <string name="avatar_title">Аватар</string>
+    <string name="avatar_change">Изменить</string>
+    <string name="avatar_desc">Его видят другие на этом сервере. Он подгоняется под размер 320 × 320.</string>
+    <string name="general_floating_ptt">Плавающая кнопка «Нажми и говори»</string>
+    <string name="general_floating_ptt_desc">В режиме «Нажми и говори» круглая кнопка остаётся внизу экрана 回响, так что можно говорить, листая чат. Кнопка поверх других приложений (ниже) настраивается отдельно.</string>
+    <string name="general_overlay_ptt">Кнопка разговора поверх других приложений</string>
+    <string name="general_overlay_ptt_desc">В режиме «Нажми и говори» круглая кнопка появляется, когда вы переходите в другие приложения (не в самом 回响). Удерживайте её, чтобы говорить, перетаскивайте, чтобы переместить. Android один раз попросит разрешить 回响 показываться поверх других приложений.</string>
+    <string name="general_volume_ptt">Кнопки громкости — «Нажми и говори»</string>
+    <string name="general_volume_ptt_desc">В режиме «Нажми и говори» удержание кнопки громкости передаёт ваш голос, пока приложение на экране (вместо изменения громкости).</string>
+    <string name="general_headset_ptt">Кнопка гарнитуры — «Нажми и говори»</string>
+    <string name="general_headset_ptt_desc">В режиме «Нажми и говори» нажмите кнопку на наушниках, чтобы начать говорить, и нажмите снова, чтобы закончить. Работает и при выключенном экране. Пока это включено, кнопка не запускает и не ставит на паузу музыку.</string>
+    <string name="general_call_mute">Отключать звук во время звонков</string>
+    <string name="general_call_mute_desc">Когда звонит телефон или начинается звонок, микрофон и звук отключаются (и звук трансляции, которую вы смотрите) и включаются снова после его окончания. Ваша трансляция ставится на паузу, чтобы зрители не видели звонок. То, что вы отключили сами, остаётся отключённым.</string>
+    <string name="general_updates">Проверять обновления</string>
+    <string name="general_updates_desc">Раз в день 回响 спрашивает у GitHub, не вышла ли новая версия, и сообщает об этом на экране подключения. О вас ничего не отправляется.</string>
+    <string name="general_screen_on">Не выключать экран</string>
+    <string name="general_screen_on_desc">Экран не гаснет, пока вы подключены и приложение открыто. Пока вы ведёте или смотрите трансляцию, он и так остаётся включённым.</string>
+    <string name="general_spacers">Разрешить вход в разделители</string>
+    <string name="general_spacers_desc">Нажатие на разделитель (линию или заголовок в списке каналов) входит в него, как в любой канал. Некоторые серверы используют его как AFK-канал. Если выключено, в разделитель нельзя попасть случайным нажатием.</string>
+    <string name="history_title">История чата</string>
+    <string name="history_desc">Чаты каналов, личные чаты и то, кто вошёл или вышел, хранятся на этом телефоне в зашифрованном виде и снова показываются при подключении к тому же серверу: за последние %1$s, не больше %2$s на разговор. Тычки не сохраняются.</string>
+    <plurals name="history_days">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <plurals name="history_lines">
+        <item quantity="one">%1$d строки</item>
+        <item quantity="few">%1$d строк</item>
+        <item quantity="many">%1$d строк</item>
+        <item quantity="other">%1$d строки</item>
+    </plurals>
+    <string name="history_clear">Очистить историю чата</string>
+    <string name="history_cleared">Очищено.</string>
+    <string name="history_clear_title">Очистить историю чата?</string>
+    <string name="history_clear_button">Очистить</string>
+    <string name="history_clear_desc">Сохранённый чат всех серверов удаляется с этого телефона, как и чат, который сейчас на экране.</string>
+
+    <!-- Settings › Playback -->
+    <string name="playback_voice_volume">Громкость голосов</string>
+    <string name="playback_test_sound">Воспроизвести тестовый звук</string>
+    <string name="playback_event_sounds">Звуки событий</string>
+    <string name="playback_event_sounds_desc">Короткие звуки, когда кто-то входит в ваш канал или выходит из него, при сообщениях, тычках и трансляциях, а также для кнопок микрофона и звука.</string>
+    <string name="playback_sound_volume">Громкость звуков</string>
+    <string name="playback_play_sound">Воспроизвести звук</string>
+    <string name="playback_call_volume">С подавлением эха голоса следуют громкости звонка: нажмите кнопку громкости во время подключения.</string>
+    <string name="playback_media_volume">Голоса следуют громкости медиа.</string>
+
+    <!-- Settings › Capture -->
+    <string name="capture_mic_volume">Громкость микрофона</string>
+    <string name="capture_activation">Активация</string>
+    <string name="capture_vad">Активация голосом</string>
+    <string name="capture_ptt">Нажми и говори</string>
+    <string name="capture_continuous">Постоянная передача</string>
+    <string name="capture_ptt_desc">Удерживайте кнопку «Удерживайте, чтобы говорить», пока говорите.</string>
+    <string name="capture_level">Уровень</string>
+    <string name="capture_level_desc">Полоса показывает ваш микрофон, пока открыты эти настройки; в это время ничего не передаётся.</string>
+    <string name="capture_vad_level">Порог активации голосом</string>
+    <string name="capture_vad_level_desc">Сдвиньте вправо, чтобы отсечь фоновый шум. Если ваш голос обрывается, сдвиньте влево.</string>
+    <string name="capture_vad_delay">Задержка перед отключением</string>
+    <string name="capture_processing">Обработка сигнала</string>
+    <string name="capture_noise">Убирать фоновый шум</string>
+    <string name="capture_echo">Подавление эха</string>
+    <string name="capture_agc">Автоматическая регулировка усиления</string>
+    <string name="capture_echo_desc">С подавлением эха голоса звучат как в телефонном звонке (динамик или гарнитура). Выключите его для лучшего звука в наушниках.</string>
+
+    <!-- Settings › UI -->
+    <string name="ui_admin">Показывать функции администратора</string>
+    <string name="ui_controls_bottom">Кнопки внизу</string>
+    <string name="ui_controls_bottom_desc">Кнопки микрофона, звука и трансляции и переключатель Каналы/Чат находятся внизу экрана, под большим пальцем.</string>
+    <string name="ui_language">Язык</string>
+    <string name="ui_language_phone">Язык телефона</string>
+    <string name="ui_admin_desc">В меню пользователя также можно переместить его в другой канал, выгнать из канала или с сервера и забанить. Сервер решает, разрешено ли вам это: без разрешения он откажет.</string>
+
+    <!-- Settings › Advanced -->
+    <string name="relay_title">Видеосоединение</string>
+    <string name="relay_desc">Трансляции идут напрямую между вами и другой стороной. В некоторых сетях им нужен ретранслятор (TURN-сервер): укажите его здесь, если он у вас есть.</string>
+    <string name="relay_address">Ретранслятор (turn:хост:порт)</string>
+    <string name="relay_user">Имя пользователя ретранслятора</string>
+    <string name="relay_password">Пароль ретранслятора</string>
+    <string name="relay_only">Всегда через ретранслятор</string>
+    <string name="advanced_file_port">Серверу, у которого передача файлов идёт через другой порт (его картинки и аватары не загружаются), можно задать свой порт в разделе «Дополнительно» избранного.</string>
+    <string name="passwords_title">Пароли каналов</string>
+    <string name="passwords_desc">Пароли, которые вы решили запомнить, позволяют войти в канал одним нажатием. Они хранятся на этом телефоне в зашифрованном виде.</string>
+    <string name="passwords_forget">Забыть сохранённые пароли</string>
+    <string name="passwords_forgotten">Забыты.</string>
+    <string name="identity_title">Идентификатор TeamSpeak</string>
+    <string name="identity_desc">Ваш идентификатор — это то, кем вы являетесь для серверов (ваши группы и разрешения). Сохраните копию или используйте идентификатор из другого приложения TeamSpeak.</string>
+    <string name="identity_wipe">Удалить</string>
+    <string name="identity_export">Экспорт</string>
+    <string name="identity_import">Импорт</string>
+    <string name="identity_imported">Импортирован. Он будет использоваться со следующего подключения.</string>
+    <string name="identity_saved">Сохранено. Храните файл там, где доступ есть только у вас.</string>
+    <string name="identity_wiped">Удалён. Новый идентификатор будет создан при следующем подключении.</string>
+    <string name="identity_export_title">Экспорт идентификатора</string>
+    <string name="identity_export_subtitle">Храните его в тайне</string>
+    <string name="identity_save_file">Сохранить в файл</string>
+    <string name="identity_export_what">Этот файл и есть ваш идентификатор: любой, у кого он есть, будет вами на каждом сервере, с вашими группами и разрешениями, например правами администратора сервера. Никто не сможет заметить разницу.</string>
+    <string name="identity_export_where">Сохраните его там, где доступ есть только у вас, например на этом телефоне или на личном диске. Не отправляйте его в чате или по почте и не публикуйте. Его может открыть приложение TeamSpeak, а также 回响 на другом телефоне.</string>
+    <string name="identity_wipe_title">Удалить ваш идентификатор?</string>
+    <string name="identity_wipe_what">Идентификатор этого телефона удаляется, а новый создаётся при следующем подключении. Для всех серверов вы станете новым человеком: ваши группы, разрешения и всё, что было выдано старому идентификатору (например, права администратора), не сохранятся.</string>
+    <string name="identity_wipe_back">Вернуть его можно только из экспортированной копии. Если он может понадобиться, отмените и сначала экспортируйте его.</string>
+    <string name="identity_import_title">Импорт идентификатора</string>
+    <string name="identity_import_subtitle">Из приложения TeamSpeak</string>
+    <string name="identity_import_desc">Вставьте идентификатор, экспортированный приложением TeamSpeak, или выберите сохранённый им файл (.ini). Со следующего подключения он заменит собственный идентификатор этого телефона.</string>
+    <string name="identity_field">Идентификатор</string>
+    <string name="identity_choose_file">Выбрать файл…</string>
+    <string name="level_title">Уровень безопасности</string>
+    <string name="level_desc">Некоторые серверы пускают только идентификаторы не ниже определённого уровня. При повышении идентификатор остаётся тем же, с его группами и разрешениями.</string>
+    <string name="level_raise_button">Повысить уровень</string>
+
+    <!-- A person's menu -->
+    <string name="person_you">Вы</string>
+    <string name="person_away">Отошёл</string>
+    <string name="person_away_message">Отошёл: %1$s</string>
+    <string name="person_volume">Громкость для вас</string>
+    <string name="away_message_field">Сообщение об отсутствии (необязательно)</string>
+    <string name="away_back">Я вернулся</string>
+    <string name="away_update">Обновить</string>
+    <string name="away_set">Отойти</string>
+    <string name="poke">Ткнуть</string>
+    <string name="chat">Чат</string>
+    <string name="poke_title">Ткнуть: %1$s</string>
+    <string name="poke_subtitle">Получатель увидит окно с вашим сообщением</string>
+    <string name="poke_message_field">Сообщение (необязательно)</string>
+    <string name="poked_you">%1$s ткнул вас</string>
+    <string name="dismiss">Закрыть</string>
+
+    <!-- A person's menu: admin functions (Settings › UI) -->
+    <string name="admin_row">Администрирование</string>
+    <string name="admin_move">Переместить</string>
+    <string name="admin_kick">Выгнать</string>
+    <string name="admin_ban">Забанить</string>
+    <string name="admin_move_title">Переместить: %1$s</string>
+    <string name="admin_move_subtitle">Выберите канал</string>
+    <string name="admin_here_now">Сейчас здесь</string>
+    <string name="admin_has_password">С паролем</string>
+    <string name="admin_kick_title">Выгнать: %1$s</string>
+    <string name="admin_kick_subtitle">Пользователь увидит причину</string>
+    <string name="admin_kick_channel">Из канала (в канал по умолчанию)</string>
+    <string name="admin_kick_server">С сервера</string>
+    <string name="admin_reason">Причина (необязательно)</string>
+    <string name="admin_ban_title">Забанить: %1$s</string>
+    <string name="admin_ban_subtitle">Банит идентификатор и IP-адрес</string>
+    <string name="ban_10_minutes">10 минут</string>
+    <string name="ban_1_hour">1 час</string>
+    <string name="ban_1_day">1 день</string>
+    <string name="ban_1_week">1 неделя</string>
+    <string name="ban_permanently">Навсегда</string>
+
+    <!-- Server info -->
+    <string name="info_title">Информация о сервере</string>
+    <string name="info_users">Пользователи</string>
+    <string name="info_channels">Каналы</string>
+    <string name="info_uptime">Время работы</string>
+    <string name="info_created">Создан</string>
+    <string name="info_ago">%1$s назад</string>
+    <plurals name="span_minutes">
+        <item quantity="one">%1$d мин.</item>
+        <item quantity="few">%1$d мин.</item>
+        <item quantity="many">%1$d мин.</item>
+        <item quantity="other">%1$d мин.</item>
+    </plurals>
+    <plurals name="span_hours">
+        <item quantity="one">%1$d час</item>
+        <item quantity="few">%1$d часа</item>
+        <item quantity="many">%1$d часов</item>
+        <item quantity="other">%1$d часа</item>
+    </plurals>
+    <plurals name="span_days">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <plurals name="span_months">
+        <item quantity="one">%1$d месяц</item>
+        <item quantity="few">%1$d месяца</item>
+        <item quantity="many">%1$d месяцев</item>
+        <item quantity="other">%1$d месяца</item>
+    </plurals>
+    <plurals name="span_years">
+        <item quantity="one">%1$d год</item>
+        <item quantity="few">%1$d года</item>
+        <item quantity="many">%1$d лет</item>
+        <item quantity="other">%1$d года</item>
+    </plurals>
+
+    <!-- Raising the security level -->
+    <string name="level_needed_title">Нужен уровень безопасности %1$d</string>
+    <string name="level_raise_title">Повышение уровня безопасности</string>
+    <string name="level_needed_subtitle">Этого требует сервер. Ваш уровень — %1$d.</string>
+    <string name="level_yours">Ваш уровень — %1$d</string>
+    <string name="level_raise">Повысить</string>
+    <string name="level_estimate">На этом телефоне это занимает в среднем %1$s. Может быть быстрее или медленнее.</string>
+    <string name="level_measuring">Оцениваем, сколько это займёт на этом телефоне…</string>
+    <string name="level_desc_raise">Повышение делается один раз. Ваш идентификатор остаётся прежним: группы и разрешения сохраняются, а более высокий уровень действует на всех серверах. Не закрывайте приложение, пока идёт работа; «Стоп» сохраняет уже достигнутый уровень.</string>
+    <string name="level_progress">Уровень %1$d из %2$d</string>
+    <string name="level_running_desc">Не закрывайте приложение. Каждый уровень занимает примерно вдвое больше времени, чем предыдущий.</string>
+    <string name="level_done">Готово: ваш уровень безопасности — %1$d.</string>
+    <string name="level_done_connecting">Готово: ваш уровень безопасности — %1$d. Подключаемся снова…</string>
+    <string name="level_stopped">Остановлено на уровне %1$d. Повторное повышение продолжит с этого места.</string>
+    <string name="about_under_minute">меньше минуты</string>
+    <plurals name="about_minutes">
+        <item quantity="one">около %1$d минуты</item>
+        <item quantity="few">около %1$d минут</item>
+        <item quantity="many">около %1$d минут</item>
+        <item quantity="other">около %1$d минуты</item>
+    </plurals>
+    <plurals name="about_hours">
+        <item quantity="one">около %1$d часа</item>
+        <item quantity="few">около %1$d часов</item>
+        <item quantity="many">около %1$d часов</item>
+        <item quantity="other">около %1$d часа</item>
+    </plurals>
+    <plurals name="about_days">
+        <item quantity="one">около %1$d дня</item>
+        <item quantity="few">около %1$d дней</item>
+        <item quantity="many">около %1$d дней</item>
+        <item quantity="other">около %1$d дня</item>
+    </plurals>
+
+    <!-- Server screen -->
+    <string name="servers">Серверы</string>
+    <string name="connected">Подключено</string>
+    <string name="connecting_to">Подключение к %1$s…</string>
+    <string name="reconnecting_old">Переподключение… На сервере ещё осталось ваше старое соединение: ждём, пока он его отпустит.</string>
+    <string name="reconnecting_try">Соединение потеряно. Переподключение… (попытка %1$d)</string>
+    <string name="channel_password_subtitle">У этого канала есть пароль</string>
+    <string name="view_channels">Каналы</string>
+    <string name="stream_title">Трансляция: %1$s</string>
+    <string name="stream_title_unknown">Трансляция</string>
+    <string name="not_an_address">Это не похоже на адрес сервера</string>
+    <string name="private_left">%1$s покинул сервер</string>
+    <string name="private_left_unknown">Собеседник покинул сервер</string>
+    <string name="level_not_connected">Не подключено: сервер требует уровень безопасности идентификатора %1$d. Повысить свой можно в разделе Настройки › Дополнительно.</string>
+
+    <!-- Why a connection ended -->
+    <string name="end_no_answer">Не удалось подключиться: сервер не отвечает. Проверьте адрес и порт.</string>
+    <string name="end_no_such_host">Не удалось подключиться: по адресу «%1$s» сервер не найден. Проверьте адрес.</string>
+    <string name="end_cant_connect">Не удалось подключиться: %1$s</string>
+    <string name="end_network_error">Ошибка сети: %1$s</string>
+    <string name="end_network_changed">Сеть сменилась</string>
+    <string name="end_network_gone">Сеть пропала</string>
+    <string name="end_server_silent">Сервер не ответил</string>
+    <string name="end_server_stopped">Сервер перестал отвечать</string>
+    <string name="end_lost">Соединение потеряно</string>
+    <string name="end_handshake">Не удалось установить соединение с сервером.</string>
+    <string name="end_by_server">Отключено сервером</string>
+    <string name="end_kicked_channel">Вас выгнали из канала</string>
+    <string name="end_kicked_channel_reason">Вас выгнали из канала: %1$s</string>
+    <string name="end_kicked">Вас выгнали с сервера</string>
+    <string name="end_kicked_reason">Вас выгнали с сервера: %1$s</string>
+    <string name="end_banned">Вас забанили на сервере</string>
+    <string name="end_banned_reason">Вас забанили на сервере: %1$s</string>
+    <string name="end_shut_down">Сервер выключился</string>
+    <string name="end_shut_down_reason">Сервер выключился: %1$s</string>
+
+    <!-- Admin actions the server refused -->
+    <string name="admin_no_permission_move">У вас нет разрешения перемещать пользователя %1$s.</string>
+    <string name="admin_no_permission_kick_channel">У вас нет разрешения выгонять пользователя %1$s из канала.</string>
+    <string name="admin_no_permission_kick_server">У вас нет разрешения выгонять пользователя %1$s с сервера.</string>
+    <string name="admin_no_permission_ban">У вас нет разрешения банить пользователя %1$s.</string>
+    <string name="admin_failed_move">Не удалось переместить пользователя %1$s: %2$s</string>
+    <string name="admin_failed_kick_channel">Не удалось выгнать пользователя %1$s из канала: %2$s</string>
+    <string name="admin_failed_kick_server">Не удалось выгнать пользователя %1$s с сервера: %2$s</string>
+    <string name="admin_failed_ban">Не удалось забанить пользователя %1$s: %2$s</string>
+    <string name="channel_no_permission_create">У вас нет разрешения создать канал %1$s.</string>
+    <string name="channel_no_permission_edit">У вас нет разрешения изменить канал %1$s.</string>
+    <string name="channel_no_permission_reorder">У вас нет разрешения переместить канал %1$s.</string>
+    <string name="channel_no_permission_delete">У вас нет разрешения удалить канал %1$s.</string>
+    <string name="channel_failed_create">Не удалось создать канал %1$s: %2$s</string>
+    <string name="channel_failed_edit">Не удалось изменить канал %1$s: %2$s</string>
+    <string name="channel_failed_reorder">Не удалось переместить канал %1$s: %2$s</string>
+    <string name="channel_failed_delete">Не удалось удалить канал %1$s: %2$s</string>
+    <string name="channels_editing">Редактирование каналов</string>
+    <string name="channels_add">Добавить</string>
+    <string name="channels_done">Готово</string>
+    <string name="channels_edit_hint">Удерживайте канал и перетащите, чтобы переместить. Нажмите на него, чтобы изменить или удалить.</string>
+    <string name="files_title">Файлы</string>
+    <string name="files_refresh">Обновить</string>
+    <string name="files_up">На папку выше</string>
+    <string name="files_folder">Папка</string>
+    <string name="files_download">Скачать</string>
+    <string name="files_empty">Эта папка пуста.</string>
+    <string name="files_downloading">Скачивается %1$s…</string>
+    <string name="files_saved">Сохранено: %1$s</string>
+    <string name="files_download_cancelled">Скачивание %1$s остановлено</string>
+    <string name="files_download_failed">Не удалось скачать %1$s: %2$s</string>
+    <string name="files_needs_password">У этого канала есть пароль. Зайдите в него один раз с паролем, запомнив его, чтобы видеть его файлы.</string>
+    <string name="files_no_permission">У вас нет прав на просмотр этих файлов.</string>
+    <string name="files_not_found">Этой папки больше нет.</string>
+    <string name="files_not_connected">Нет соединения с сервером.</string>
+    <string name="files_upload">Загрузить</string>
+    <string name="files_new_folder">Новая папка</string>
+    <string name="files_create">Создать</string>
+    <string name="files_rename">Переименовать</string>
+    <string name="files_rename_title">Переименовать %1$s</string>
+    <string name="files_name">Название</string>
+    <string name="files_uploading">Загружается %1$s…</string>
+    <string name="files_uploaded">Загружено: %1$s</string>
+    <string name="files_upload_cancelled">Загрузка %1$s остановлена</string>
+    <string name="files_upload_failed">Не удалось загрузить %1$s: %2$s</string>
+    <string name="files_unreadable">Не удалось прочитать этот файл.</string>
+    <string name="files_no_permission_change">Сервер не разрешает вам делать это здесь.</string>
+    <string name="files_gone">Этого больше нет.</string>
+    <string name="files_exists">Здесь уже есть что-то с таким названием.</string>
+    <string name="files_delete_title">Удалить %1$s?</string>
+    <string name="files_delete_file">Файл будет удалён с сервера для всех.</string>
+    <string name="files_delete_folder">Папка и всё её содержимое будут удалены с сервера для всех.</string>
+    <string name="files_replace_title">Заменить %1$s?</string>
+    <string name="files_replace_text">Файл с таким названием здесь уже есть. При замене старый будет удалён для всех.</string>
+    <string name="files_replace">Заменить</string>
+    <string name="channel_info_here">Вы в этом канале</string>
+    <string name="channel_info_talk_power">Необходимое право для разговора</string>
+    <string name="channel_info_default">Канал сервера по умолчанию</string>
+    <string name="channel_info_no_description">Нет описания</string>
+    <string name="channel_info_loading">Загрузка…</string>
+    <string name="channel_info_arrange">Упорядочить</string>
+    <plurals name="channel_people">
+        <item quantity="one">%d человек</item>
+        <item quantity="few">%d человека</item>
+        <item quantity="many">%d человек</item>
+        <item quantity="other">%d человека</item>
+    </plurals>
+    <string name="channel_new_title">Новый канал</string>
+    <string name="channel_new_subtitle">Сервер решает, какие типы каналов вы можете создавать.</string>
+    <string name="channel_edit_subtitle">Настройки канала</string>
+    <string name="channel_create">Создать</string>
+    <string name="channel_name">Название</string>
+    <string name="channel_description">Описание</string>
+    <string name="channel_kind">Тип</string>
+    <string name="channel_kind_permanent">Постоянный</string>
+    <string name="channel_kind_semi">Полупостоянный</string>
+    <string name="channel_kind_temporary">Временный</string>
+    <string name="channel_kind_permanent_desc">Остаётся, пока его не удалят.</string>
+    <string name="channel_kind_semi_desc">Остаётся до перезапуска сервера.</string>
+    <string name="channel_kind_temporary_desc">Исчезает, когда уходит последний человек. При создании вас переместят в него.</string>
+    <string name="channel_password_on">Пароль</string>
+    <string name="channel_password_keep">Оставьте пустым, чтобы сохранить текущий</string>
+    <string name="channel_codec">Голосовой кодек</string>
+    <string name="channel_codec_voice">Opus Voice</string>
+    <string name="channel_codec_music">Opus Music</string>
+    <string name="channel_quality">Качество: %1$d</string>
+    <string name="channel_unlimited">Без ограничения пользователей</string>
+    <string name="channel_max_users">Максимум пользователей</string>
+    <string name="channel_parent">Находится в</string>
+    <string name="channel_top_level">Верхний уровень</string>
+    <string name="channel_parent_change">Изменить</string>
+    <string name="channel_parent_title">Куда поместить</string>
+    <string name="channel_delete_title">Удалить %1$s?</string>
+    <string name="channel_delete_subtitle">Это нельзя отменить.</string>
+    <plurals name="channel_delete_subs">
+        <item quantity="one">Его %d подканал тоже будет удалён.</item>
+        <item quantity="few">Его %d подканала тоже будут удалены.</item>
+        <item quantity="many">Его %d подканалов тоже будут удалены.</item>
+        <item quantity="other">Его %d подканала тоже будут удалены.</item>
+    </plurals>
+    <plurals name="channel_delete_people">
+        <item quantity="one">%d человек будет перемещён в канал по умолчанию.</item>
+        <item quantity="few">%d человека будут перемещены в канал по умолчанию.</item>
+        <item quantity="many">%d человек будут перемещены в канал по умолчанию.</item>
+        <item quantity="other">%d человека будут перемещены в канал по умолчанию.</item>
+    </plurals>
+    <string name="channel_delete_empty">В нём никого нет.</string>
+    <string name="admin_move_needs_password">Не удалось переместить пользователя %1$s: канал требует пароль. Войдите в него один раз с паролем, запомнив его, чтобы перемещать туда людей.</string>
+
+    <!-- Sending pictures -->
+    <string name="picture_not_sent">Картинка не отправлена: %1$s</string>
+    <string name="pictures_not_sent">Картинка %1$d из %2$d не отправлена: %3$s</string>
+    <string name="picture_no_permission">%1$s (нет разрешения в этом канале)</string>
+    <string name="picture_too_big">Картинка слишком большая (больше %1$d МБ).</string>
+
+    <!-- Profile picture -->
+    <string name="avatar_uploading">Загрузка…</string>
+    <string name="avatar_set">Аватар установлен.</string>
+    <string name="avatar_too_big">Этот сервер разрешает только очень маленький аватар или не разрешает его вовсе.</string>
+    <string name="avatar_not_allowed">Этот сервер не разрешает вам аватар.</string>
+    <string name="avatar_failed">Аватар не установлен: %1$s</string>
+    <string name="avatar_removed">Аватар удалён.</string>
+
+    <!-- The identity -->
+    <string name="identity_not_valid">Это не идентификатор TeamSpeak.</string>
+    <string name="identity_unreadable">Сохранённый идентификатор не открывается на этом телефоне. Импортируйте свой в разделе Настройки › Дополнительно › Идентификатор TeamSpeak или создайте там новый.</string>
+    <string name="identity_export_unreadable">Идентификатор не читается, поэтому его нельзя сохранить.</string>
+    <string name="file_not_written">Не удалось записать файл.</string>
+    <string name="file_not_opened">Не удаётся открыть файл.</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel">Подключение</string>
+    <string name="notification_mute">Выключить микрофон</string>
+    <string name="notification_unmute">Включить микрофон</string>
+    <string name="notification_sound_off">Выключить звук</string>
+    <string name="notification_sound_on">Включить звук</string>
+    <string name="notification_messages">Сообщения и тычки</string>
+    <string name="notification_connected">Подключено к %1$s</string>
+    <string name="notification_connecting">Подключение к %1$s</string>
+    <string name="notification_reconnecting">Переподключение к %1$s…</string>
+    <string name="notification_sharing_camera">Идёт трансляция камеры</string>
+    <string name="notification_sharing_cameras">Идёт трансляция камер</string>
+    <string name="notification_sharing_screen">Идёт трансляция экрана</string>
+</resources>

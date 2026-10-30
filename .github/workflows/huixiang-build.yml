@@ -1,0 +1,126 @@
+name: Build HuiXiang
+
+on:
+  push:
+    branches: [main, "codex/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: huixiang-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'youareanimal/huixiang'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check version
+        shell: bash
+        run: |
+          VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
+            echo '::error::Tag does not match the app version'
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Prepare Android build environment
+        run: |
+          docker build -f docker/build.Dockerfile -t huixiang-build --build-arg ACCEPT_ANDROID_SDK_LICENSE=yes docker
+          mkdir -p out .ci-gradle dist/unsigned
+
+      - name: Test protocol and Android app
+        run: |
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out \
+            huixiang-build ./gradlew --no-daemon --console=plain \
+            :tsproto:test :app:testDebugUnitTest --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+
+      - name: Build unsigned upgrade APKs
+        run: |
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out -e HUIXIANG_UNSIGNED_BUILD=1 \
+            huixiang-build ./gradlew --no-daemon --console=plain \
+            :app:assembleCompact --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+          python3 scripts/collect-ci-release.py
+
+      - name: Sign with original upgrade key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HUIXIANG_KEYSTORE_BASE64 }}
+          HUIXIANG_STORE_PASSWORD: ${{ secrets.HUIXIANG_STORE_PASSWORD }}
+          HUIXIANG_KEY_PASSWORD: ${{ secrets.HUIXIANG_KEY_PASSWORD }}
+          HUIXIANG_KEY_ALIAS: ${{ secrets.HUIXIANG_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          KEY_DIR=$(mktemp -d "$RUNNER_TEMP/huixiang-key.XXXXXX")
+          trap 'rm -rf "$KEY_DIR"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEY_DIR/original.keystore"
+          docker run --rm \
+            -v "$PWD":/work -v "$KEY_DIR":/keys:ro \
+            -e HUIXIANG_STORE_PASSWORD -e HUIXIANG_KEY_PASSWORD -e HUIXIANG_KEY_ALIAS \
+            huixiang-build python3 scripts/sign-ci-release.py
+
+      - name: Archive matching source
+        run: git archive --format=zip --prefix=huixiang/ -o "dist/HuiXiang-$VERSION-source.zip" HEAD
+
+      - name: Prepare online update package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp dist/signed/*.apk dist/
+          cp dist/signed/SHA256SUMS.txt "dist/HuiXiang-$VERSION-SHA256SUMS.txt"
+          python3 - <<'PY'
+          import os, subprocess
+          from pathlib import Path
+          version = os.environ['VERSION']
+          changelog = Path('CHANGELOG.md').read_text(encoding='utf-8')
+          section = changelog.split('## 回响 ' + version + ' ', 1)[1]
+          notes = section.split('\n', 1)[1].split('\n## ', 1)[0].strip()
+          subprocess.run(['python3', 'scripts/prepare-update.py', '--notes', notes], check=True)
+          PY
+          cp "dist/HuiXiang-$VERSION-SHA256SUMS.txt" dist/update-site/
+
+      - name: Upload online update package
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-${{ env.VERSION }}-online-update
+          path: dist/update-site/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-${{ env.VERSION }}-signed
+          path: |
+            dist/signed/
+            dist/HuiXiang-${{ env.VERSION }}-source.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-test-reports
+          path: |
+            out/tsproto/test-results/
+            out/app/test-results/
+            docs/screenshots/huixiang-051-connect.png
+          if-no-files-found: warn
+          retention-days: 30

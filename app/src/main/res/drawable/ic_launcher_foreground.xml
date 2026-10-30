@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep the mascot inside the adaptive icon's central safe area. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="18.5185%" android:insetTop="18.5185%"
+    android:insetRight="18.5185%" android:insetBottom="18.5185%">
+    <bitmap android:src="@drawable/huixiang_mascot" android:gravity="fill" android:filter="true" />
+</inset>
