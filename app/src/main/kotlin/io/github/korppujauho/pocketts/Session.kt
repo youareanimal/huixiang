@@ -10,6 +10,7 @@ import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.MessageText
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
+import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import io.github.korppujauho.pocketts.proto.MyTsAccount
 import io.github.korppujauho.pocketts.proto.ServerAddress
 import io.github.korppujauho.pocketts.proto.ServerModel
@@ -40,6 +41,7 @@ object Session : TsClient.Listener {
     data class UiState(
         val phase: Phase = Phase.IDLE,
         val error: String? = null,
+        val myTsVoiceStatus: MyTsVoiceStatus = MyTsVoiceStatus.NOT_REQUESTED,
         val address: String = "",
         val serverName: String = "",
         val tree: List<ServerModel.Node> = emptyList(),
@@ -351,9 +353,12 @@ object Session : TsClient.Listener {
                 voiceAccount?.let { MyTsVoiceIdentity.fromSession(it) }
             } catch (_: Exception) {
                 voiceAccount = null
+                _state.update { it.copy(myTsVoiceStatus = MyTsVoiceStatus.MATERIAL_UNAVAILABLE) }
                 AppLog.log("myTeamSpeak voice identity unavailable (MYTS_VOICE_IDENTITY_INVALID)")
                 null
             }
+            if (voiceAccount != null && accountIdentity == null)
+                _state.update { it.copy(myTsVoiceStatus = MyTsVoiceStatus.MATERIAL_UNAVAILABLE) }
             client = TsClient(this) { AppLog.log(it) }.also {
                 files = FileTransfer(it, portOverride = filePort)
                 it.connect(
@@ -809,6 +814,11 @@ object Session : TsClient.Listener {
     }
 
     // ====== From the connection (its own thread) ======
+
+    override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {
+        _state.update { it.copy(myTsVoiceStatus = status) }
+        AppLog.log("myTeamSpeak voice status: ${status.name}")
+    }
 
     override fun onConnected(clientId: Int) {
         AppLog.log("Connected as client $clientId")
