@@ -223,6 +223,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
   padding: 0;
   border: none;
   background: none;
@@ -230,6 +231,8 @@ body {
   font-size: 11.5px;
   font-weight: 500;
   color: #5a38e0;
+  /* 被挤到输入框右边时不能折行，否则「显示」会竖着摆 */
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -283,6 +286,21 @@ body {
   color: var(--text-3);
   display: inline-flex;
   align-items: center;
+}
+
+/* 输入框右侧的「显示 / 隐藏」：只占它需要的那点宽度，不被输入文字挤扁 */
+.connect-card .semi-input-suffix {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+}
+
+.connect-card .semi-input-suffix .field-link {
+  align-self: center;
+  padding: 0 2px;
+  line-height: 20px;
+  font-size: 12px;
 }
 
 .connect-card .semi-input {
