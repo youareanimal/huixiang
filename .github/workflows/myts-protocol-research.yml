@@ -1,0 +1,67 @@
+name: Inspect public TS6 account proof implementation
+on:
+  push:
+    branches: ["codex/preserve-myts-voice-material"]
+    paths: [".github/workflows/myts-protocol-research.yml"]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Download pinned public client and inspect native symbols
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p extracted evidence native
+          curl --fail --show-error --location --max-time 180 --retry 2 -o client.tar.xz https://files.teamspeak-services.com/pre_releases/client/6.0.0-beta5/teamspeak-client.tar.xz
+          echo '394472a25ee9c2419c44a5e71a401c21bffecf2fdcb27fbe2173d0fffd1875a4  client.tar.xz' | sha256sum -c -
+          tar -tJf client.tar.xz > evidence/archive-files.txt
+          tar -xJf client.tar.xz -C extracted
+          find extracted -type f -printf '%s %p\n' | sort -nr > evidence/sizes.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, shutil
+          markers = [b'MyTSID_Verification_Token', b'verification_sign', b'updatemytsid']
+          for path in Path('extracted').rglob('*'):
+              if not path.is_file(): continue
+              with path.open('rb') as f:
+                  if f.read(4) != b'\x7fELF': continue
+              data = path.read_bytes()
+              if not any(m in data for m in markers): continue
+              stem = path.name.replace('/', '_')
+              print('Account protocol native candidate:', str(path), len(data))
+              shutil.copy2(path, Path('native') / stem)
+              symbols = subprocess.run(['nm', '-aDC', str(path)], capture_output=True, text=True)
+              Path('evidence', stem + '.symbols.txt').write_text('\n'.join(s for s in (symbols.stdout + symbols.stderr).splitlines() if any(m in s.lower() for m in ['myts','myteam','badge','avatar','ed25519','verification','serialize'])))
+              strings = subprocess.run(['strings','-t','x',str(path)], capture_output=True, text=True)
+              Path('evidence', stem + '.strings.txt').write_text('\n'.join(s for s in strings.stdout.splitlines() if any(m in s.lower() for m in ['myts','myteam','badge','avatar','ed25519','verification'])))
+          PY
+          tar -cJf native.tar.xz -C native .
+          split -b 24M -d native.tar.xz native-part-
+          ls -lh native-part-*
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: TS6-public-protocol-evidence
+          path: evidence/
+          retention-days: 2
+      - uses: actions/upload-artifact@v7
+        if: hashFiles('native-part-00') != ''
+        with:
+          name: TS6-native-part-00
+          path: native-part-00
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: hashFiles('native-part-01') != ''
+        with:
+          name: TS6-native-part-01
+          path: native-part-01
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: hashFiles('native-part-02') != ''
+        with:
+          name: TS6-native-part-02
+          path: native-part-02
+          retention-days: 1
