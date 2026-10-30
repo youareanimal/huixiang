@@ -860,22 +860,65 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 9px;
+  padding: 10px 6px 8px;
+  border-radius: 16px;
   text-align: center;
+  transition: background-color 0.18s ease;
+}
+
+/* 说话中：整块淡淡提亮，离开眼睛余光也能扫到 */
+.member-tile.is-talking {
+  background: var(--speaking-soft);
 }
 
 .avatar-ring {
+  position: relative;
   width: 80px;
   height: 80px;
   border-radius: 999px;
   display: grid;
   place-items: center;
   border: 2px solid transparent;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .avatar-ring.is-talking {
   border-color: var(--speaking);
-  box-shadow: 0 0 0 6px rgba(20, 184, 154, 0.12);
+  box-shadow:
+    0 0 0 4px rgba(20, 184, 154, 0.16),
+    0 0 16px rgba(20, 184, 154, 0.4);
+}
+
+/* 说话时向外扩一圈：不是装饰，是「正在出声」的动静 */
+.avatar-ring.is-talking::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 999px;
+  border: 2px solid var(--speaking);
+  animation: talk-pulse 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
+.avatar-ring.is-talking .avatar {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes talk-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70%,
+  100% {
+    transform: scale(1.24);
+    opacity: 0;
+  }
+}
+
+.member-tile.is-talking .tile-name {
+  color: var(--speaking-ink);
+  font-weight: 600;
 }
 
 .avatar {
@@ -979,6 +1022,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bars.is-live i {
     animation: none;
+  }
+
+  .avatar-ring.is-talking::after {
+    animation: none;
+    opacity: 0;
   }
 }
 
@@ -1968,8 +2016,9 @@ body {
    不然每个头像都挂一个按钮，舞台会显得很吵 */
 .tile-vol {
   position: absolute;
-  top: -2px;
-  right: 16px;
+  /* tile 现在带 10px 内边距，这两个值扣回去，按钮还是贴在块的角上 */
+  top: -12px;
+  right: 10px;
   width: 24px;
   height: 24px;
   display: grid;

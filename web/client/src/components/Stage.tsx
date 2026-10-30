@@ -11,6 +11,10 @@ interface Props {
   channelName: string;
   /** 按 uid 记的成员音量；没调过的不在表里。 */
   volumes: Record<string, number>;
+  /** 从语音帧判出来的说话人；服务器的 talking 不可靠，以这个为准。 */
+  talkingIds: ReadonlySet<number>;
+  /** 自己是否在说话（麦克风电平）。 */
+  ownTalking: boolean;
   /** 正在看谁（0 = 没在看），用来把按钮标成「看着」。 */
   watchingId?: number;
   onWatch?: (clientId: number) => void;
@@ -18,8 +22,8 @@ interface Props {
 }
 
 /** 状态行：说话 > 静音 > 离开 > 身份组，只显示一句，别堆在一起。 */
-function subline(member: Member, me: boolean): { text: string; tone: 'talk' | 'quiet' } {
-  if (member.talking) return { text: me ? '正在说话 · 我' : '正在说话', tone: 'talk' };
+function subline(member: Member, me: boolean, talking: boolean): { text: string; tone: 'talk' | 'quiet' } {
+  if (talking) return { text: me ? '正在说话 · 我' : '正在说话', tone: 'talk' };
   if (member.inputMuted) return { text: '已静音', tone: 'quiet' };
   if (member.away) return { text: '离开', tone: 'quiet' };
   if (me) return { text: '我', tone: 'quiet' };
@@ -35,6 +39,8 @@ export default function Stage({
   ownId,
   channelName,
   volumes,
+  talkingIds,
+  ownTalking,
   watchingId = 0,
   onWatch,
   onVolume,
@@ -55,11 +61,16 @@ export default function Stage({
       <div className="stage-grid">
         {members.map((m) => {
           const me = m.id === ownId;
-          const sub = subline(m, me);
+          // 自己：麦克风电平说了算；别人：语音帧说了算。服务器的 talking 只作兜底。
+          const talking = m.talking || (me ? ownTalking : talkingIds.has(m.id));
+          const sub = subline(m, me, talking);
           const watching = watchingId === m.id;
           const vol = volumes[memberKey(m)] ?? DEFAULT_GAIN;
           return (
-            <div className={`member-tile${m.streaming ? ' is-streaming' : ''}`} key={`${m.uid}-${m.id}`}>
+            <div
+              className={`member-tile${m.streaming ? ' is-streaming' : ''}${talking ? ' is-talking' : ''}`}
+              key={`${m.uid}-${m.id}`}
+            >
               {!me && (
                 <VolumePopover
                   title={`${m.nickname} 的音量`}
@@ -77,7 +88,7 @@ export default function Stage({
                   </button>
                 </VolumePopover>
               )}
-              <div className={`avatar-ring${m.talking ? ' is-talking' : ''}`}>
+              <div className={`avatar-ring${talking ? ' is-talking' : ''}`}>
                 <div
                   className="avatar"
                   style={{ background: avatarColor(me ? 'me' : m.uid || m.id) }}
@@ -106,7 +117,7 @@ export default function Stage({
                   <span className="live-dot" aria-hidden="true" />
                   <span>正在直播</span>
                 </div>
-              ) : m.talking ? (
+              ) : talking ? (
                 <div className="bars is-live" aria-label="正在说话">
                   <i />
                   <i />

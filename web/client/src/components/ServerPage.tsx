@@ -20,6 +20,10 @@ interface Props {
   micGain: number;
   /** 按 uid 记的成员音量。 */
   volumes: Record<string, number>;
+  /** 从语音帧判出来的说话人（clientId）。 */
+  talkingIds: ReadonlySet<number>;
+  /** 自己这一刻是否在说话（麦克风电平说了算）。 */
+  ownTalking: boolean;
   pttMode: boolean;
   pttHeld: boolean;
   audioReady: boolean;
@@ -57,6 +61,8 @@ export default function ServerPage({
   micLevel,
   micGain,
   volumes,
+  talkingIds,
+  ownTalking,
   pttMode,
   pttHeld,
   audioReady,
@@ -316,6 +322,8 @@ export default function ServerPage({
                 ownId={state.ownId}
                 channelName={channelTitle}
                 volumes={volumes}
+                talkingIds={talkingIds}
+                ownTalking={ownTalking}
                 watchingId={stream.watching}
                 onWatch={onWatch}
                 onVolume={onMemberVolume}
