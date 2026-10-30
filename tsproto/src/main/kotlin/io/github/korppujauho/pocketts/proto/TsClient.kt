@@ -40,6 +40,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         val serverPassword: String = "",
         val defaultChannel: String = "",
         val defaultChannelPassword: String = "",
+        val myTsIdentity: MyTsVoiceIdentity? = null,
     )
 
     enum class State { DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING }
@@ -119,6 +120,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     val serverAddress: InetAddress? get() = server?.address
 
     private lateinit var opts: Options
+    private var myTsAuthenticated = false
     private var socket: DatagramSocket? = null
     @Volatile private var server: InetSocketAddress? = null
     private var ticker: ScheduledFuture<*>? = null
@@ -194,6 +196,15 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         }
     }
 
+    fun sendMyTsData(data: MyTsVoiceData) {
+        exec.execute {
+            if (state == State.CONNECTED && myTsAuthenticated) {
+                pacer.add(data.command())
+                drain()
+            }
+        }
+    }
+
     /** One Opus frame; [codec] should be the channel's (4 Opus Voice or 5 Opus Music). */
     fun sendVoice(codec: Int, opus: ByteArray) {
         exec.execute {
@@ -217,6 +228,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         lostConnection = false
         clientId = 0
         cryptoReady = false
+        myTsAuthenticated = false
         ivStruct = null
         fakeSignature.fill(0)
         alpha = null
@@ -675,9 +687,12 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         cryptoReady = true
         alpha = null
         val o = opts
+        val accountFields = try { o.myTsIdentity?.authentication(iv).orEmpty() }
+            catch (_: Exception) { log("myTeamSpeak voice proof unavailable (MYTS_VOICE_PROOF_INVALID)"); emptyMap() }
+        myTsAuthenticated = accountFields.isNotEmpty()
         sendCommandNow(
             Commands.build(
-                "clientinit",
+                "clientinit", linkedMapOf<String, Any?>(
                 "client_nickname" to o.nickname,
                 "client_version" to VERSION,
                 "client_platform" to PLATFORM,
@@ -692,7 +707,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
                 "client_nickname_phonetic" to "",
                 "client_default_token" to "",
                 "hwid" to o.identity.hwid,
-            )
+            ) + accountFields)
         )
     }
 

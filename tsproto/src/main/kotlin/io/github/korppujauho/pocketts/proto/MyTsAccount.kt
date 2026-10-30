@@ -90,6 +90,16 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
     fun valid(session: Session): Boolean =
         rpc("authentication", "session", CloudProto.text(1, session.token)).number(1) == 102L
 
+    /** Optional public metadata fetch; a badge service failure cannot interrupt voice or discard the avatar. */
+    fun voiceData(session: Session): MyTsVoiceData? {
+        val badges = try {
+            val fields = rpc("user", "getSignedBadges", CloudProto.text(1, session.token))
+            if ((fields.number(2) ?: 0L) == 0L) fields.singleOrNull { it.number == 1 }?.bytes else null
+        } catch (_: Exception) { null }
+        return try { MyTsVoiceData.fromSession(session, badges) }
+            catch (_: Exception) { MyTsVoiceData.fromSession(session) }
+    }
+
     fun contacts(session: Session): List<Contact> {
         val fields = rpc("tschat", "getContactList", CloudProto.text(1, session.token))
         val status = fields.firstOrNull { it.number == 2 }?.bytes?.let { CloudProto.read(it).number(1) }
