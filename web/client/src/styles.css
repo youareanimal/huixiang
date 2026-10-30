@@ -154,13 +154,16 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, var(--brand), #9d7bff);
   color: #fff;
   font-size: 18px;
   font-weight: 600;
   letter-spacing: 1px;
+  /* 行盒必须钉死在 1，否则继承到输入框的大行高，字母会被顶到圆外 */
+  line-height: 1;
   flex: 0 0 auto;
 }
 
@@ -367,12 +370,14 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, var(--brand), #9d7bff);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1;
   flex: 0 0 auto;
 }
 
@@ -877,11 +882,13 @@ body {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-size: 24px;
   font-weight: 600;
+  line-height: 1;
   letter-spacing: 0.5px;
   user-select: none;
 }
@@ -1097,11 +1104,14 @@ body {
   height: 26px;
   flex: 0 0 auto;
   border-radius: 999px;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-size: 11px;
   font-weight: 600;
+  /* 关键：输入框 prefix 会继承 Semi 的大行高，行盒一高字母就沉到圆底 */
+  line-height: 1;
   user-select: none;
 }
 
