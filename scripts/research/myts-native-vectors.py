@@ -37,9 +37,9 @@ unsupported_address = ctypes.cast(unsupported, ctypes.c_void_p).value
 
 def symbol_address(index):
     name, info, other, shndx, value, length = struct.unpack_from('<IBBHQQ', binary, dyn[4] + index * dyn[9])
-    if shndx:
-        return base + value
     name = strtab[name:strtab.index(b'\0', name)].decode()
+    if shndx and name not in {'malloc', 'calloc', 'realloc', 'free', 'memcpy', 'memmove', 'memset'}:
+        return base + value
     for lib in libraries:
         try:
             return ctypes.cast(getattr(lib, name), ctypes.c_void_p).value
@@ -97,6 +97,7 @@ def independent_sign(secret, public, message):
     return first + scalar.to_bytes(32,'little')
 
 native_sign = ctypes.CFUNCTYPE(None,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_size_t,ctypes.c_void_p,ctypes.c_void_p)(base + 0x474bab0)
+print('Mapped native image at', hex(base), file=sys.stderr, flush=True)
 vectors = []
 for value in (1, 7, 0x123456789abcdef):
     secret = value.to_bytes(32,'little')
@@ -108,3 +109,4 @@ for value in (1, 7, 0x123456789abcdef):
     assert signature == independent_sign(secret,public,message), 'Native scalar-key signing differs from the independent formulation'
     vectors.append(dict(secretScalar=secret.hex(),publicKey=public.hex(),message=message.hex(),signature=signature.hex()))
 print(json.dumps(dict(synthetic=True, nativeBinarySHA256=hashlib.sha256(binary).hexdigest(),routine='0x474bab0',vectors=vectors),indent=2))
+
