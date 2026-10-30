@@ -150,20 +150,13 @@ body {
   gap: 12px;
 }
 
+/* App 图标那张图直接当品牌标记：深紫底已经画在图里了 */
 .brand-mark {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--brand), #9d7bff);
-  color: #fff;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 1px;
-  /* 行盒必须钉死在 1，否则继承到输入框的大行高，字母会被顶到圆外 */
-  line-height: 1;
+  display: block;
+  object-fit: cover;
   flex: 0 0 auto;
 }
 
@@ -382,14 +375,8 @@ body {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--brand), #9d7bff);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
+  display: block;
+  object-fit: cover;
   flex: 0 0 auto;
 }
 

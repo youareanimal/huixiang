@@ -74,9 +74,7 @@ export default function ConnectPage({
     <div className="connect-page">
       <div className="connect-card">
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            响
-          </div>
+          <img className="brand-mark" src="/icons/icon-96.png" alt="" aria-hidden="true" />
           <div className="brand-text">
             <span className="brand-name">回响</span>
             <span className="brand-sub">网页版 · 不用装客户端</span>

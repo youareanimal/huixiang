@@ -142,9 +142,7 @@ export default function ServerPage({
           >
             <IconMenu />
           </button>
-          <div className="brand-mark-sm" aria-hidden="true">
-            响
-          </div>
+          <img className="brand-mark-sm" src="/icons/icon-96.png" alt="" aria-hidden="true" />
           <span className="server-name" title={state.serverName || state.address}>
             {state.serverName || '正在连接…'}
           </span>
