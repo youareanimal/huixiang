@@ -122,6 +122,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
 
     private lateinit var opts: Options
     private var myTsAuthenticated = false
+    private var myTsServerConfirmed = false
     private var socket: DatagramSocket? = null
     @Volatile private var server: InetSocketAddress? = null
     private var ticker: ScheduledFuture<*>? = null
@@ -230,6 +231,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         clientId = 0
         cryptoReady = false
         myTsAuthenticated = false
+        myTsServerConfirmed = false
         ivStruct = null
         fakeSignature.fill(0)
         alpha = null
@@ -594,12 +596,13 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
             if (cmd.name in setOf("clientvariables", "notifyclientupdated")) {
                 for (fields in cmd.groups) {
                     if (fields["clid"]?.toIntOrNull() == clientId && "client_myteamspeak_id" in fields) {
-                        listener.onMyTsVoiceStatus(if (opts.myTsIdentity?.matchesServerId(
-                            fields["client_myteamspeak_id"].orEmpty()) == true)
+                        myTsServerConfirmed = opts.myTsIdentity?.matchesServerId(
+                            fields["client_myteamspeak_id"].orEmpty()) == true
+                        listener.onMyTsVoiceStatus(if (myTsServerConfirmed)
                             MyTsVoiceStatus.SERVER_CONFIRMED else MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
                     }
                 }
-            } else if (cmd.name == "error" && cmd["return_code"] == "quiet-myts-verify" && cmd["id"] != "0") {
+            } else if (cmd.name == "error" && cmd["return_code"] == "quiet-myts-verify" && !myTsServerConfirmed) {
                 listener.onMyTsVoiceStatus(MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
             }
         }
