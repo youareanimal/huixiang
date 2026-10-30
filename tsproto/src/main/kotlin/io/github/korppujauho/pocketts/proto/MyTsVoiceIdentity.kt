@@ -23,11 +23,17 @@ class MyTsVoiceIdentity private constructor(
             val derived = Crypto.deriveKeyNonce(true, 0, 0, 8, iv)
             val challenge = derived.key + derived.nonce + "MyTeamSpeakID".toByteArray(Charsets.US_ASCII)
             val signature = scalarSign(secret, publicKey, challenge)
-            return linkedMapOf("myTeamspeakId" to base64(id), "acTime" to creationTime,
+            return linkedMapOf("myTeamspeakId" to base64(id), "acTime" to java.lang.Long.toUnsignedString(creationTime),
                 "userPubKey" to base64(publicKey), "authSign" to base64(signature),
                 "pubSign" to base64(publicSignature.copyOfRange(0, 64)),
                 "pubSignCert" to base64(publicSignature.copyOfRange(64, publicSignature.size)))
         } finally { secret.fill(0) }
+    }
+
+    internal fun matchesServerId(value: String): Boolean {
+        if (value.length !in 1..256) return false
+        return try { MessageDigest.isEqual(Base64.getDecoder().decode(value), id) }
+            catch (_: IllegalArgumentException) { false }
     }
 
     companion object {
@@ -64,7 +70,7 @@ class MyTsVoiceIdentity private constructor(
                 val signature = bytes(5)
                 // Official account reader converts the network-order uint64 before passing it to voice.
                 val time = java.lang.Long.reverseBytes(requireNotNull(fields.number(3)))
-                require(publicKey.size == 32 && id.size == 33 && signature.size in 65..65536 && time > 0)
+                require(publicKey.size == 32 && id.size == 33 && signature.size in 65..65536 && time != 0L)
                 if (encrypted != null) require(encrypted.size == 112 && session.syncKey?.size == 32)
                 else require(plain?.size == 32)
                 return MyTsVoiceIdentity(id, time, publicKey, encrypted, plain, session.syncKey?.copyOf(), signature)

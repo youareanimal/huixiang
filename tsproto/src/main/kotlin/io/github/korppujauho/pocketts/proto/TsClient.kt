@@ -24,6 +24,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     interface Listener {
         fun onConnected(clientId: Int) {}
         fun onCommand(cmd: Command) {}
+        fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {}
         /** A voice packet: who is talking, the codec (4 Opus Voice, 5 Opus Music), and the frame (empty = stopped). */
         fun onVoice(voice: Voice) {}
         /** The connection ended: [reason] is null when we left ourselves. */
@@ -589,6 +590,19 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
                 return fail(cmd["msg"]?.ifEmpty { null } ?: "The server refused the connection (${cmd["id"]})", End.REFUSED, cmd["msg"].orEmpty(), network = false)
             }
         }
+        if (state == State.CONNECTED && myTsAuthenticated) {
+            if (cmd.name in setOf("clientvariables", "notifyclientupdated")) {
+                for (fields in cmd.groups) {
+                    if (fields["clid"]?.toIntOrNull() == clientId && "client_myteamspeak_id" in fields) {
+                        listener.onMyTsVoiceStatus(if (opts.myTsIdentity?.matchesServerId(
+                            fields["client_myteamspeak_id"].orEmpty()) == true)
+                            MyTsVoiceStatus.SERVER_CONFIRMED else MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
+                    }
+                }
+            } else if (cmd.name == "error" && cmd["return_code"] == "quiet-myts-verify" && cmd["id"] != "0") {
+                listener.onMyTsVoiceStatus(MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
+            }
+        }
         listener.onCommand(cmd)
         if (cmd.name == "notifyclientleftview" && cmd.groups.any { it["clid"]?.toIntOrNull() == clientId }) finish(disconnectReason)
     }
@@ -690,6 +704,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         val accountFields = try { o.myTsIdentity?.authentication(iv).orEmpty() }
             catch (_: Exception) { log("myTeamSpeak voice proof unavailable (MYTS_VOICE_PROOF_INVALID)"); emptyMap() }
         myTsAuthenticated = accountFields.isNotEmpty()
+        if (o.myTsIdentity != null) listener.onMyTsVoiceStatus(
+            if (myTsAuthenticated) MyTsVoiceStatus.PROOF_SENT else MyTsVoiceStatus.PROOF_UNAVAILABLE)
         sendCommandNow(
             Commands.build(
                 "clientinit", linkedMapOf<String, Any?>(
@@ -719,6 +735,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
             if (state == State.CONNECTED) sendOutgoing(ByteArray(0), Type.PING)
         }, 1000, 1000, TimeUnit.MILLISECONDS)
         listener.onConnected(clientId)
+        if (myTsAuthenticated) sendCommand(Commands.build("clientgetvariables",
+            "clid" to clientId, "return_code" to "quiet-myts-verify"))
     }
 
     private fun toFixed(v: BigInteger, size: Int): ByteArray {

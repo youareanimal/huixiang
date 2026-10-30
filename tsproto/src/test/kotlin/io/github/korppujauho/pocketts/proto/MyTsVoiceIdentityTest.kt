@@ -27,10 +27,24 @@ class MyTsVoiceIdentityTest {
         return iv + cipher + Crypto.sha512(secret)
     }
 
-    private fun session(secret: ByteArray = scalar, corrupt: Boolean = false, public: ByteArray = publicKey): MyTsAccount.Session {
+    private fun wireInteger(field: Int, value: Long): ByteArray {
+        // Protobuf uint64 fixture writer, including values above signed Long.MAX_VALUE.
+        var bits = value
+        val out = java.io.ByteArrayOutputStream()
+        out.write(CloudProto.varint(field.toLong() shl 3))
+        do {
+            val low = (bits and 127).toInt()
+            bits = bits ushr 7
+            out.write(low or if (bits != 0L) 128 else 0)
+        } while (bits != 0L)
+        return out.toByteArray()
+    }
+
+    private fun session(secret: ByteArray = scalar, corrupt: Boolean = false, public: ByteArray = publicKey,
+        wireTime: Long = java.lang.Long.reverseBytes(1_700_000_000L)): MyTsAccount.Session {
         val wrapped = encrypted(secret).also { if (corrupt) it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
         val data = CloudProto.bytes(1, public) + CloudProto.bytes(2, CloudProto.bytes(1, wrapped)) +
-            CloudProto.integer(3, java.lang.Long.reverseBytes(1_700_000_000L)) + CloudProto.bytes(4, id) + CloudProto.bytes(5, signature)
+            wireInteger(3, wireTime) + CloudProto.bytes(4, id) + CloudProto.bytes(5, signature)
         return MyTsAccount.Session("synthetic-token", "Fixture", key,
             voiceMaterial = MyTsVoiceMaterial.fromLogin(CloudProto.read(CloudProto.bytes(9, data))))
     }
@@ -52,7 +66,7 @@ class MyTsVoiceIdentityTest {
             val iv = ByteArray(size) { it.toByte() }
             val fields = proof.authentication(iv)
             assertEquals(setOf("myTeamspeakId", "acTime", "userPubKey", "authSign", "pubSign", "pubSignCert"), fields.keys)
-            assertEquals(1_700_000_000L, fields["acTime"])
+            assertEquals("1700000000", fields["acTime"])
             val decoder = Base64.getDecoder()
             assertContentEquals(id, decoder.decode(fields["myTeamspeakId"] as String))
             assertContentEquals(publicKey, decoder.decode(fields["userPubKey"] as String))
@@ -64,6 +78,21 @@ class MyTsVoiceIdentityTest {
         assertEquals("MyTsVoiceIdentity(redacted)", proof.toString())
     }
 
+    @Test fun creationTimePreservesUnsignedBitsAndNeverRejectsTheHighBit() {
+        // Native account reader bswaps uint64; native voice encoder uses snprintf("%llu").
+        for ((wire, expected) in listOf(
+            128L to "9223372036854775808",
+            1_700_000_128L to "9291299199498846208",
+            Long.MAX_VALUE to "18446744073709551487",
+            Long.MIN_VALUE to "128",
+            -1L to "18446744073709551615",
+        )) {
+            val identity = assertNotNull(MyTsVoiceIdentity.fromSession(session(wireTime = wire)))
+            assertEquals(expected, identity.authentication(ByteArray(64))["acTime"])
+        }
+        assertFails { MyTsVoiceIdentity.fromSession(session(wireTime = 0)) }
+    }
+
     @Test fun refusesCorruptCiphertextAndWrongPublicKeyWithoutExposingAccountMaterial() {
         assertFails { MyTsVoiceIdentity.fromSession(session(corrupt = true))!!.authentication(ByteArray(20)) }
         assertFails { MyTsVoiceIdentity.fromSession(session(public = ByteArray(32)))!!.authentication(ByteArray(20)) }
@@ -72,7 +101,7 @@ class MyTsVoiceIdentityTest {
 
     @Test fun clientinitActuallyCarriesOnlyPublicProofAndReconnectGetsFreshSignature() {
         val client = TsClient(object : TsClient.Listener {})
-        val proof = assertNotNull(MyTsVoiceIdentity.fromSession(session()))
+        val proof = assertNotNull(MyTsVoiceIdentity.fromSession(session(wireTime = 128L)))
         val options = TsClient.Options("unused.invalid", identity = Identity.generate(0), nickname = "Fixture", myTsIdentity = proof)
         TsClient::class.java.getDeclaredField("opts").apply { isAccessible = true }.set(client, options)
         val start = TsClient::class.java.getDeclaredMethod("startEncryption", ByteArray::class.java).apply { isAccessible = true }
@@ -91,11 +120,45 @@ class MyTsVoiceIdentityTest {
         val first = command(ByteArray(64) { it.toByte() })
         assertEquals("clientinit", first.name)
         assertEquals("Fixture", first["client_nickname"])
-        assertEquals("1700000000", first["acTime"])
+        assertEquals("9223372036854775808", first["acTime"])
         assertContentEquals(id, Base64.getDecoder().decode(first["myTeamspeakId"]))
         assertNotNull(first["authSign"])
         assertFalse(first.toString().contains("synthetic-token"))
         assertNull(first["client_myteamspeak_id"])
         assertNotEquals(first["authSign"], command(ByteArray(64) { (it + 1).toByte() })["authSign"])
+    }
+
+    @Test fun proofConstructionNeverClaimsServerConfirmationAndOnlyOwnMatchingIdConfirms() {
+        val states = mutableListOf<MyTsVoiceStatus>()
+        val client = TsClient(object : TsClient.Listener {
+            override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) { states += status }
+        })
+        val proof = assertNotNull(MyTsVoiceIdentity.fromSession(session(wireTime = 128L)))
+        val options = TsClient.Options("unused.invalid", identity = Identity.generate(0), nickname = "Fixture", myTsIdentity = proof)
+        fun field(name: String, value: Any) {
+            TsClient::class.java.getDeclaredField(name).apply { isAccessible = true }.set(client, value)
+        }
+        field("opts", options)
+        TsClient::class.java.getDeclaredMethod("startEncryption", ByteArray::class.java).apply {
+            isAccessible = true
+        }.invoke(client, ByteArray(64))
+        assertEquals(listOf(MyTsVoiceStatus.PROOF_SENT), states)
+        field("state", TsClient.State.CONNECTED)
+        field("clientId", 7)
+        val process = TsClient::class.java.getDeclaredMethod("processCommand", ByteArray::class.java, Int::class.javaPrimitiveType).apply { isAccessible = true }
+        fun feed(command: String) { process.invoke(client, command.toByteArray(Charsets.UTF_8), 0) }
+        val encodedId = Base64.getEncoder().encodeToString(id)
+        feed(Commands.build("clientvariables", "clid" to 8, "client_myteamspeak_id" to encodedId))
+        feed("error id=0 return_code=quiet-myts-verify")
+        feed("clientvariables clid=7 client_nickname=Fixture")
+        assertEquals(listOf(MyTsVoiceStatus.PROOF_SENT), states)
+        feed("clientvariables clid=7 client_myteamspeak_id=")
+        assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+        feed(Commands.build("clientvariables", "clid" to 7, "client_myteamspeak_id" to encodedId))
+        assertEquals(MyTsVoiceStatus.SERVER_CONFIRMED, states.last())
+        feed(Commands.build("notifyclientupdated", "clid" to 7, "client_myteamspeak_id" to Base64.getEncoder().encodeToString(ByteArray(33))))
+        assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+        feed("clientvariables clid=7 client_myteamspeak_id=invalid!")
+        assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
     }
 }
