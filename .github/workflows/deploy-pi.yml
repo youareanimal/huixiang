@@ -1,0 +1,47 @@
+name: Deploy HuiXiang to PI
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build HuiXiang run on main (blank selects newest trusted success)
+        required: false
+        type: string
+      dry_run:
+        description: Read-only SSH check after artifact verification; no mirror update
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: huixiang-pi-publish
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'youareanimal/huixiang' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted deployment code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify publisher safeguards on GitHub
+        run: python3 scripts/pi-mirror/test-publisher.py
+      - name: Verify existing build artifacts and deploy over restricted SSH
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PI_SSH_HOST: ${{ secrets.PI_SSH_HOST }}
+          PI_SSH_PORT: ${{ secrets.PI_SSH_PORT }}
+          PI_SSH_USER: ${{ secrets.PI_SSH_USER }}
+          PI_SSH_PRIVATE_KEY: ${{ secrets.PI_SSH_PRIVATE_KEY }}
+          PI_SSH_KNOWN_HOSTS: ${{ secrets.PI_SSH_KNOWN_HOSTS }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 scripts/pi-mirror/deploy-from-actions.py --run-id "$BUILD_RUN_ID" --dry-run "$DRY_RUN"
