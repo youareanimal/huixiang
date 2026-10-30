@@ -45,6 +45,7 @@ jobs:
           PY
           gdb --batch -ex run -ex 'info registers' -ex bt --args python3 scripts/research/myts-native-vectors.py native/TeamSpeak > evidence/native-debug.txt 2>&1 || true
           cat evidence/native-debug.txt
+          python3 scripts/research/myts-native-vectors.py native/TeamSpeak > evidence/native-vectors.json
           tar -cf - -C native . | xz -1 > native.tar.xz
           split -b 24M -d native.tar.xz native-part-
           ls -lh native-part-*

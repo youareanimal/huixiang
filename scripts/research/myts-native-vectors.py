@@ -96,6 +96,8 @@ def independent_sign(secret, public, message):
     scalar = (nonce + challenge * int.from_bytes(secret,'little')) % order
     return first + scalar.to_bytes(32,'little')
 
+# Initialize only portable curve field arithmetic dispatch, not client globals.
+ctypes.CFUNCTYPE(None)(base + 0x47534e0)()
 native_sign = ctypes.CFUNCTYPE(None,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_size_t,ctypes.c_void_p,ctypes.c_void_p)(base + 0x474bab0)
 print('Mapped native image at', hex(base), file=sys.stderr, flush=True)
 vectors = []
