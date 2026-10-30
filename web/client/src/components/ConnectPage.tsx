@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from '@douyinfe/semi-ui';
 import { IconClose, IconGlobe, IconKey, IconServer } from '@douyinfe/semi-icons';
 import { store, type ConnectOptions } from '../protocol';
@@ -48,9 +48,15 @@ export default function ConnectPage({
   const parsed = parseAddress(address);
   const canConnect = !!parsed && nickname.trim().length > 0 && (!tokenNeeded || token.trim().length > 0);
 
+  // 只有一个地址时进页面直接填上，省一次输入。
+  // 只在首次填充，之后用户删掉就是删掉——不能「地址一空就补回来」，否则永远删不掉。
+  const autoFilled = useRef(false);
   useEffect(() => {
-    // 只有一个地址时直接填上，省一次输入
-    if (recent.length === 1 && !address) setAddress(recent[0]);
+    if (autoFilled.current) return;
+    if (recent.length === 1 && !address) {
+      autoFilled.current = true;
+      setAddress(recent[0]);
+    }
   }, [recent, address]);
 
   const submit = () => {
