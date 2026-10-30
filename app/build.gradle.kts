@@ -20,8 +20,8 @@ android {
         applicationId = "app.shengqiao.ts"
         minSdk = 29
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.5.1"
+        versionCode = 15
+        versionName = "0.5.2"
         buildConfigField("String", "UPDATE_FEED_URL", "\"https://pi.animal26.site:8443/huixiang/latest.json\"")
         buildConfigField("String", "UPDATE_FALLBACK_FEED_URL", "\"https://huixiang-updates.pages.dev/latest.json\"")
         // Phones (WebRTC's native code is large; these two cover practically every phone)
