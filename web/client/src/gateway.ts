@@ -61,7 +61,8 @@ export class Gateway {
       ws.onmessage = (e) => {
         if (typeof e.data !== 'string') {
           const b = new Uint8Array(e.data as ArrayBuffer);
-          if (b.length > 4 && b[0] === 2) {
+          // 正好 4 字节 = 空帧 = 这个人说完话了，也要往上传，不然说话提示只能等超时熄
+          if (b.length >= 4 && b[0] === 2) {
             const clientId = (b[2] << 8) | b[3];
             this.handlers.onVoice?.(b[1], clientId, b.subarray(4));
           }

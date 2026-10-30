@@ -12,6 +12,7 @@ import {
   type State,
 } from './protocol';
 import { clampGain, DEFAULT_GAIN } from './audio/gain';
+import { TalkingTracker } from './talking';
 import { StreamClient, initialStreamState, type StreamState } from './stream';
 import { VoicePlayer, webCodecsAvailable } from './audio/player';
 import { MicSender, micCodecAvailable } from './audio/mic';
@@ -43,6 +44,12 @@ export default function App() {
   // 按住说话：默认关（常开麦），打开后按才出声
   const [pttMode, setPttMode] = useState(false);
   const [pttHeld, setPttHeld] = useState(false);
+
+  // 谁在说话：从下行语音帧判出来（服务器那套 talk status 不是每个服务器都发）
+  const [voiceTalking, setVoiceTalking] = useState<ReadonlySet<number>>(() => new Set<number>());
+  const talkingRef = useRef<TalkingTracker | null>(null);
+  if (!talkingRef.current) talkingRef.current = new TalkingTracker(setVoiceTalking);
+  const talking = talkingRef.current;
 
   // 串流：画面是浏览器和对方直连的 WebRTC，网关只管信令
   const [streamState, setStreamState] = useState<StreamState>(initialStreamState);
@@ -106,6 +113,7 @@ export default function App() {
   }, []);
 
   const disconnect = useCallback(() => {
+    talking.reset();
     streamRef.current?.reset();
     streamRef.current = null;
     setStreamState(initialStreamState);
@@ -120,12 +128,13 @@ export default function App() {
     setState(null);
     setChat([]);
     setConnecting(false);
-  }, []);
+  }, [talking]);
 
   const doConnect = useCallback(
     async (opts: ConnectOptions, useToken: string) => {
       setError(null);
       setConnecting(true);
+      talking.reset();
       lastAddress.current = { address: opts.host, nickname: opts.nickname };
       setChat([]);
       try {
@@ -142,10 +151,16 @@ export default function App() {
             if (s.error) setError(s.error);
           },
           onChat: (line) => setChat((prev) => [...prev, line].slice(-MAX_CHAT)),
-          onVoice: (codec, clientId, opus) => player.play(clientId, codec, opus),
+          onVoice: (codec, clientId, opus) => {
+            // 空帧是「说完了」：立刻熄灯，不用等超时
+            if (opus.length === 0) talking.quiet(clientId);
+            else talking.heard(clientId);
+            player.play(clientId, codec, opus);
+          },
           onStream: (e) => streamRef.current?.onEvent(e),
           onClose: (code, reason) => {
             setConnecting(false);
+            talking.reset();
             if (code === 1008) {
               setError(reason || '网关拒绝了这次连接');
               setState(null);
@@ -168,7 +183,7 @@ export default function App() {
         gatewayRef.current = null;
       }
     },
-    [ensurePlayer],
+    [ensurePlayer, talking],
   );
 
   const connect = useCallback(
@@ -308,6 +323,10 @@ export default function App() {
 
   const connected = state?.phase === 'connected';
 
+  // 自己这一侧：麦克风开着、这一刻真的在发（按住说话得按着）、电平够响。
+  // 下行收不到自己的帧（服务器不回传），所以自己只能靠采集电平来亮。
+  const ownTalking = micOn && (!pttMode || pttHeld) && micLevel > 0.045;
+
   const shareScreen = useCallback(() => {
     void streamRef.current?.startScreen();
   }, []);
@@ -344,6 +363,8 @@ export default function App() {
         micLevel={micLevel}
         micGain={micGain}
         volumes={volumes}
+        talkingIds={voiceTalking}
+        ownTalking={ownTalking}
         pttMode={pttMode}
         pttHeld={pttHeld}
         audioReady={audioReady}
@@ -377,6 +398,8 @@ export default function App() {
     micLevel,
     micGain,
     volumes,
+    voiceTalking,
+    ownTalking,
     pttMode,
     pttHeld,
     audioReady,
