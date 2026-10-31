@@ -162,6 +162,20 @@ class MyTsVoiceIdentityTest {
         assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
         feed("clientvariables clid=7 client_myteamspeak_id=invalid!")
         assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+        feed(Commands.build("notifycliententerview", "clid" to 8, "client_myteamspeak_id" to encodedId))
+        assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+        feed(Commands.build("notifycliententerview", "clid" to 7, "client_myteamspeak_id" to encodedId))
+        assertEquals(MyTsVoiceStatus.SERVER_CONFIRMED, states.last())
+    }
+
+    @Test fun initialAndViewMessagesExposeOnlyTheOwnServerAccountId() {
+        val id = Base64.getEncoder().encodeToString(ByteArray(33) { (it + 1).toByte() })
+        val init = Commands.parse(Commands.build("initserver", "aclid" to 7, "client_myteamspeak_id" to id))
+        assertEquals(listOf(init.params), myTsIdentityIdGroups(init, 7))
+        assertTrue(myTsIdentityIdGroups(init, 8).single().containsKey("client_myteamspeak_id"))
+        val enter = Commands.parse("notifycliententerview clid=8 client_myteamspeak_id=$id|clid=7 client_myteamspeak_id=$id")
+        assertEquals(listOf(mapOf("clid" to "7", "client_myteamspeak_id" to id)), myTsIdentityIdGroups(enter, 7))
+        assertTrue(myTsIdentityIdGroups(enter, 9).isEmpty())
     }
 
     @Test fun metadataReceiptsAreCheckedAndSuccessfulMetadataRechecksIdentity() {
