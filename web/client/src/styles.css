@@ -840,12 +840,12 @@ body {
   min-height: 132px;
   overflow-y: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 24px 28px;
 }
 
+/* 用 margin:auto 居中：内容比容器高时 auto 会退成 0，顶部不会被裁掉，能滚到最上面 */
 .stage-grid {
+  margin: auto;
   display: flex;
   flex-wrap: wrap;
   align-content: center;
