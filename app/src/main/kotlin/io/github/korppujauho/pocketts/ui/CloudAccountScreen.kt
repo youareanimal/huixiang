@@ -137,6 +137,11 @@ fun CloudAccountHome(
         }
         return
     }
+    if (tab == 2 && state.cloudConnected) {
+        TextButton(onClick = onConnectCloud, enabled = !state.busy, modifier = Modifier.padding(horizontal = 12.dp)) {
+            Text("重新连接云聊天", color = Ts.brand)
+        }
+    }
     if (tab == 1 && state.contactError != null) {
         Text("好友暂不可用（${state.contactError}）。可刷新或重新登录，账号登录状态已保留。", color = Ts.amber, modifier = Modifier.padding(16.dp), fontSize = 13.sp)
     }
