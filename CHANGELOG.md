@@ -1,5 +1,35 @@
 # Changelog
 
+## 网页版网关（未发布）
+
+- 新增 `web/gateway`：一个纯 JVM 服务，直接复用 `tsproto` 协议模块（与 App 完全同一份代码），通过 WebSocket 把 TeamSpeak 连接交给浏览器。
+- 浏览器打不开 UDP socket，所以语音和信令由网关代为持有；音频是裸 Opus 帧直通，不转码，浏览器用 WebCodecs 自行编解码。
+- 频道树、成员与说话状态由网关用 `ServerModel` 解析后以全量快照推送（变化时最多每 120ms 一次），前端无需重写协议解析。
+- 支持连接（含服务器密码）、断开、切换频道（含频道密码）、频道与私聊文字、改名、静音状态同步。
+- 拒绝内网、回环、链路本地等地址，避免这台机器被当成探测内网的代理；全局 96 个连接上限，单 IP 4 个。
+- 接入控制：`ALLOWED_ORIGINS` 用浏览器强制的 Origin 头做白名单（WebSocket 本身不受同源策略约束，此前任何网页都能连），`ACCESS_TOKEN` 要求连接后第一帧先发口令并通过 `/auth` 自述是否需要，超时或错误以 1008 关闭；口令走消息不走 URL，避免落进访问日志，比较用常量时间。
+- 移除了 `anyHost()` 的宽松 CORS 配置，改为按 `ALLOWED_ORIGINS` 精确放行，不配则完全不开跨域。
+- `TsClient` 新增 `close()`，并让所有跨线程入口在实例释放后安静丢弃；此前每次连接结束后会留下一个协议线程。
+- 部署提供 `web/Dockerfile`、`installDist` 产物与 systemd 示例，前端构建产物放在 `web/client/dist` 时由网关一并托管。
+
+### 网页前端（web/client）
+
+- React 18 + TypeScript + Vite + Semi Design，构建产物由网关同源托管，一个进程同时提供页面和 `/ws`。
+- 连接页支持地址（含 `ts3server://` 邀请）、昵称、服务器密码、访问口令与最近连接；地址或昵称不合法时按钮不可点。
+- 服务器页为三栏布局：频道树（带成员与说话高亮）、频道文字、当前频道成员，底部麦克风/扬声器/离开控制条；频道密码、改昵称走弹窗。
+- 语音上行用 AudioWorklet 攒 20ms 一帧交给 `AudioEncoder`，下行每个说话人一个 `AudioDecoder` 加按时间排程的播放队列，落后 0.4 秒自动重新对齐避免延迟累积；全程不转码。
+- 身份、口令、昵称、最近连接存 localStorage；身份留着才能保住服务器上的权限组。
+- 修了网关静态文件路由取不到 tailcard 参数的问题：此前所有 `/assets/*` 都返回 index.html，脚本因 MIME 不匹配加载失败。
+- 新增 `web/client/test/shot.mjs`：用本机 Edge headless + CDP 打开页面、执行脚本、截图并收集控制台报错，可配 `FAKE_MIC=1` 用模拟麦克风验证语音。
+
+### 部署（web/deploy）
+
+- 网关改为**独立 Gradle 构建**（`web/gateway/settings.gradle.kts`，直接引 `tsproto` 源码），不再加入主工程：服务器上不需要 Android SDK，Docker 镜像也不必复制整个 `app/`。
+- `HOST` 环境变量，默认改为 `127.0.0.1`：8080 不再默认对公网暴露，外部必须经 Nginx 的 TLS。确实要直连才设 `HOST=0.0.0.0`。
+- 新增 `web/deploy/DEPLOY.md`：从空服务器到验收的完整手册，含 systemd、Nginx 四个必需的头、证书、低配服务器的本地构建上传方案、故障排查表与回滚流程。
+- 新增 `web/deploy/verify.sh`：部署后自检 7 项（存活、口令配置、首页、静态资源 MIME、同源握手、陌生来源拒绝、本站来源握手）。WebSocket 握手用原始 socket 测——`curl` 会自己改写 `Connection` 头，拿到的永远是 200。
+- 修正 `web/Dockerfile`：原版没有 COPY `app/`，而 `settings.gradle.kts` 里 include 了 `:app`，配置阶段必然失败；改为三阶段构建（node 编前端 → JDK 编后端 → JRE 运行）并补 `.dockerignore`。
+
 ## 回响 0.5.3 (2026-10-31)
 
 - 修复 myTeamSpeak 账号证明把无符号 64 位值当作有符号正数校验的问题，避免合法账号证明被跳过，并按官方格式发送 acTime。
