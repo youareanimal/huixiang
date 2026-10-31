@@ -37,7 +37,7 @@ export class VoicePlayer {
   private volumes = new Map<number, number>();
   private broken = false;
 
-  constructor() {
+  constructor(private readonly onLevel?: (clientId: number, level: number) => void) {
     const Ctx: any = (globalThis as any).AudioContext ?? (globalThis as any).webkitAudioContext;
     this.ctx = new Ctx({ sampleRate: 48000, latencyHint: 'interactive' });
     this.master = this.ctx.createGain();
@@ -154,11 +154,19 @@ export class VoicePlayer {
       const channels = data.numberOfChannels as number;
       const rate = data.sampleRate as number;
       const buffer = this.ctx.createBuffer(channels, frames, rate);
+      let peak = 0;
       for (let c = 0; c < channels; c++) {
         const plane = new Float32Array(frames);
         data.copyTo(plane, { planeIndex: c, format: 'f32-planar' });
+        if (c === 0) {
+          for (let i = 0; i < frames; i += 16) {
+            const v = Math.abs(plane[i]);
+            if (v > peak) peak = v;
+          }
+        }
         buffer.copyToChannel(plane, c);
       }
+      this.onLevel?.(clientId, peak);
 
       const now = this.ctx.currentTime;
       // 留 30ms 余量给排程；落后太多说明卡了，直接重新对齐，别把延迟越积越大

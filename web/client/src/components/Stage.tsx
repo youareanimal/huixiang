@@ -12,7 +12,7 @@ interface Props {
   channelName: string;
   /** 按 uid 记的成员音量；没调过的不在表里。 */
   volumes: Record<string, number>;
-  /** 从语音帧判出来的说话人；服务器的 talking 不可靠，以这个为准。 */
+  /** 按语音帧的实际音量判出来的说话人；服务器的 talking 开着麦就常亮，不能当准。 */
   talkingIds: ReadonlySet<number>;
   /** 自己是否在说话（麦克风电平）。 */
   ownTalking: boolean;
@@ -68,8 +68,8 @@ export default function Stage({
       <div className="stage-grid">
         {members.map((m) => {
           const me = m.id === ownId;
-          // 自己：麦克风电平说了算；别人：语音帧说了算。服务器的 talking 只作兜底。
-          const talking = m.talking || (me ? ownTalking : talkingIds.has(m.id));
+          // 自己：麦克风电平说了算；别人：解码后的实际音量说了算。服务器的 talking 不可信。
+          const talking = me ? ownTalking : talkingIds.has(m.id);
           const sub = subline(m, me, talking);
           const watching = watchingId === m.id;
           const vol = volumes[memberKey(m)] ?? DEFAULT_GAIN;

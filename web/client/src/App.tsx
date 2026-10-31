@@ -29,6 +29,9 @@ import ServerPage from './components/ServerPage';
 
 const MAX_CHAT = 300;
 
+/** 解码/采集电平超过这条线才算「在说话」，两侧用同一个门槛。 */
+const TALK_LEVEL = 0.045;
+
 function gatewayUrl(): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${location.host}/ws`;
@@ -119,12 +122,15 @@ export default function App() {
 
   const ensurePlayer = useCallback(() => {
     if (!playerRef.current) {
-      playerRef.current = new VoicePlayer();
+      // 亮不亮看解码后的实际音量：开着麦一直发静音帧的人不算在说话
+      playerRef.current = new VoicePlayer((clientId, level) => {
+        if (level > TALK_LEVEL) talking.heard(clientId);
+      });
       setAudioReady(webCodecsAvailable());
     }
     playerRef.current.resume();
     return playerRef.current;
-  }, []);
+  }, [talking]);
 
   /**
    * 一条 WebSocket 同时承载账号和语音连接。离开服务器时只断开 TeamSpeak，不关它——账号会话就活在这条连接
@@ -159,9 +165,8 @@ export default function App() {
         onBookmarks: setBookmarks,
         onContacts: setFriends,
         onVoice: (codec, clientId, opus) => {
-          // 空帧是「说完了」：立刻熄灯，不用等超时
+          // 空帧是「说完了」：立刻熄灯，不用等超时。非空帧交给播放器按实际音量判断
           if (opus.length === 0) talking.quiet(clientId);
-          else talking.heard(clientId);
           playerRef.current?.play(clientId, codec, opus);
         },
         onStream: (e) => streamRef.current?.onEvent(e),
@@ -433,7 +438,7 @@ export default function App() {
 
   // 自己这一侧：麦克风开着、这一刻真的在发（按住说话得按着）、电平够响。
   // 下行收不到自己的帧（服务器不回传），所以自己只能靠采集电平来亮。
-  const ownTalking = micOn && (!pttMode || pttHeld) && micLevel > 0.045;
+  const ownTalking = micOn && (!pttMode || pttHeld) && micLevel > TALK_LEVEL;
 
   const shareScreen = useCallback(() => {
     void streamRef.current?.startScreen();
@@ -479,7 +484,6 @@ export default function App() {
         fileToken={state.fileToken ?? ''}
         avatarToken={state.avatarToken ?? ''}
         account={account}
-        friends={friends}
         onAccountLogout={accountLogout}
         onAccountRefresh={accountRefresh}
         onAvatarChange={changeAccountAvatar}

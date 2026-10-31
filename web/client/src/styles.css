@@ -2707,44 +2707,6 @@ button.files-name:hover {
   gap: 10px;
 }
 
-.info-friends-head {
-  margin-top: 2px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-2);
-}
-
-.info-account-count {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-4);
-}
-
-.info-friends {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.info-friend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 2px;
-  min-width: 0;
-}
-
-.info-friend-name {
-  font-size: 12px;
-  color: var(--text-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* 手机上右栏收成底部信息带，账号卡留在连接页就够了 */
 @media (max-width: 900px) {
   .info-account {

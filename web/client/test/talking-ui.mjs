@@ -101,6 +101,34 @@ const FAKE = `
       ], children: [] }]
   };
 
+  /** 用浏览器自己的 Opus 编码器做两段真帧：响的算说话，几乎无声的算开着麦的静音帧。 */
+  window.__opus = (async () => {
+    const encode = async (amp) => {
+      const chunks = [];
+      const enc = new AudioEncoder({
+        output: (chunk) => {
+          const b = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(b);
+          chunks.push(b);
+        },
+      });
+      enc.configure({ codec: 'opus', sampleRate: 48000, numberOfChannels: 1, bitrate: 40000 });
+      const pcm = new Int16Array(960);
+      for (let i = 0; i < 960; i++) {
+        pcm[i] = Math.round(Math.sin((2 * Math.PI * 440 * i) / 48000) * 32767 * amp);
+      }
+      enc.encode(new AudioData({
+        format: 's16', sampleRate: 48000, numberOfFrames: 960, numberOfChannels: 1,
+        timestamp: 0, data: pcm.buffer,
+      }));
+      await enc.flush();
+      enc.close();
+      return chunks[0];
+    };
+    window.__loud = await encode(0.5);
+    window.__silent = await encode(0.0005);
+  })();
+
   class FakeSocket {
     constructor(url) {
       this.url = url;
@@ -116,12 +144,13 @@ const FAKE = `
       if (m.t === 'connect') setTimeout(() => this.push(state), 5);
     }
     push(obj) { this.onmessage && this.onmessage({ data: JSON.stringify(obj) }); }
-    /** 一帧下行语音：[2][codec][id 高][id 低][opus…]；bytes = 0 就是空帧（说完了）。 */
-    voice(id, bytes = 40) {
-      const buf = new Uint8Array(4 + bytes);
+    /** 一帧下行语音：[2][codec][id 高][id 低][opus…]；packet 省略就是空帧（说完了）。 */
+    voice(id, packet) {
+      const data = packet ?? new Uint8Array(0);
+      const buf = new Uint8Array(4 + data.length);
       buf[0] = 2; buf[1] = 4;
       buf[2] = (id >> 8) & 255; buf[3] = id & 255;
-      for (let i = 0; i < bytes; i++) buf[4 + i] = 0x5a;
+      buf.set(data, 4);
       this.onmessage && this.onmessage({ data: buf });
     }
     close() { this.readyState = 3; }
@@ -180,6 +209,10 @@ const check = (name, ok, detail = '') => {
     return r?.result?.value;
   };
 
+  await evaluate('window.__opus', true);
+  const opusReady = await evaluate('Boolean(window.__loud && window.__silent)');
+  check('测试用 Opus 帧已生成', opusReady === true);
+
   // 进服务器
   await evaluate(`(() => {
     const ins = [...document.querySelectorAll('input')];
@@ -203,7 +236,7 @@ const check = (name, ok, detail = '') => {
 
   // 1. 小明发 300ms 语音 → 头像亮
   await evaluate(`(() => {
-    window.__burst = setInterval(() => window.__ws.voice(2), 20);
+    window.__burst = setInterval(() => window.__ws.voice(2, window.__loud), 20);
     setTimeout(() => clearInterval(window.__burst), 300);
   })()`);
   await sleep(200);
@@ -229,14 +262,21 @@ const check = (name, ok, detail = '') => {
   const afterHold = await evaluate(`document.querySelectorAll('.avatar-ring.is-talking').length`);
   check('断流超过 600ms 自动熄灯', afterHold === 0, `亮着 ${afterHold} 个`);
 
-  // 3. 空帧（明确的「说完了」）应当立刻熄，不等超时
+  // 2.5 开着麦但一直在发静音帧：不算说话
   await evaluate(`(() => {
-    for (let i = 0; i < 5; i++) window.__ws.voice(2);
-    window.__ws.voice(2, 0);
+    window.__burst = setInterval(() => window.__ws.voice(2, window.__silent), 20);
+    setTimeout(() => clearInterval(window.__burst), 800);
   })()`);
+  await sleep(400);
+  const silentLit = await evaluate(`document.querySelectorAll('.avatar-ring.is-talking').length`);
+  check('静音帧不点亮头像', silentLit === 0, `亮着 ${silentLit} 个`);
+  await sleep(500);
+
+  // 3. 空帧（明确的「说完了」）不该把头像点亮
+  await evaluate(`window.__ws.voice(2)`);
   await sleep(120);
   const afterStop = await evaluate(`document.querySelectorAll('.avatar-ring.is-talking').length`);
-  check('收到空帧立刻熄灯', afterStop === 0, `亮着 ${afterStop} 个`);
+  check('空帧不会点亮头像', afterStop === 0, `亮着 ${afterStop} 个`);
 
   // 4. 回到静默态不残留
   await sleep(400);
@@ -248,7 +288,7 @@ const check = (name, ok, detail = '') => {
 
   // 截图留档：亮着的时候拍一张
   await evaluate(`(() => {
-    window.__burst = setInterval(() => window.__ws.voice(2), 20);
+    window.__burst = setInterval(() => window.__ws.voice(2, window.__loud), 20);
     setTimeout(() => clearInterval(window.__burst), 2500);
   })()`);
   await sleep(300);

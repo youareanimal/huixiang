@@ -26,7 +26,7 @@ src/
   account.ts               账号错误码、头像裁切与 HTTP 上传/删除
   files.ts                 文件字节：HTTP 下载（列表命令仍走 gateway.ts）
   stream.ts                屏幕 / 摄像头串流（画面是 WebRTC，不经网关）
-  talking.ts               谁在说话：从下行语音帧判读
+  talking.ts               谁在说话：按下行语音帧的实际音量判读（静音帧不算）
   audio/
     player.ts              下行：每人一个 AudioDecoder，Web Audio 排程播放
     mic.ts                 上行：AudioWorklet 攒 20ms → AudioEncoder 编 Opus

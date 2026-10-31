@@ -5,7 +5,6 @@ import type {
   AccountState,
   ChannelNode,
   ChatLine,
-  ContactsMessage,
   FilesMessage,
   Member,
   State,
@@ -31,9 +30,8 @@ interface Props {
   fileToken: string;
   /** 成员头像地址里的会话令牌。 */
   avatarToken: string;
-  /** myTeamSpeak 账号：头像、好友和账号操作。 */
+  /** myTeamSpeak 账号：头像和账号操作。 */
   account: AccountState;
-  friends: ContactsMessage;
   micOn: boolean;
   micLevel: number;
   micGain: number;
@@ -86,7 +84,6 @@ export default function ServerPage({
   fileToken,
   avatarToken,
   account,
-  friends,
   micOn,
   micLevel,
   micGain,
@@ -405,7 +402,6 @@ export default function ServerPage({
             clientCount={state.clientCount}
             channelCount={countChannels(state.tree)}
             account={account}
-            friends={friends}
             onAccountLogout={onAccountLogout}
             onAccountRefresh={onAccountRefresh}
             onAvatarChange={onAvatarChange}
