@@ -375,7 +375,13 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     /** 传输失败的原因，说人话。错误码是服务器自己的，见 tsproto 的 [FileTransfer]。 */
     fun fileError(e: Throwable): String = when ((e as? FileTransfer.Error)?.code) {
         FileTransfer.WRONG_PASSWORD -> "这个频道的文件需要频道密码"
-        FileTransfer.NO_PERMISSION -> "没有权限操作这个频道的文件"
+        FileTransfer.NO_PERMISSION -> {
+            // 服务器的原话里带着卡在哪一项（"insufficient client permissions (failed on i_…)"），
+            // 那一项正是服务器管理员要改的东西，别把它吞掉
+            val failedOn = e.message?.substringAfter("failed on ", "")?.trim(' ', '(', ')')?.takeIf { it.isNotEmpty() }
+            if (failedOn != null) "没有权限操作这个频道的文件（服务器卡在 $failedOn）"
+            else "没有权限操作这个频道的文件"
+        }
         FileTransfer.FILE_NOT_FOUND, FileTransfer.INVALID_PATH -> "文件不存在"
         FileTransfer.FILE_EXISTS -> "同名文件已经在了"
         else -> when (e) {
