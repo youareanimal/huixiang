@@ -205,6 +205,13 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
             }
             state.cloudError?.let { code -> item { HubError(chatErrorMessage(code), code, onConnect) } }
             if (state.cloudConnected) {
+                item {
+                    OutlinedButton(onClick = onConnect, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
+                        Spacer(Modifier.width(8.dp))
+                        Text("重新连接云消息", color = Ts.brand)
+                    }
+                }
                 items(state.rooms, key = { it.id }) { room ->
                     HubRow(roomTitle(room, state.username, state.cloudUserId, state.contacts), if (!room.joined) "聊天邀请 · 点击查看" else if (room.encrypted) "加密会话 · 当前只读" else room.messages.lastOrNull()?.body ?: "还没有文字消息",
                         Icons.AutoMirrored.Rounded.Chat, { onRoom(room.id) }, trailing = {
