@@ -6,7 +6,7 @@ Voice auth is separate from `MyTSID_Verification_Token` (chat verification). Eve
 
 The account's 32-byte private scalar is decrypted using the existing IV + AES-256 little-endian CTR + SHA-512 envelope reader. Its public key must match before signing. Signing is the scalar-key Ed25519 variant: nonce SHA-512(private scalar || message), reduced modulo L, followed by R and S. It is not JCA's seed-key format. Account creation time is byte-swapped as in the official account reader; the 33-byte account ID is retained. The first 64 public_signature bytes are pubSign and the remainder is pubSignCert.
 
-After connection, `updatemytsdata` carries Base64 certificate bytes (unwrapped LoginSession field 10), the original signed AvatarData message, and the signed badge list from `/user` `getSignedBadges`. Metadata fetch happens on the app worker and a service failure does not interrupt voice or discard signed avatar data. Metadata is gated by successful local proof construction and checked against the current client/account before sending. Server-side proof/signature acceptance and visual TS6 interoperability still require a real-account session.
+After connection, `updatemytsdata` carries protocol-escaped raw certificate bytes (unwrapped LoginSession field 10), the original signed AvatarData message, and the signed badge list from `/user` `getSignedBadges`. Metadata fetch happens on the app worker and a service failure does not interrupt voice or discard signed avatar data. Metadata is gated by successful local proof construction and checked against the current client/account before sending. Server-side proof/signature acceptance and visual TS6 interoperability still require a real-account session.
 
 ## Evidence and checks
 
