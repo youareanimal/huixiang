@@ -177,6 +177,10 @@ internal fun PersonDetails(person: ServerModel.Client, isSelf: Boolean, channelN
                             MyTsVoiceStatus.SERVER_NOT_CONFIRMED -> "服务器尚未确认"
                         }
                         Text("myTeamSpeak 账号关联：$link", color = Ts.text, fontSize = 13.sp)
+                        if (connection.myTsVoiceReceipt.isNotBlank())
+                            Text(connection.myTsVoiceReceipt, color = Ts.text, fontSize = 13.sp)
+                        if (connection.myTsMetadataReceipt.isNotBlank())
+                            Text(connection.myTsMetadataReceipt, color = Ts.text, fontSize = 13.sp)
                     }
                 }
                 Text("昵称：${person.nickname}", color = Ts.text, fontSize = 13.sp)

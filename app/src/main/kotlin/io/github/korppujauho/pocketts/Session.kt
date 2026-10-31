@@ -9,6 +9,7 @@ import io.github.korppujauho.pocketts.proto.Commands
 import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.MessageText
+import io.github.korppujauho.pocketts.proto.MyTsVoiceCheck
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
 import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import io.github.korppujauho.pocketts.proto.MyTsAccount
@@ -42,6 +43,8 @@ object Session : TsClient.Listener {
         val phase: Phase = Phase.IDLE,
         val error: String? = null,
         val myTsVoiceStatus: MyTsVoiceStatus = MyTsVoiceStatus.NOT_REQUESTED,
+        val myTsVoiceReceipt: String = "",
+        val myTsMetadataReceipt: String = "",
         val address: String = "",
         val serverName: String = "",
         val tree: List<ServerModel.Node> = emptyList(),
@@ -816,8 +819,28 @@ object Session : TsClient.Listener {
     // ====== From the connection (its own thread) ======
 
     override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {
-        _state.update { it.copy(myTsVoiceStatus = status) }
+        _state.update { if (status == MyTsVoiceStatus.PROOF_SENT)
+            it.copy(myTsVoiceStatus = status, myTsVoiceReceipt = "", myTsMetadataReceipt = "")
+            else it.copy(myTsVoiceStatus = status) }
         AppLog.log("myTeamSpeak voice status: ${status.name}")
+    }
+
+    override fun onMyTsVoiceCheck(check: MyTsVoiceCheck, errorCode: Int?) {
+        val code = errorCode?.let { "（错误码 $it）" }.orEmpty()
+        val text = when (check) {
+            MyTsVoiceCheck.ID_MATCHED -> "服务器返回的账号标识匹配"
+            MyTsVoiceCheck.ID_ABSENT -> "服务器返回的账号标识为空"
+            MyTsVoiceCheck.ID_MISMATCH -> "服务器返回的账号标识与登录账号不匹配"
+            MyTsVoiceCheck.QUERY_REJECTED -> "服务器拒绝账号查询$code"
+            MyTsVoiceCheck.QUERY_NO_ID -> "查询完成，但服务器未返回账号标识"
+            MyTsVoiceCheck.METADATA_ACCEPTED -> "服务器已接受账号资料命令"
+            MyTsVoiceCheck.METADATA_REJECTED -> "服务器拒绝账号资料命令$code"
+            MyTsVoiceCheck.METADATA_UNAVAILABLE -> "登录会话缺少可发送的账号证书"
+            MyTsVoiceCheck.METADATA_FETCH_FAILED -> "账号资料读取失败"
+        }
+        _state.update { if (check in setOf(MyTsVoiceCheck.METADATA_ACCEPTED, MyTsVoiceCheck.METADATA_REJECTED,
+                MyTsVoiceCheck.METADATA_UNAVAILABLE, MyTsVoiceCheck.METADATA_FETCH_FAILED))
+            it.copy(myTsMetadataReceipt = text) else it.copy(myTsVoiceReceipt = text) }
     }
 
     override fun onConnected(clientId: Int) {
@@ -829,9 +852,14 @@ object Session : TsClient.Listener {
                 val data = MyTsAccount().voiceData(connectedAccount)
                 if (client === connectedClient && voiceAccount === connectedAccount &&
                     CloudAccountStore(cloudSecretPrefs(app)).identity()?.token == connectedAccount.token) {
-                    data?.let { connectedClient.sendMyTsData(it) }
+                    if (data != null) connectedClient.sendMyTsData(data)
+                    else onMyTsVoiceCheck(MyTsVoiceCheck.METADATA_UNAVAILABLE, null)
                 }
-            } catch (_: Exception) { AppLog.log("myTeamSpeak metadata unavailable (MYTS_VOICE_DATA_UNAVAILABLE)") }
+            } catch (_: Exception) {
+                if (client === connectedClient && voiceAccount === connectedAccount)
+                    onMyTsVoiceCheck(MyTsVoiceCheck.METADATA_FETCH_FAILED, null)
+                AppLog.log("myTeamSpeak metadata unavailable (MYTS_VOICE_DATA_UNAVAILABLE)")
+            }
         }
         val s = _state.value
         retries = 0

@@ -163,4 +163,62 @@ class MyTsVoiceIdentityTest {
         feed("clientvariables clid=7 client_myteamspeak_id=invalid!")
         assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
     }
+
+    @Test fun metadataReceiptsAreCheckedAndSuccessfulMetadataRechecksIdentity() {
+        val states = mutableListOf<MyTsVoiceStatus>()
+        val receipts = mutableListOf<Pair<MyTsVoiceCheck, Int?>>()
+        val logs = mutableListOf<String>()
+        val client = TsClient(object : TsClient.Listener {
+            override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) { states += status }
+            override fun onMyTsVoiceCheck(check: MyTsVoiceCheck, errorCode: Int?) { receipts += check to errorCode }
+        }, logs::add)
+        fun field(name: String, value: Any) {
+            TsClient::class.java.getDeclaredField(name).apply { isAccessible = true }.set(client, value)
+        }
+        try {
+            val proof = assertNotNull(MyTsVoiceIdentity.fromSession(session()))
+            field("opts", TsClient.Options("unused.invalid", identity = Identity.generate(0), nickname = "Fixture", myTsIdentity = proof))
+            TsClient::class.java.getDeclaredMethod("startEncryption", ByteArray::class.java).apply {
+                isAccessible = true
+            }.invoke(client, ByteArray(64))
+            field("state", TsClient.State.CONNECTED)
+            field("clientId", 7)
+            val pending = TsClient::class.java.getDeclaredField("pending").apply { isAccessible = true }.get(client) as MutableMap<*, *>
+            pending.clear()
+            val process = TsClient::class.java.getDeclaredMethod("processCommand", ByteArray::class.java, Int::class.javaPrimitiveType).apply { isAccessible = true }
+            fun feed(text: String) { process.invoke(client, text.toByteArray(Charsets.UTF_8), 0) }
+            fun flush() {
+                val executor = TsClient::class.java.getDeclaredField("exec").apply { isAccessible = true }.get(client) as java.util.concurrent.ScheduledExecutorService
+                executor.submit {}.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            }
+            feed("error id=2568 msg=synthetic-private-text return_code=quiet-myts-data")
+            assertEquals(MyTsVoiceCheck.METADATA_REJECTED to 2568, receipts.last())
+            assertTrue(pending.isEmpty())
+            feed("error id=2568 return_code=quiet-myts-verify")
+            assertEquals(MyTsVoiceCheck.QUERY_REJECTED to 2568, receipts.last())
+            assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+            feed("error id=0 return_code=quiet-myts-data")
+            flush()
+            assertEquals(MyTsVoiceCheck.METADATA_ACCEPTED to null, receipts.last())
+            assertEquals(MyTsVoiceStatus.SERVER_NOT_CONFIRMED, states.last())
+            val requests = pending.values.map { packet ->
+                val raw = packet!!.javaClass.getDeclaredField("raw").apply { isAccessible = true }.get(packet) as ByteArray
+                val packetId = ((raw[8].toInt() and 255) shl 8) or (raw[9].toInt() and 255)
+                val kn = Crypto.deriveKeyNonce(false, packetId, 0, 2, ByteArray(64))
+                Commands.parse(assertNotNull(Crypto.eaxDecrypt(kn.key, kn.nonce, raw.copyOfRange(8, 13), raw.copyOfRange(13, raw.size), raw.copyOfRange(0, 8))).toString(Charsets.UTF_8))
+            }
+            assertTrue(requests.any { it.name == "clientgetvariables" && it["clid"] == "7" && it["return_code"] == "quiet-myts-recheck" })
+            feed("error id=0 return_code=quiet-myts-recheck")
+            assertEquals(MyTsVoiceCheck.QUERY_NO_ID to null, receipts.last())
+            feed("notifyclientupdated clid=7 client_myteamspeak_id=")
+            assertEquals(MyTsVoiceCheck.ID_ABSENT to null, receipts.last())
+            feed(Commands.build("notifyclientupdated", "clid" to 7, "client_myteamspeak_id" to Base64.getEncoder().encodeToString(id)))
+            assertEquals(MyTsVoiceStatus.SERVER_CONFIRMED, states.last())
+            assertEquals(MyTsVoiceCheck.ID_MATCHED to null, receipts.last())
+            feed("error id=0 return_code=quiet-myts-recheck")
+            assertEquals(MyTsVoiceStatus.SERVER_CONFIRMED, states.last())
+            assertTrue(logs.none { "synthetic-private-text" in it || "synthetic-token" in it })
+        } finally { client.close() }
+    }
+
 }
