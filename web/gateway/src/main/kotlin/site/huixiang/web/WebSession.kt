@@ -2,15 +2,19 @@ package site.huixiang.web
 
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.Commands
+import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.Identity
 import io.github.korppujauho.pocketts.proto.Json
 import io.github.korppujauho.pocketts.proto.Pictures
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -57,6 +61,22 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         /** Same ceiling tsproto applies to pictures in the chat: a banner is one of those files. */
         private const val MAX_BANNER_BYTES = Pictures.PICTURE_MAX_BYTES
 
+        /**
+         * The sessions a file transfer may be run for, by the token in their `files` address.
+         *
+         * File bytes cannot go over the WebSocket: a frame is capped at [Limits.FRAME] and a 200 MB file would be
+         * three thousand of them, each needing reassembly and a hand-written flow control. So the bytes go over
+         * HTTP and only the commands go over the socket, which leaves one question — how does a `POST /files/upload`
+         * know which tab it belongs to and therefore which TeamSpeak server to write to? This map answers it: the
+         * token is a random string handed to that one tab inside its state snapshot, and forgotten with it.
+         */
+        private val fileSessions = ConcurrentHashMap<String, WebSession>()
+
+        /** The most either direction will carry in one request. The server has quotas of its own; this is a ceiling. */
+        const val MAX_FILE_BYTES = 1L shl 30 // 1 GiB
+
+        fun byFile(id: String): WebSession? = fileSessions[id]
+
         fun byBanner(id: String): WebSession? = banners[id]
     }
 
@@ -66,6 +86,33 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     }
     private val dirty = AtomicBoolean(false)
     private val bannerId = UUID.randomUUID().toString().replace("-", "")
+
+    /**
+     * The token the HTTP transfer endpoints look this session up by. Handed to the tab in every state snapshot,
+     * meaningless to anyone else: it names a session, not a server, and dies with the tab.
+     */
+    private val fileId = UUID.randomUUID().toString().replace("-", "")
+
+    /**
+     * A file listing blocks on the TeamSpeak answer, so it cannot run on the connection's thread and it must not
+     * wait behind an upload either — hence a pool of its own rather than one thread shared with the bytes. Two is
+     * the whole point: a folder opens in the panel while another is still closing.
+     */
+    private val listPool = Executors.newFixedThreadPool(2) { r ->
+        Thread(r, "web-file-list").apply { isDaemon = true }
+    }
+
+    /**
+     * Channel passwords, by channel id, hashed the way joining hashes them (the tab only ever sends the plain
+     * one). A password channel's files are behind that same password, and the hash is what the commands take.
+     */
+    private val channelPasswords = ConcurrentHashMap<Int, String>()
+
+    /**
+     * The password of the channel we were dropped into on connecting. It cannot go into [channelPasswords] yet —
+     * the channel has no id until the server says which one we are in — so it waits here and [onCommand] files it.
+     */
+    @Volatile private var pendingChannelPassword = ""
 
     /**
      * Screen and camera streams: the talking part of them only. The pictures are WebRTC, straight between the tab
@@ -103,6 +150,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
 
     init {
         banners[bannerId] = this
+        fileSessions[fileId] = this
         pushTimer.scheduleWithFixedDelay({ if (dirty.getAndSet(false)) push() }, PUSH_MS, PUSH_MS, TimeUnit.MILLISECONDS)
     }
 
@@ -123,6 +171,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         error = null
         phase = Phase.CONNECTING
         model.clear()
+        channelPasswords.clear()
+        pendingChannelPassword = channelPassword
         dirty.set(true)
         sink.text(Json.write(mapOf("t" to "identity", "v" to identity.export())))
 
@@ -163,6 +213,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         val c = client ?: return
         val own = model.ownClientId
         if (own == 0) return
+        // 频道密码不只用来进去：这个频道的文件区也要它，所以记下哈希，之后传文件时带上
+        if (password.isNotEmpty()) channelPasswords[channelId] = Crypto.hashPassword(password)
         c.sendCommand(
             Commands.build("clientmove", "clid" to own, "cid" to channelId, "cpw" to password.ifEmpty { null })
         )
@@ -223,13 +275,139 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
 
     fun streamCandidate(to: Int, candidate: String, mid: String?, mLine: Int?) = streams.candidate(to, candidate, mid, mLine)
 
+    // ====== Files: the channel's own file area, which lives on the TeamSpeak server ======
+    //
+    // 一个文件传上去，落点是服务器的频道文件区（`ftinitupload` 的 cid + 虚拟路径），不是这台网关的磁盘。
+    // 这是有意的：安卓 App 和 TeamSpeak 官方客户端都从那儿取文件，存在服务器上才算「发出去」了；网关
+    // 因此不需要磁盘、不需要清理、重启也不丢东西，它只是个搬运工。
+    //
+    // 字节不走 WebSocket：一帧上限 64 KB，200 MB 的文件要拆三千多帧，重组和流控都得自己写。所以命令走
+    // WS（[listFiles]），字节走 HTTP（[uploadFile] / [downloadFile]，由 Gateway.kt 的两个端点调用，令牌
+    // 见 [fileSessions]）。两边都靠 [FileTransfer] 做真正的事。
+
+    /** 这个会话的传输令牌。只随状态快照发给这一个标签页，别人拿到也用不上（它认的是会话不是服务器）。 */
+    fun fileToken(): String = fileId
+
+    /**
+     * 把频道 [cid] 里 [path] 这一层的内容推给标签页。立刻返回：列表要等服务器答，所以在 [listPool] 上跑，
+     * 结果以一条 `files` 消息回来，形状和 `state` 一样。
+     */
+    fun listFiles(cid: Int, path: String) {
+        val f = ft
+        if (f == null) {
+            sink.text(filesMessage(cid, path, emptyList(), "还没连上服务器"))
+            return
+        }
+        try {
+            listPool.execute {
+                val body = try {
+                    filesMessage(cid, path, f.list(cid, path, filePassword(cid)), null)
+                } catch (e: Exception) {
+                    log("$address: file list of $path in $cid failed: ${e.message}")
+                    filesMessage(cid, path, emptyList(), fileError(e))
+                }
+                sink.text(body)
+            }
+        } catch (e: RejectedExecutionException) {
+            // 会话已经关掉了，没人在等这份列表
+        }
+    }
+
+    /**
+     * 上行：从 [input] 读 [size] 字节写到频道 [cid] 的 [path]。阻塞，调用方必须不在连接线程上。
+     * 同名文件在 [overwrite] 为假时被服务器拒绝（[FileTransfer.FILE_EXISTS]）。
+     */
+    fun uploadFile(cid: Int, path: String, input: InputStream, size: Long, overwrite: Boolean) {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        f.upload(cid, path, input, size, filePassword(cid), overwrite)
+    }
+
+    /** 下行：把频道 [cid] 的 [path] 写进 [out]，超过 [maxBytes] 的一开始就拒掉。阻塞。 */
+    fun downloadFile(cid: Int, path: String, out: OutputStream, maxBytes: Long) {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        f.download(cid, path, out, filePassword(cid), maxBytes)
+    }
+
+    /**
+     * 下载前先看一眼这一层：`respondOutputStream` 一旦开了头，200 就已经发出去了，之后才发现文件不存在的话
+     * 浏览器只能看到一个莫名其妙的截断下载。多一次列目录往返，换来一句说得清的错误和一个准确的 404。
+     */
+    fun findFile(cid: Int, path: String): FileTransfer.Entry? {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        val parent = path.substringBeforeLast('/', "").ifEmpty { "/" }
+        val name = path.substringAfterLast('/')
+        return f.list(cid, parent, filePassword(cid)).firstOrNull { it.name == name }
+    }
+
+    /**
+     * 删掉一个文件（文件夹会连里面的一起删）。阻塞，所以和列表走同一个池子；删完顺手把上一层重列一遍，
+     * 标签页不必再问一次。
+     *
+     * 面板这一版没有删除按钮——文件是传到服务器上的，删错了别人也跟着没了，值得单独做一次带确认的交互。
+     * 但传上去的东西总得能撤：联调脚本靠它收尾，以后加删除也走这条命令。
+     */
+    fun deleteFile(cid: Int, path: String) {
+        val parent = path.substringBeforeLast('/', "").ifEmpty { "/" }
+        val f = ft
+        if (f == null) {
+            sink.text(filesMessage(cid, parent, emptyList(), "还没连上服务器"))
+            return
+        }
+        try {
+            listPool.execute {
+                val body = try {
+                    f.delete(cid, path, filePassword(cid))
+                    filesMessage(cid, parent, f.list(cid, parent, filePassword(cid)), null)
+                } catch (e: Exception) {
+                    log("$address: deleting $path in $cid failed: ${e.message}")
+                    filesMessage(cid, parent, emptyList(), fileError(e))
+                }
+                sink.text(body)
+            }
+        } catch (e: RejectedExecutionException) {
+            // 会话已经关掉了
+        }
+    }
+
+    /** 密码频道的文件区要同一个密码，形态是哈希（进入频道时用的是明文，见 [joinChannel]）。 */
+    private fun filePassword(cid: Int): String = channelPasswords[cid].orEmpty()
+
+    /** 传输失败的原因，说人话。错误码是服务器自己的，见 tsproto 的 [FileTransfer]。 */
+    fun fileError(e: Throwable): String = when ((e as? FileTransfer.Error)?.code) {
+        FileTransfer.WRONG_PASSWORD -> "这个频道的文件需要频道密码"
+        FileTransfer.NO_PERMISSION -> "没有权限操作这个频道的文件"
+        FileTransfer.FILE_NOT_FOUND, FileTransfer.INVALID_PATH -> "文件不存在"
+        FileTransfer.FILE_EXISTS -> "同名文件已经在了"
+        else -> when (e) {
+            is java.net.SocketTimeoutException -> "传输超时"
+            is java.net.ConnectException -> "连不上服务器的文件端口（通常是 30033）"
+            is java.io.IOException -> "传输中断：${e.message ?: "连接断了"}"
+            else -> e.message?.takeIf { it.isNotBlank() } ?: "文件传输失败"
+        }
+    }
+
+    private fun filesMessage(cid: Int, path: String, entries: List<FileTransfer.Entry>, error: String?): String =
+        Json.write(
+            linkedMapOf(
+                "t" to "files",
+                "cid" to cid,
+                "path" to path,
+                "error" to error,
+                "entries" to entries.map {
+                    linkedMapOf("name" to it.name, "folder" to it.folder, "size" to it.size, "time" to it.time)
+                },
+            )
+        )
+
     fun close() {
         closed = true
         banners.remove(bannerId)
+        fileSessions.remove(fileId)
         leave()
         owned?.close()
         owned = null
         pushTimer.shutdownNow()
+        listPool.shutdownNow()
     }
 
     /** Refused before anything was opened (a disallowed address, say): the tab shows it like any other failure. */
@@ -286,7 +464,9 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             }
             "error" -> {
                 val id = cmd["id"]
-                if (id != null && id != "0") {
+                // 带 return_code 的是某一条命令的应答（文件传输、静默查询），该由发命令的那一方处理：
+                // 空文件夹的 1281、没权限的 2568 都会这样回来，报到会话级就成了莫名其妙的红条
+                if (cmd["return_code"] == null && id != null && id != "0") {
                     error = errorText(id, cmd["msg"].orEmpty(), cmd["extra_msg"])
                     dirty.set(true)
                     log("$address: server error $id ${cmd["msg"]}")
@@ -294,6 +474,14 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             }
         }
         if (model.apply(cmd)) dirty.set(true)
+        // 连上时被直接丢进某个频道的话，密码到这里才有频道 id 可挂
+        if (pendingChannelPassword.isNotEmpty()) {
+            val own = model.ownChannel?.id ?: 0
+            if (own > 0) {
+                channelPasswords.putIfAbsent(own, Crypto.hashPassword(pendingChannelPassword))
+                pendingChannelPassword = ""
+            }
+        }
         maybeFetchBanner()
         // After the model, which also reads these (the streaming flag): the bridge only relays, it hides nothing.
         streams.onCommand(cmd)
@@ -367,6 +555,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             "inputMuted" to inputMuted,
             "outputMuted" to outputMuted,
             "clientCount" to model.clients.values.count { it.type == 0 },
+            "fileToken" to fileId,
             "server" to serverInfo(),
             "tree" to model.tree().map { node(it) },
         )

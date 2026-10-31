@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
-import { IconClose, IconEdit, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
-import type { ChannelNode, ChatLine, Member, State } from '../protocol';
+import { IconClose, IconEdit, IconFolder, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
+import type { ChannelNode, ChatLine, FilesMessage, Member, State } from '../protocol';
 import { findChannel, findMember } from '../protocol';
 import type { StreamState } from '../stream';
 import { avatarColor, initial } from '../ui';
 import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
 import ControlBar from './ControlBar';
+import FilesPanel from './FilesPanel';
 import ServerInfoPanel from './ServerInfo';
 import Stage from './Stage';
 import StreamPanel from './StreamPanel';
@@ -15,6 +16,10 @@ import StreamPanel from './StreamPanel';
 interface Props {
   state: State;
   chat: ChatLine[];
+  /** 文件区最近一次的目录列表；面板关着时也可能有旧值。 */
+  files: FilesMessage | null;
+  /** 文件传输的会话令牌，HTTP 端点认它。 */
+  fileToken: string;
   micOn: boolean;
   micLevel: number;
   micGain: number;
@@ -32,6 +37,10 @@ interface Props {
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
   onSay: (text: string) => void;
+  /** 要一层目录的文件列表。 */
+  onListFiles: (cid: number, path: string) => void;
+  /** 一批文件传完了（一次拖进来的算一批），好在频道里说一句。 */
+  onFilesUploaded: (paths: string[]) => void;
   onRename: (name: string) => void;
   onMicGain: (v: number) => void;
   onMemberVolume: (member: Member, v: number) => void;
@@ -57,6 +66,8 @@ function typingInField(target: EventTarget | null): boolean {
 export default function ServerPage({
   state,
   chat,
+  files,
+  fileToken,
   micOn,
   micLevel,
   micGain,
@@ -71,6 +82,8 @@ export default function ServerPage({
   onPttHold,
   onJoinChannel,
   onSay,
+  onListFiles,
+  onFilesUploaded,
   onRename,
   onMicGain,
   onMemberVolume,
@@ -91,6 +104,7 @@ export default function ServerPage({
   const [joiningChannel, setJoiningChannel] = useState<number | null>(null);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
+  const [filesOpen, setFilesOpen] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const joinTimer = useRef<number | null>(null);
 
@@ -301,6 +315,16 @@ export default function ServerPage({
                 <span className="channel-topic">{current?.topic || `${people.length} 人在这个频道`}</span>
               </div>
               <div className="channel-head-right">
+                <button
+                  type="button"
+                  className="pill pill-action"
+                  onClick={() => setFilesOpen(true)}
+                  disabled={!state.ownChannel}
+                  title="频道文件：文件存在服务器上，同频道的人都能取"
+                >
+                  <IconFolder size="small" />
+                  文件
+                </button>
                 <span className="pill">
                   <IconUserGroup size="small" />
                   {people.length} 人
@@ -372,6 +396,17 @@ export default function ServerPage({
         onTogglePttMode={onTogglePttMode}
         onPttHold={onPttHold}
         onDisconnect={onDisconnect}
+      />
+
+      <FilesPanel
+        open={filesOpen}
+        cid={state.ownChannel}
+        channelName={channelTitle}
+        token={fileToken}
+        listing={files}
+        onList={onListFiles}
+        onClose={() => setFilesOpen(false)}
+        onUploaded={onFilesUploaded}
       />
 
       <Modal

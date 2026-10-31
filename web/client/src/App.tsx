@@ -8,6 +8,7 @@ import {
   store,
   type ChatLine,
   type ConnectOptions,
+  type FilesMessage,
   type Member,
   type State,
 } from './protocol';
@@ -31,6 +32,8 @@ export default function App() {
   const [token, setToken] = useState(() => store.token());
   const [state, setState] = useState<State | null>(null);
   const [chat, setChat] = useState<ChatLine[]>([]);
+  // 文件区最近一次的目录列表。只留一份：面板关着的时候没人看，多留是浪费
+  const [files, setFiles] = useState<FilesMessage | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(false);
@@ -127,6 +130,7 @@ export default function App() {
     gatewayRef.current = null;
     setState(null);
     setChat([]);
+    setFiles(null);
     setConnecting(false);
   }, [talking]);
 
@@ -151,6 +155,7 @@ export default function App() {
             if (s.error) setError(s.error);
           },
           onChat: (line) => setChat((prev) => [...prev, line].slice(-MAX_CHAT)),
+          onFiles: setFiles,
           onVoice: (codec, clientId, opus) => {
             // 空帧是「说完了」：立刻熄灯，不用等超时
             if (opus.length === 0) talking.quiet(clientId);
@@ -248,6 +253,28 @@ export default function App() {
   const say = useCallback((text: string) => {
     const s = stateRef.current;
     if (!s || !text.trim()) return;
+    gatewayRef.current?.say(text, s.ownChannel, 0);
+  }, []);
+
+  /** 要一层目录的文件列表；答案从 onFiles 回来。 */
+  const listFiles = useCallback((cid: number, path: string) => {
+    gatewayRef.current?.listFiles(cid, path);
+  }, []);
+
+  /**
+   * 文件传完，在频道里说一声。
+   *
+   * TeamSpeak 的文本消息里没有附件这回事，所以只能说一句人话——文件本身在频道文件区，谁要谁去取。
+   * 一次拖进来的几个合成一条，免得频道里刷一屏。
+   */
+  const announceFiles = useCallback((paths: string[]) => {
+    const s = stateRef.current;
+    if (!s || paths.length === 0) return;
+    const names = paths.map((p) => p.slice(p.lastIndexOf('/') + 1));
+    const text =
+      names.length === 1
+        ? `发了个文件：${names[0]}，在频道文件区`
+        : `发了 ${names.length} 个文件：${names.join('、')}，在频道文件区`;
     gatewayRef.current?.say(text, s.ownChannel, 0);
   }, []);
 
@@ -359,6 +386,8 @@ export default function App() {
       <ServerPage
         state={state}
         chat={chat}
+        files={files}
+        fileToken={state.fileToken ?? ''}
         micOn={micOn}
         micLevel={micLevel}
         micGain={micGain}
@@ -373,6 +402,8 @@ export default function App() {
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
         onSay={say}
+        onListFiles={listFiles}
+        onFilesUploaded={announceFiles}
         onRename={rename}
         onMicGain={changeMicGain}
         onMemberVolume={changeMemberVolume}
@@ -390,6 +421,7 @@ export default function App() {
   }, [
     state,
     chat,
+    files,
     tokenNeeded,
     token,
     connecting,
@@ -407,6 +439,8 @@ export default function App() {
     connect,
     joinChannel,
     say,
+    listFiles,
+    announceFiles,
     rename,
     changeMicGain,
     changeMemberVolume,
