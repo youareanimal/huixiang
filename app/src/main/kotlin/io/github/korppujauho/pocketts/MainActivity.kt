@@ -357,7 +357,9 @@ private fun App() {
                 }
                 route == "ROOM" -> Column(Modifier.fillMaxSize().imePadding()) {
                     val room = account.rooms.firstOrNull { it.id == roomId }
-                    HubTopBar(room?.let { roomTitle(it, account.username, account.cloudUserId, account.contacts) } ?: "云消息", onBack = ::home)
+                    HubTopBar(room?.let { roomTitle(it, account.username, account.cloudUserId, account.contacts) } ?: "云消息", onBack = ::home) {
+                        TextButton(onClick = controller::connectCloud, enabled = !account.busy) { Text("重连", color = Ts.brand) }
+                    }
                     account.cloudError?.let { HubError(chatErrorMessage(it), it, { controller.connectCloud() }) }
                     if (room != null) CloudConversation(room, account.busy || account.sending, account.sent,
                         { controller.history(room.id) }, { controller.send(room.id, it) },
