@@ -50,6 +50,9 @@ class MyTsVoiceDataTest {
         val command = parse(assertNotNull(MyTsVoiceData.fromSession(session(CloudProto.bytes(3, byteArrayOf(1))), CloudProto.bytes(1, byteArrayOf()))))
         assertNull(command["myts_avatar"])
         assertNull(command["myts_signed_badge"])
+        val emptyBadges = assertNotNull(MyTsVoiceData.fromSession(session(), byteArrayOf()))
+        assertNull(parse(emptyBadges)["myts_signed_badge"])
+        assertContentEquals(assertNotNull(MyTsVoiceData.fromSession(session())).commandBytes(), emptyBadges.commandBytes())
         assertNull(MyTsVoiceData.fromSession(MyTsAccount.Session("legacy", "Fixture")))
     }
 
