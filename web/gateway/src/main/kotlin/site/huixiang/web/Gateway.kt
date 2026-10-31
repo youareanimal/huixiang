@@ -15,6 +15,7 @@ import io.ktor.server.request.path
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
+import io.ktor.server.response.respondOutputStream
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
@@ -25,8 +26,10 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -108,6 +111,15 @@ private val log = LoggerFactory.getLogger("web-gateway")
 private val openTotal = AtomicInteger(0)
 private val openPerIp = ConcurrentHashMap<String, AtomicInteger>()
 
+/**
+ * The header a transfer request names its session by.
+ *
+ * A header rather than a path segment, so the token never lands in a proxy's access log. A header rather than a
+ * cookie, because a cookie would follow the person into every other tab of this site and outlive the session it
+ * names; this one dies with the tab, in [WebSession.fileSessions].
+ */
+private const val FILE_TOKEN = "X-File-Token"
+
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
     // 默认只监听本机：对外应该走 Nginx 的 443（wss），把 8080 直接暴露出去等于绕过 TLS。
@@ -138,6 +150,8 @@ fun Application.gateway(dist: File, access: Access) {
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post)
             allowHeader(HttpHeaders.ContentType)
+            // 两个文件端点靠这个头认会话（见 WebSession.fileSessions），跨域部署时不能让预检拦下来
+            allowHeader(FILE_TOKEN)
             for (o in access.origins) {
                 runCatching {
                     val u = URI(o)
@@ -169,6 +183,61 @@ fun Application.gateway(dist: File, access: Access) {
                 Json.write(mapOf("required" to (access.token != null))),
                 io.ktor.http.ContentType.Application.Json,
             )
+        }
+
+        /**
+         * 一个文件的字节：从频道文件区流到浏览器，一个字节都不落在这台机器上。
+         *
+         * 认 `X-File-Token`（状态快照里下发的会话令牌），它只对这一个标签页的这一个会话有效。开流之前先查
+         * 一次目录：`respondOutputStream` 一旦起了头，200 就已经发了出去，此后再发现文件不存在，浏览器只能
+         * 收到一个莫名其妙的半截下载。多一次往返，换一个说得清的 404 / 400 / 413。
+         */
+        get("/files/download") {
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@get
+            }
+            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
+            val path = filePath(call.request.queryParameters["path"])
+            if (cid == null || path == null || path == "/") {
+                call.respond(HttpStatusCode.BadRequest, "缺少文件路径")
+                return@get
+            }
+
+            val entry = try {
+                withContext(Dispatchers.IO) { session.findFile(cid, path) }
+            } catch (e: Exception) {
+                log.info("download $path of channel $cid failed: ${e.message}")
+                call.respond(HttpStatusCode.BadGateway, session.fileError(e))
+                return@get
+            }
+            when {
+                entry == null -> {
+                    call.respond(HttpStatusCode.NotFound, "文件不存在")
+                    return@get
+                }
+                entry.folder -> {
+                    call.respond(HttpStatusCode.BadRequest, "这是个文件夹")
+                    return@get
+                }
+                entry.size > WebSession.MAX_FILE_BYTES -> {
+                    call.respond(HttpStatusCode.PayloadTooLarge, "文件太大")
+                    return@get
+                }
+            }
+
+            call.respondOutputStream(
+                contentType = io.ktor.http.ContentType.Application.OctetStream,
+                status = HttpStatusCode.OK,
+                // 说清楚总长，浏览器才能给出一个真进度；给错了它自己也会察觉（下载会断）
+                contentLength = entry.size,
+            ) {
+                val out = this
+                // 传输是阻塞的（先 ftinitdownload，再跟服务器开一条 TCP 把字节读回来），不能压在 Netty 的
+                // 事件循环上，否则一个下载就能让整个网关停摆
+                withContext(Dispatchers.IO) { session.downloadFile(cid, path, out, entry.size) }
+            }
         }
 
         webSocket("/ws") {
@@ -287,6 +356,22 @@ private fun tokenOf(frame: Frame): String? {    val text = (frame as? Frame.Text
     }
 }
 
+/** Which tab's session this request belongs to; null when the token names nothing alive. */
+private fun ApplicationCall.fileSession(): WebSession? =
+    request.headers[FILE_TOKEN]?.takeIf { it.length in 16..64 }?.let { WebSession.byFile(it) }
+
+/**
+ * A virtual path in a channel's file area: `/` or `/dir/file`. Anything that could climb out of it or is
+ * absurdly long is refused here — TeamSpeak would refuse it too, but a door is cheaper shut at this end.
+ */
+private fun filePath(raw: String?): String? {
+    val p = raw?.trim().orEmpty()
+    if (p.isEmpty()) return "/"
+    if (!p.startsWith('/') || p.length > 512) return null
+    if (p.split('/').any { it == ".." }) return null
+    return p
+}
+
 private fun acquire(ip: String): Boolean {
     if (openTotal.incrementAndGet() > Limits.TOTAL) {
         openTotal.decrementAndGet()
@@ -345,7 +430,21 @@ private fun onText(session: WebSession, text: String, ip: String) {
             session.setOutputMuted(m["output"] == true)
         }
         "stream" -> onStream(session, m)
+        "file" -> onFile(session, m)
     }
+}
+
+/**
+ * 文件区：只读——这里只有一个「列一层目录」的命令，字节走上面那个 HTTP 端点。
+ *
+ * 分开的原因在 [WebSession.fileSessions] 上写着——一句话：WebSocket 一帧 64 KB，搬大文件要自己写分片、
+ * 重组和流控，而 HTTP 这三样都是现成的。
+ */
+private fun onFile(session: WebSession, m: Map<*, *>) {
+    if (m["act"] != "list") return
+    val cid = (m["cid"] as? Number)?.toInt() ?: return
+    val path = filePath(m["path"] as? String) ?: return
+    session.listFiles(cid, path)
 }
 
 /**
