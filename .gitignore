@@ -25,3 +25,14 @@ keystore.properties
 .DS_Store
 Thumbs.db
 *.log
+
+# Web client
+web/client/node_modules/
+web/client/dist/
+web/gateway/build/
+
+# 页面验证的截图，只是测试产物，不入库
+web/client/test/*.png
+
+# TypeScript 增量编译缓存
+*.tsbuildinfo

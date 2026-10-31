@@ -162,12 +162,23 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
 
     // ====== API (any thread) ======
 
+    /**
+     * Queues [block] on the connection's thread. A connection that has already been let go drops it: callers
+     * reach here from their own threads, where the instance may have just been closed.
+     */
+    private fun onThread(block: () -> Unit) {
+        try {
+            exec.execute(block)
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+        }
+    }
+
     fun connect(options: Options) {
-        exec.execute { startConnect(options) }
+        onThread { startConnect(options) }
     }
 
     fun disconnect(message: String = "leaving") {
-        exec.execute {
+        onThread {
             when (state) {
                 State.CONNECTED -> {
                     state = State.DISCONNECTING
@@ -182,17 +193,31 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
 
     /** The phone's network went away or changed: the connection is lost now (not after the silence runs out). */
     fun networkGone(reason: String) {
-        exec.execute { if (state == State.CONNECTING || state == State.CONNECTED) fail(reason, End.NETWORK_GONE, reason) }
+        onThread { if (state == State.CONNECTING || state == State.CONNECTED) fail(reason, End.NETWORK_GONE, reason) }
+    }
+
+    /**
+     * Ends the connection and lets this instance's thread go. An instance is made for one connection, so a server
+     * that keeps opening and closing them (the web gateway does) would otherwise leave a thread behind each time.
+     */
+    fun close(message: String = "leaving") {
+        if (exec.isShutdown) return
+        disconnect(message)
+        // Queued behind the disconnect, which may have scheduled its own end: the thread stops once it is done.
+        try {
+            exec.schedule({ exec.shutdown() }, 3, TimeUnit.SECONDS)
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+        }
     }
 
     /** Runs [block] on the connection's thread (where the listener is called), after what was asked before. */
     fun post(block: () -> Unit) {
-        exec.execute(block)
+        onThread(block)
     }
 
     fun sendCommand(cmd: String) {
-        exec.execute {
-            if (state != State.CONNECTED) return@execute
+        onThread {
+            if (state != State.CONNECTED) return@onThread
             pacer.add(cmd)
             drain()
         }
@@ -209,8 +234,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
 
     /** One Opus frame; [codec] should be the channel's (4 Opus Voice or 5 Opus Music). */
     fun sendVoice(codec: Int, opus: ByteArray) {
-        exec.execute {
-            if (state != State.CONNECTED) return@execute
+        onThread {
+            if (state != State.CONNECTED) return@onThread
             val buf = ByteArray(3 + opus.size)
             buf[2] = codec.toByte()
             opus.copyInto(buf, 3)
@@ -288,11 +313,11 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
                 val p = DatagramPacket(buf, buf.size)
                 s.receive(p)
                 val data = buf.copyOf(p.length)
-                exec.execute { if (socket === s) handlePacket(data) }
+                onThread { if (socket === s) handlePacket(data) }
             } catch (e: Exception) {
                 // Nothing listens on that port (the computer said so before the server ever answered)
                 val noServer = e is java.net.PortUnreachableException
-                if (!s.isClosed) exec.execute { if (socket === s) if (noServer && !heardAny) fail(NO_ANSWER, End.NO_ANSWER) else fail("Network error: ${e.message}", End.NETWORK_ERROR, e.message.orEmpty()) }
+                if (!s.isClosed) onThread { if (socket === s) if (noServer && !heardAny) fail(NO_ANSWER, End.NO_ANSWER) else fail("Network error: ${e.message}", End.NETWORK_ERROR, e.message.orEmpty()) }
                 return
             }
         }
