@@ -170,4 +170,27 @@ class CloudFriendChatControllerTest {
             assertEquals("CONTACT_UNAVAILABLE", c.state.value.cloudError)
         } finally { c.close() }
     }
+
+    @Test fun failedBackgroundSyncShowsOfflineAndManualReconnectRestoresRooms() {
+        val server = Server(); val c = controller(server)
+        try {
+            c.openFriendChat(friend)
+            assertTrue(c.state.value.cloudConnected)
+            assertEquals(room, c.state.value.rooms.single().id)
+
+            server.failSync = true
+            c.refresh()
+            assertFalse(c.state.value.cloudConnected)
+            assertEquals("HTTP_503", c.state.value.cloudError)
+            // A temporary outage must not erase the conversation displayed on the phone.
+            assertEquals(room, c.state.value.rooms.single().id)
+
+            server.failSync = false
+            c.connectCloud()
+            assertTrue(c.state.value.cloudConnected)
+            assertNull(c.state.value.cloudError)
+            assertEquals(room, c.state.value.rooms.single().id)
+            assertEquals(0, server.credentialRefreshes)
+        } finally { c.close() }
+    }
 }
