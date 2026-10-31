@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference
 /** Public release metadata only. No TeamSpeak or cloud-drive login credentials are used. */
 object UpdateFeed {
     enum class Source(val label: String, val feedUrl: String) {
-        PI("PI 直连", BuildConfig.UPDATE_FEED_URL),
+        PI("直连更新源", BuildConfig.UPDATE_FEED_URL),
         CLOUDFLARE("Cloudflare", BuildConfig.UPDATE_FALLBACK_FEED_URL),
     }
     data class Artifact(val abi: String, val url: String, val bytes: Long, val sha256: String)
