@@ -12,6 +12,12 @@ val devEnv: Map<String, String> = rootProject.file("dev.env").takeIf { it.exists
     ?.associate { it.substringBefore('=').trim() to it.substringAfter('=').trim() }
     ?: emptyMap()
 
+val updateHost = System.getenv("HUIXIANG_UPDATE_HOST")?.takeIf { it.isNotBlank() }
+    ?: "updates.example.invalid"
+require(updateHost.matches(Regex("[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?"))) {
+    "Invalid update host configuration"
+}
+
 android {
     namespace = "io.github.korppujauho.pocketts"
     compileSdk = 37
@@ -22,7 +28,7 @@ android {
         targetSdk = 36
         versionCode = 16
         versionName = "0.5.3"
-        buildConfigField("String", "UPDATE_FEED_URL", "\"https://pi.animal26.site:8443/huixiang/latest.json\"")
+        buildConfigField("String", "UPDATE_FEED_URL", "\"https://${updateHost}:8443/huixiang/latest.json\"")
         buildConfigField("String", "UPDATE_FALLBACK_FEED_URL", "\"https://huixiang-updates.pages.dev/latest.json\"")
         // Phones (WebRTC's native code is large; these two cover practically every phone)
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }

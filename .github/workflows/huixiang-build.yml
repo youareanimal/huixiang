@@ -32,6 +32,9 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Verify publisher safeguards
+        run: python3 scripts/pi-mirror/test-publisher.py
+
       - name: Prepare Android build environment
         run: |
           docker build -f docker/build.Dockerfile -t huixiang-build --build-arg ACCEPT_ANDROID_SDK_LICENSE=yes docker
@@ -48,9 +51,13 @@ jobs:
             '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
 
       - name: Build unsigned upgrade APKs
+        env:
+          HUIXIANG_UPDATE_HOST: ${{ secrets.PI_SSH_HOST }}
         run: |
+          test -n "$HUIXIANG_UPDATE_HOST" || { echo '::error::Private update host is not configured'; exit 1; }
           docker run --rm \
             -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e HUIXIANG_UPDATE_HOST \
             -e POCKETTS_BUILD_ROOT=/out -e HUIXIANG_UNSIGNED_BUILD=1 \
             huixiang-build ./gradlew --no-daemon --console=plain \
             :app:assembleCompact --max-workers=2 \
