@@ -39,8 +39,6 @@ interface Props {
   onSay: (text: string) => void;
   /** 要一层目录的文件列表。 */
   onListFiles: (cid: number, path: string) => void;
-  /** 一批文件传完了（一次拖进来的算一批），好在频道里说一句。 */
-  onFilesUploaded: (paths: string[]) => void;
   onRename: (name: string) => void;
   onMicGain: (v: number) => void;
   onMemberVolume: (member: Member, v: number) => void;
@@ -83,7 +81,6 @@ export default function ServerPage({
   onJoinChannel,
   onSay,
   onListFiles,
-  onFilesUploaded,
   onRename,
   onMicGain,
   onMemberVolume,
@@ -406,7 +403,6 @@ export default function ServerPage({
         listing={files}
         onList={onListFiles}
         onClose={() => setFilesOpen(false)}
-        onUploaded={onFilesUploaded}
       />
 
       <Modal

@@ -12,18 +12,15 @@ import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.origin
 import io.ktor.server.request.path
-import io.ktor.server.request.receiveChannel
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondOutputStream
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
-import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
-import io.ktor.utils.io.jvm.javaio.toInputStream
 import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.close
@@ -243,47 +240,6 @@ fun Application.gateway(dist: File, access: Access) {
             }
         }
 
-        /**
-         * 收一个文件，写进频道的文件区。body 就是文件本身，不套 multipart——省一层解析，也省一次全量缓冲。
-         *
-         * `Content-Length` 必须是真的：要先告诉 TeamSpeak 尺寸才能开传，所以 chunked 上传会被挡回去。
-         */
-        post("/files/upload") {
-            val session = call.fileSession()
-            if (session == null) {
-                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
-                return@post
-            }
-            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
-            val path = filePath(call.request.queryParameters["path"])
-            if (cid == null || path == null || path == "/") {
-                call.respond(HttpStatusCode.BadRequest, "缺少文件路径")
-                return@post
-            }
-            val size = call.request.headers[HttpHeaders.ContentLength]?.toLongOrNull()
-            if (size == null || size < 0) {
-                call.respond(HttpStatusCode.LengthRequired, "上传要带 Content-Length")
-                return@post
-            }
-            if (size > WebSession.MAX_FILE_BYTES) {
-                call.respond(HttpStatusCode.PayloadTooLarge, "文件太大")
-                return@post
-            }
-            val overwrite = call.request.queryParameters["overwrite"] == "1"
-
-            try {
-                val input = call.receiveChannel().toInputStream()
-                withContext(Dispatchers.IO) {
-                    input.use { session.uploadFile(cid, path, it, size, overwrite) }
-                }
-            } catch (e: Exception) {
-                log.info("upload $path to channel $cid failed: ${e.message}")
-                call.respond(HttpStatusCode.BadGateway, session.fileError(e))
-                return@post
-            }
-            call.respondText("""{"ok":true}""", io.ktor.http.ContentType.Application.Json)
-        }
-
         webSocket("/ws") {
             val ip = clientIp(call)
             if (!access.originAllowed(call)) {
@@ -479,18 +435,16 @@ private fun onText(session: WebSession, text: String, ip: String) {
 }
 
 /**
- * 文件区：这里只管命令（列一层目录），字节走上面那两个 HTTP 端点。
+ * 文件区：只读——这里只有一个「列一层目录」的命令，字节走上面那个 HTTP 端点。
  *
  * 分开的原因在 [WebSession.fileSessions] 上写着——一句话：WebSocket 一帧 64 KB，搬大文件要自己写分片、
  * 重组和流控，而 HTTP 这三样都是现成的。
  */
 private fun onFile(session: WebSession, m: Map<*, *>) {
+    if (m["act"] != "list") return
     val cid = (m["cid"] as? Number)?.toInt() ?: return
     val path = filePath(m["path"] as? String) ?: return
-    when (m["act"]) {
-        "list" -> session.listFiles(cid, path)
-        "delete" -> if (path != "/") session.deleteFile(cid, path)
-    }
+    session.listFiles(cid, path)
 }
 
 /**
