@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { IconChevronDown, IconChevronUp, IconSend } from '@douyinfe/semi-icons';
 import type { ChatLine } from '../protocol';
-import { avatarColor, initial } from '../ui';
+import { avatarSources } from '../ui';
+import UserAvatar from './UserAvatar';
 
 interface Props {
   lines: ChatLine[];
@@ -10,6 +11,10 @@ interface Props {
   hint: string;
   placeholder: string;
   collapsed: boolean;
+  /** 成员头像地址里的会话令牌。 */
+  avatarToken: string;
+  /** 自己登录的 myTeamSpeak 头像地址（空 = 没登录或没有）。 */
+  accountAvatar: string;
   onToggleCollapsed: () => void;
   onSend: (text: string) => void;
 }
@@ -28,6 +33,8 @@ export default function ChatPanel({
   hint,
   placeholder,
   collapsed,
+  avatarToken,
+  accountAvatar,
   onToggleCollapsed,
   onSend,
 }: Props) {
@@ -95,13 +102,16 @@ export default function ChatPanel({
               const mine = line.from === ownId;
               return (
                 <div key={`${line.time}-${i}`} className={`msg${mine ? ' msg-mine' : ''}`}>
-                  <div
-                    className="msg-avatar"
-                    style={{ background: avatarColor(mine ? 'me' : line.name || line.from) }}
-                    aria-hidden="true"
-                  >
-                    {initial(line.name)}
-                  </div>
+                  <UserAvatar
+                    name={line.name}
+                    sources={avatarSources(
+                      { id: line.from, avatar: line.avatar, myTeamSpeakAvatar: line.myTeamSpeakAvatar },
+                      ownId,
+                      accountAvatar,
+                      avatarToken,
+                    )}
+                    colorKey={mine ? 'me' : line.name || line.from}
+                  />
                   <div className="msg-body">
                     <div className="msg-meta">
                       <span className="msg-name">{line.name}</span>

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
-import { IconGlobe } from '@douyinfe/semi-icons';
+import { useEffect, useRef, useState } from 'react';
+import { IconGlobe, IconUserGroup } from '@douyinfe/semi-icons';
 import { Toast } from '@douyinfe/semi-ui';
-import type { ServerInfo } from '../protocol';
+import { accountErrorText } from '../account';
+import type { AccountState, ContactsMessage, ServerInfo } from '../protocol';
+import UserAvatar from './UserAvatar';
 
 interface Props {
   info: ServerInfo | null;
@@ -10,6 +12,12 @@ interface Props {
   /** 真实说话人数（网关按 type==0 数的），比 clientsonline（含查询客户端）更贴近直觉。 */
   clientCount: number;
   channelCount: number;
+  account: AccountState;
+  friends: ContactsMessage;
+  onAccountLogout: () => void;
+  onAccountRefresh: () => void;
+  onAvatarChange: (file: File) => void;
+  onAvatarRemove: () => void;
 }
 
 /** 秒数 → 「13 天 4 小时」这种能读的话。 */
@@ -31,9 +39,23 @@ function stripBBCode(text: string): string {
  * 右栏：服务器自己报的家底，常驻显示。
  * 没有「关掉」这个动作——它就是这一栏的内容，和左边的频道列表对称。
  */
-export default function ServerInfoPanel({ info, welcome, address, clientCount, channelCount }: Props) {
+export default function ServerInfoPanel({
+  info,
+  welcome,
+  address,
+  clientCount,
+  channelCount,
+  account,
+  friends,
+  onAccountLogout,
+  onAccountRefresh,
+  onAvatarChange,
+  onAvatarRemove,
+}: Props) {
   const [bannerBroken, setBannerBroken] = useState(false);
   const [liveUptime, setLiveUptime] = useState<number | null>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
+  const signedIn = account.phase === 'signedIn';
 
   // 换了横幅地址就重试一次，别一直停在「图挂了」
   useEffect(() => {
@@ -130,6 +152,87 @@ export default function ServerInfoPanel({ info, welcome, address, clientCount, c
             {versionLine}
           </p>
         )}
+
+        <section className="info-account" aria-label="我的账号">
+          <div className="info-account-head">
+            <UserAvatar
+              name={signedIn ? account.username || account.email : '?'}
+              sources={signedIn && account.avatarUrl ? [account.avatarUrl] : []}
+              colorKey={signedIn ? account.username || account.email : 'guest'}
+              className="account-avatar"
+              label={signedIn ? `${account.username} 的头像` : undefined}
+            />
+            <div className="info-account-id">
+              <span className="info-account-name">
+                {signedIn ? account.username || 'myTeamSpeak 账号' : '未登录 myTeamSpeak'}
+              </span>
+              <span className="info-account-sub">
+                {signedIn ? account.email || '已登录' : '在连接页登录后可同步好友与头像'}
+              </span>
+            </div>
+          </div>
+
+          {signedIn && (
+            <>
+              <div className="info-account-links">
+                <button type="button" className="field-link" onClick={() => avatarInput.current?.click()}>
+                  {account.avatarUrl ? '换头像' : '设置头像'}
+                </button>
+                {account.avatarUrl && (
+                  <button type="button" className="field-link" onClick={onAvatarRemove}>
+                    删除头像
+                  </button>
+                )}
+                <button type="button" className="field-link" onClick={onAccountRefresh}>
+                  刷新
+                </button>
+                <button type="button" className="field-link" onClick={onAccountLogout}>
+                  退出
+                </button>
+                <input
+                  ref={avatarInput}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) onAvatarChange(file);
+                  }}
+                />
+              </div>
+
+              <div className="info-account-head info-friends-head">
+                <IconUserGroup size="small" />
+                <span>好友</span>
+                <span className="info-account-count">
+                  {friends.loading ? '加载中…' : friends.items.length}
+                </span>
+              </div>
+              {friends.error ? (
+                <span className="field-error">{accountErrorText(friends.error)}</span>
+              ) : friends.items.length === 0 && !friends.loading ? (
+                <span className="field-help">这个账号还没有好友。</span>
+              ) : (
+                <div className="info-friends">
+                  {friends.items.map((friend) => (
+                    <div key={friend.id} className="info-friend">
+                      <UserAvatar
+                        name={friend.name}
+                        colorKey={friend.id}
+                        className="friend-avatar"
+                        label={`${friend.name} 的头像`}
+                      />
+                      <span className="info-friend-name" title={friend.subtitle || friend.name}>
+                        {friend.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
       </div>
     </aside>
   );

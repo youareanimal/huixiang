@@ -17,6 +17,9 @@ export default defineConfig({
       '/files': { target: `http://${target}` },
       // 会话横幅同理（ts3image 的那种要网关去下载再给出来）
       '/server-banner': { target: `http://${target}` },
+      // 成员头像和账号头像上传：头像走 HTTP，登录口令/账号消息仍走 /ws
+      '/avatar': { target: `http://${target}` },
+      '/account': { target: `http://${target}` },
     },
   },
   build: { outDir: 'dist', emptyOutDir: true },

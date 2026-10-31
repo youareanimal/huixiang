@@ -18,6 +18,12 @@ export interface Member {
   streaming: boolean;
   channelGroup: string;
   serverGroups: string[];
+  /** 服务器头像的哈希；空表示没有。地址走网关的 /avatar 端点。 */
+  avatar?: string;
+  /** 服务器直接给出的头像文件名，来自 client_base64HashClientUID。 */
+  avatarName?: string;
+  /** 对方公开的 myTeamSpeak 头像 https 地址；空表示没有。 */
+  myTeamSpeakAvatar?: string;
 }
 
 export interface ChannelNode {
@@ -70,6 +76,8 @@ export interface State {
    * 每次连接都是新的，断开就作废。
    */
   fileToken?: string;
+  /** 头像地址里的会话令牌；只能读头像，不能读频道文件。 */
+  avatarToken?: string;
   server?: ServerInfo | null;
   tree: ChannelNode[];
 }
@@ -83,7 +91,82 @@ export interface ChatLine {
   mode: number;
   text: string;
   time: number;
+  avatar?: string;
+  avatarName?: string;
+  myTeamSpeakAvatar?: string;
 }
+
+// ====== myTeamSpeak 账号 ======
+
+/**
+ * 账号会话只活在这个标签页的网关连接里：刷新就没了，浏览器不保存令牌或密码。
+ * `guest` 也包含登录失败后的状态，错误码在 `error` 里。
+ */
+export type AccountPhase = 'guest' | 'busy' | 'signedIn';
+
+export interface AccountState {
+  t: 'account';
+  phase: AccountPhase;
+  username: string;
+  email: string;
+  avatarUrl: string;
+  error: string | null;
+  /** 头像上传的凭据（HTTP 端点认 X-File-Token）。 */
+  fileToken?: string;
+}
+
+export interface Bookmark {
+  id: string;
+  name: string;
+  address: string;
+  nickname: string;
+  /** 服务器密码；只用来填进隐藏的密码框，不显示、也不写进 localStorage。 */
+  password: string;
+}
+
+export interface BookmarksMessage {
+  t: 'bookmarks';
+  items: Bookmark[];
+  error: string | null;
+  loading: boolean;
+}
+
+/** 好友只做展示：myTeamSpeak 的联系人列表没有在线状态，网页版也不接 Matrix 聊天。 */
+export interface Friend {
+  id: string;
+  name: string;
+  subtitle: string;
+}
+
+export interface ContactsMessage {
+  t: 'contacts';
+  items: Friend[];
+  error: string | null;
+  loading: boolean;
+}
+
+export const guestAccount = (): AccountState => ({
+  t: 'account',
+  phase: 'guest',
+  username: '',
+  email: '',
+  avatarUrl: '',
+  error: null,
+});
+
+export const emptyBookmarks = (): BookmarksMessage => ({
+  t: 'bookmarks',
+  items: [],
+  error: null,
+  loading: false,
+});
+
+export const emptyContacts = (): ContactsMessage => ({
+  t: 'contacts',
+  items: [],
+  error: null,
+  loading: false,
+});
 
 /** 频道文件区里的一个文件或文件夹，字段与 FileTransfer.Entry 一致。 */
 export interface FileEntry {

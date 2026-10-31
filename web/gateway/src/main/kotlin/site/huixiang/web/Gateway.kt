@@ -11,13 +11,18 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.server.plugins.origin
+import io.ktor.server.request.contentLength
 import io.ktor.server.request.path
+import io.ktor.server.request.receive
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondFile
 import io.ktor.server.response.respondOutputStream
 import io.ktor.server.response.respondText
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
@@ -149,6 +154,7 @@ fun Application.gateway(dist: File, access: Access) {
         install(CORS) {
             allowMethod(HttpMethod.Get)
             allowMethod(HttpMethod.Post)
+            allowMethod(HttpMethod.Delete)
             allowHeader(HttpHeaders.ContentType)
             // 两个文件端点靠这个头认会话（见 WebSession.fileSessions），跨域部署时不能让预检拦下来
             allowHeader(FILE_TOKEN)
@@ -175,6 +181,72 @@ fun Application.gateway(dist: File, access: Access) {
             } else {
                 call.respondBytes(data.first, io.ktor.http.ContentType.parse(data.second))
             }
+        }
+
+        /**
+         * A member's server avatar. `<img>` cannot send the file token as a header, so the address carries the
+         * session's avatar token instead; it opens avatars only, not the channel file area.
+         */
+        get("/avatar/{token}/{id}") {
+            val session = call.parameters["token"]?.takeIf { it.length in 16..64 }?.let { WebSession.byAvatar(it) }
+            if (session == null) {
+                call.respond(HttpStatusCode.NotFound, "no avatar")
+                return@get
+            }
+            val id = call.parameters["id"]?.toIntOrNull()
+            val avatar = if (id == null) null else withContext(Dispatchers.IO) { session.avatar(id) }
+            if (avatar == null) {
+                call.respond(HttpStatusCode.NotFound, "no avatar")
+                return@get
+            }
+            // The address includes the avatar flag, so a changed picture is a different address.
+            call.response.header("Cache-Control", "public, max-age=86400, immutable")
+            call.respondBytes(avatar.first, io.ktor.http.ContentType.parse(avatar.second))
+        }
+
+        /** Upload the signed-in account's online avatar. The browser already made it a <=320 px PNG. */
+        post("/account/avatar") {
+            if (!access.originAllowed(call)) {
+                call.respond(HttpStatusCode.Forbidden, "origin not allowed")
+                return@post
+            }
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@post
+            }
+            val length = call.request.contentLength()
+            if (length == null || length <= 0) {
+                call.respond(HttpStatusCode.LengthRequired, "缺少图片内容")
+                return@post
+            }
+            if (length > AccountSession.MAX_AVATAR_BYTES) {
+                call.respond(HttpStatusCode.PayloadTooLarge, "头像文件太大")
+                return@post
+            }
+            val bytes = call.receive<ByteArray>()
+            if (bytes.size > AccountSession.MAX_AVATAR_BYTES) {
+                call.respond(HttpStatusCode.PayloadTooLarge, "头像文件太大")
+                return@post
+            }
+            val error = withContext(Dispatchers.IO) { session.accountSetAvatar(bytes) }
+            if (error == null) call.respondText("ok")
+            else call.respond(HttpStatusCode.BadRequest, AccountSession.avatarErrorText(error))
+        }
+
+        delete("/account/avatar") {
+            if (!access.originAllowed(call)) {
+                call.respond(HttpStatusCode.Forbidden, "origin not allowed")
+                return@delete
+            }
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@delete
+            }
+            val error = withContext(Dispatchers.IO) { session.accountRemoveAvatar() }
+            if (error == null) call.respond(HttpStatusCode.NoContent)
+            else call.respond(HttpStatusCode.BadRequest, AccountSession.avatarErrorText(error))
         }
 
         /** What a front end needs to know before it asks for a token: whether one is needed at all. */
@@ -431,6 +503,23 @@ private fun onText(session: WebSession, text: String, ip: String) {
         }
         "stream" -> onStream(session, m)
         "file" -> onFile(session, m)
+        "account" -> onAccount(session, m)
+    }
+}
+
+/**
+ * The myTeamSpeak account, which is independent of the voice connection: signing in does not join a server, and
+ * leaving one does not sign out. The password and one-time code go over this socket only and are never logged.
+ */
+private fun onAccount(session: WebSession, m: Map<*, *>) {
+    when (m["act"]) {
+        "login" -> session.accountLogin(
+            email = (m["email"] as? String).orEmpty(),
+            password = (m["password"] as? String).orEmpty(),
+            otp = (m["otp"] as? String).orEmpty(),
+        )
+        "logout" -> session.accountLogout()
+        "refresh" -> session.accountRefresh()
     }
 }
 

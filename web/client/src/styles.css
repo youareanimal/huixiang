@@ -2451,3 +2451,303 @@ button.files-name:hover {
     opacity: 1;
   }
 }
+
+/* ====== myTeamSpeak 账号 ====== */
+
+/* 图片盖住底色和首字母；所有头像容器共用 */
+.msg-avatar,
+.avatar,
+.account-avatar,
+.friend-avatar {
+  position: relative;
+  overflow: hidden;
+}
+
+.msg-avatar > img,
+.avatar > img,
+.account-avatar > img,
+.friend-avatar > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.account-avatar,
+.friend-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+.account-avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 15px;
+}
+
+.friend-avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--bg-app);
+  border: 1px solid var(--line-soft);
+}
+
+.account-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.account-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-sub {
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
+.account-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.account-tools {
+  margin-top: -4px;
+}
+
+.account-login {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-soft);
+}
+
+.account-login-submit {
+  margin-top: 0;
+}
+
+.account-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.account-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.account-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.account-section-count {
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+.saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.saved-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--bg-fill);
+  color: var(--text-3);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.saved-item:hover {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.saved-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.saved-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-sub {
+  font-size: 11px;
+  color: var(--text-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-key {
+  display: inline-flex;
+  color: var(--text-4);
+  flex: 0 0 auto;
+}
+
+.friend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: 10px;
+  color: var(--text-4);
+}
+
+.friend-item:hover {
+  background: var(--bg-fill);
+}
+
+/* ====== 右栏账号卡 ====== */
+
+.info-account {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.info-account-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.info-account-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.info-account-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-account-sub {
+  font-size: 11px;
+  color: var(--text-4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-account-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-friends-head {
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.info-account-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-4);
+}
+
+.info-friends {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.info-friend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px;
+  min-width: 0;
+}
+
+.info-friend-name {
+  font-size: 12px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 手机上右栏收成底部信息带，账号卡留在连接页就够了 */
+@media (max-width: 900px) {
+  .info-account {
+    display: none;
+  }
+}

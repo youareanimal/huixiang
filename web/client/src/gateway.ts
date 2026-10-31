@@ -1,4 +1,12 @@
-import type { ChatLine, ConnectOptions, FilesMessage, State } from './protocol';
+import type {
+  AccountState,
+  BookmarksMessage,
+  ChatLine,
+  ConnectOptions,
+  ContactsMessage,
+  FilesMessage,
+  State,
+} from './protocol';
 import type { StreamEvent } from './stream';
 
 export interface GatewayHandlers {
@@ -10,6 +18,12 @@ export interface GatewayHandlers {
   onChat?: (line: ChatLine) => void;
   /** 一层目录的文件列表（或者一次失败的列表）。 */
   onFiles?: (msg: FilesMessage) => void;
+  /** myTeamSpeak 账号状态：游客、登录中、已登录或失败。 */
+  onAccount?: (state: AccountState) => void;
+  /** 云书签。 */
+  onBookmarks?: (msg: BookmarksMessage) => void;
+  /** 好友列表。 */
+  onContacts?: (msg: ContactsMessage) => void;
   /** 一帧语音，已去掉 4 字节头：codec 和说话的人。 */
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
   /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
@@ -28,6 +42,8 @@ export class Gateway {
   private ws: WebSocket | null = null;
   private ready = false;
   private queue: string[] = [];
+  /** 登录和连接可能同时想开这条连接；只让第一个真的握手。 */
+  private opening: Promise<void> | null = null;
 
   constructor(
     private readonly url: string,
@@ -39,8 +55,15 @@ export class Gateway {
     return this.ready;
   }
 
+  /** 已连上且没被关掉；离开服务器后网关连接会留着，账号才能继续用。 */
+  get isOpen() {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   open(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    if (this.isOpen && this.ready) return Promise.resolve();
+    if (this.opening) return this.opening;
+    const opening = new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.url);
       ws.binaryType = 'arraybuffer';
       this.ws = ws;
@@ -98,6 +121,15 @@ export class Gateway {
           case 'files':
             this.handlers.onFiles?.(m as unknown as FilesMessage);
             break;
+          case 'account':
+            this.handlers.onAccount?.(m as unknown as AccountState);
+            break;
+          case 'bookmarks':
+            this.handlers.onBookmarks?.(m as unknown as BookmarksMessage);
+            break;
+          case 'contacts':
+            this.handlers.onContacts?.(m as unknown as ContactsMessage);
+            break;
           case 'stream':
             this.handlers.onStream?.(m as unknown as StreamEvent);
             break;
@@ -122,6 +154,11 @@ export class Gateway {
         }
       };
     });
+    const tracked = opening.finally(() => {
+      this.opening = null;
+    });
+    this.opening = tracked;
+    return tracked;
   }
 
   private flush() {
@@ -174,6 +211,19 @@ export class Gateway {
    */
   listFiles(cid: number, path: string) {
     this.send({ t: 'file', act: 'list', cid, path });
+  }
+
+  /** myTeamSpeak 登录：密码只经过这条已认证的 WebSocket，不写本地存储。 */
+  accountLogin(email: string, password: string, otp: string) {
+    this.send({ t: 'account', act: 'login', email, password, otp });
+  }
+
+  accountLogout() {
+    this.send({ t: 'account', act: 'logout' });
+  }
+
+  accountRefresh() {
+    this.send({ t: 'account', act: 'refresh' });
   }
 
   /** 一帧 Opus（960 采样 / 20ms）。空数组表示停止说话。 */

@@ -20,9 +20,10 @@ npm run build        # tsc 类型检查 + 打包到 dist/
 
 ```
 src/
-  App.tsx                  连接生命周期、状态、语音开关
+  App.tsx                  连接生命周期、账号与语音状态、语音开关
   protocol.ts              网关协议类型、本地存储、树查找
-  gateway.ts               WebSocket 封装（含口令认证）
+  gateway.ts               WebSocket 封装（含口令认证、账号/书签/好友消息）
+  account.ts               账号错误码、头像裁切与 HTTP 上传/删除
   files.ts                 文件字节：HTTP 下载（列表命令仍走 gateway.ts）
   stream.ts                屏幕 / 摄像头串流（画面是 WebRTC，不经网关）
   talking.ts               谁在说话：从下行语音帧判读
@@ -31,16 +32,17 @@ src/
     mic.ts                 上行：AudioWorklet 攒 20ms → AudioEncoder 编 Opus
     capture-worklet.js     采集用的 worklet（纯 JS，不能写 TS）
   components/
-    ConnectPage.tsx        地址、昵称、密码、口令、最近连接
+    ConnectPage.tsx        地址、昵称、密码、口令、最近连接；myTeamSpeak 登录、云书签、好友
     ServerPage.tsx         整体布局 + 改名、频道密码弹窗
     ChannelTree.tsx        频道与成员
-    ChatPanel.tsx          频道文字
-    Stage.tsx              当前频道成员（谁在说话、单人音量）
+    ChatPanel.tsx          频道文字（带头像）
+    Stage.tsx              当前频道成员（谁在说话、头像、单人音量）
     StreamPanel.tsx        串流画面与工具条（全屏、静音）
     FilesPanel.tsx         频道文件区（右侧抽屉，只读：浏览、下载）
-    ServerInfo.tsx         右栏服务器信息
+    ServerInfo.tsx         右栏服务器信息 + 账号头像/好友
     ControlBar.tsx         麦克风、扬声器、直播、离开
     VolumePopover.tsx      音量滑块
+    UserAvatar.tsx         圆形头像：多地址逐级回退，最后是首字母
 ```
 
 ## 语音是怎么走的
@@ -80,6 +82,9 @@ src/
 | `huixiang.token` | 访问口令（仅当网关要求时） |
 | `huixiang.nickname` | 上次用的昵称 |
 | `huixiang.recent` | 最近连过的地址，最多 8 条 |
+| `huixiang.micGain` / `huixiang.volumes` | 麦克风增益、按 uid 记的成员音量 |
+
+myTeamSpeak 的邮箱、密码、会话令牌、书签密钥和云书签内容**都不进 localStorage**：登录会话只随这条 WebSocket 活在内存里，刷新或关页后要重新登录。
 
 ## 测试脚本
 
@@ -101,13 +106,23 @@ FAKE_MIC=1 node test/shot.mjs http://127.0.0.1:8080/ shot.png 3000 "..."
 
 `FAKE_MIC=1` 会带上 `--use-fake-device-for-media-stream` 和 `--use-fake-ui-for-media-stream`，不需要真设备也不用点授权。
 
+## 账号与头像
+
+连接页顶部是 myTeamSpeak 账号卡片，下面仍是原来的游客连接表单——不登录也能填地址进。
+
+- 登录后显示账号昵称、邮箱和头像，并拉取云书签和好友列表；点云书签会把地址、昵称和服务器密码填进表单（密码不显示）。
+- 头像可在连接页或右栏账号卡里设置/删除：`account.ts` 先把图片裁成 320×320，压到 512 KB 内的 PNG，再 `POST /account/avatar`。
+- 频道里成员头像优先用服务器头像（`/avatar/<avatarToken>/<id>?v=<flag>`），其次对方公开的 myTS 头像，失败退回首字母；自己登录时优先用账号头像。
+- 好友只做列表，不做云聊天；登录后连接会带 myTeamSpeak 语音身份，要完全匿名先退出账号。
+- **刷新即退出**：账号会话只存在当前标签页的 WebSocket 里，浏览器不保存令牌或密码。
+
 ## 还没做
 
-- 头像
+- 好友云聊天（Matrix）
 - 文件上传与管理：传 / 删 / 改名 / 建文件夹（`FileTransfer` 都现成，缺的是一个带确认的交互）
 - 私聊：**不做**（按需求砍掉了，网关侧仍支持，将来要加只需改前端）
 
-已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**按住说话 / 常开麦切换**（按住说话支持空格键，输入框内不拦截）、单人音量、屏幕与摄像头串流、**频道文件的浏览 / 下载**。
+已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**按住说话 / 常开麦切换**（按住说话支持空格键，输入框内不拦截）、单人音量、屏幕与摄像头串流、**频道文件的浏览 / 下载**、**myTeamSpeak 登录 / 云书签 / 好友列表 / 头像**。
 
 ## 文件是怎么走的
 

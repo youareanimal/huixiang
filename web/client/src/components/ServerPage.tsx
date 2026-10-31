@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
 import { IconClose, IconEdit, IconFolder, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
-import type { ChannelNode, ChatLine, FilesMessage, Member, State } from '../protocol';
+import type {
+  AccountState,
+  ChannelNode,
+  ChatLine,
+  ContactsMessage,
+  FilesMessage,
+  Member,
+  State,
+} from '../protocol';
 import { findChannel, findMember } from '../protocol';
 import type { StreamState } from '../stream';
-import { avatarColor, initial } from '../ui';
+import { avatarSources } from '../ui';
 import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
 import ControlBar from './ControlBar';
@@ -12,6 +20,7 @@ import FilesPanel from './FilesPanel';
 import ServerInfoPanel from './ServerInfo';
 import Stage from './Stage';
 import StreamPanel from './StreamPanel';
+import UserAvatar from './UserAvatar';
 
 interface Props {
   state: State;
@@ -20,6 +29,11 @@ interface Props {
   files: FilesMessage | null;
   /** 文件传输的会话令牌，HTTP 端点认它。 */
   fileToken: string;
+  /** 成员头像地址里的会话令牌。 */
+  avatarToken: string;
+  /** myTeamSpeak 账号：头像、好友和账号操作。 */
+  account: AccountState;
+  friends: ContactsMessage;
   micOn: boolean;
   micLevel: number;
   micGain: number;
@@ -51,6 +65,10 @@ interface Props {
   onStopShare: () => void;
   onWatch: (clientId: number) => void;
   onStopWatch: () => void;
+  onAccountLogout: () => void;
+  onAccountRefresh: () => void;
+  onAvatarChange: (file: File) => void;
+  onAvatarRemove: () => void;
 }
 
 /** 打字时不能把空格当按住说话，否则聊不了天。 */
@@ -66,6 +84,9 @@ export default function ServerPage({
   chat,
   files,
   fileToken,
+  avatarToken,
+  account,
+  friends,
   micOn,
   micLevel,
   micGain,
@@ -93,6 +114,10 @@ export default function ServerPage({
   onStopShare,
   onWatch,
   onStopWatch,
+  onAccountLogout,
+  onAccountRefresh,
+  onAvatarChange,
+  onAvatarRemove,
 }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState('');
@@ -109,6 +134,13 @@ export default function ServerPage({
     () => (state.ownChannel ? findChannel(state.tree, state.ownChannel) : null),
     [state.tree, state.ownChannel],
   );
+
+  const accountAvatar = account.phase === 'signedIn' ? account.avatarUrl : '';
+  const ownMember = useMemo(() => findMember(state.tree, state.ownId), [state.tree, state.ownId]);
+  const ownAvatar = useMemo(() => {
+    if (ownMember) return avatarSources(ownMember, state.ownId, accountAvatar, avatarToken);
+    return accountAvatar ? [accountAvatar] : [];
+  }, [ownMember, state.ownId, accountAvatar, avatarToken]);
 
   // 进了频道就撤掉行内 loading；卡住也别一直转，3 秒兜底
   useEffect(() => {
@@ -209,13 +241,12 @@ export default function ServerPage({
             }}
             title="改昵称"
           >
-            <span
-              className="msg-avatar"
-              style={{ background: avatarColor('me'), width: 24, height: 24 }}
-              aria-hidden="true"
-            >
-              {initial(state.nickname)}
-            </span>
+            <UserAvatar
+              name={state.nickname}
+              sources={ownAvatar}
+              colorKey="me"
+              style={{ width: 24, height: 24 }}
+            />
             <span className="user-chip-name">{state.nickname}</span>
             <IconEdit size="small" />
           </button>
@@ -346,6 +377,8 @@ export default function ServerPage({
                 talkingIds={talkingIds}
                 ownTalking={ownTalking}
                 watchingId={stream.watching}
+                avatarToken={avatarToken}
+                accountAvatar={accountAvatar}
                 onWatch={onWatch}
                 onVolume={onMemberVolume}
               />
@@ -359,6 +392,8 @@ export default function ServerPage({
               placeholder={`发消息到 ${channelTitle}`}
               collapsed={chatCollapsed}
               onToggleCollapsed={() => setChatCollapsed((v) => !v)}
+              avatarToken={avatarToken}
+              accountAvatar={accountAvatar}
               onSend={onSay}
             />
           </main>
@@ -369,6 +404,12 @@ export default function ServerPage({
             address={state.address}
             clientCount={state.clientCount}
             channelCount={countChannels(state.tree)}
+            account={account}
+            friends={friends}
+            onAccountLogout={onAccountLogout}
+            onAccountRefresh={onAccountRefresh}
+            onAvatarChange={onAvatarChange}
+            onAvatarRemove={onAvatarRemove}
           />
         </div>
       )}
