@@ -42,14 +42,32 @@ class MatrixServerDiscoveryTest {
         }
     }
 
-    @Test fun absentUnavailableOrRedirectedDiscoveryKeepsTheOriginalHomeserver() {
-        for (status in listOf(404, 503, 302)) {
-            assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, headers, body ->
+    @Test fun unavailableDiscoveryDoesNotFallBackAndAttemptLoginOnTheAccountDomain() {
+        for (status in listOf(500, 502, 503, 504, 302)) {
+            var calls = 0
+            val api = MatrixCloud(domain, CloudTransport { _, url, headers, body ->
+                calls++
+                assertEquals("https://$domain/.well-known/matrix/client", url)
                 assertTrue(headers.isEmpty()); assertNull(body)
                 reply(emptyMap<String, Any?>(), status)
-            }))
+            })
+            val expected = if (status in 300..399) "CHAT_DISCOVERY_REDIRECT" else "CHAT_DISCOVERY_HTTP_$status"
+            assertEquals(expected, assertFailsWith<CloudFailure> { api.discoverServer() }.code)
+            assertEquals(1, calls, "login must not be attempted after discovery fails")
         }
-        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> throw CloudFailure("NETWORK") }))
-        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> reply(emptyMap<String, Any?>()) }))
+        var calls = 0
+        val api = MatrixCloud(domain, CloudTransport { _, _, _, _ -> calls++; throw CloudFailure("NETWORK") })
+        assertEquals("CHAT_DISCOVERY_NETWORK", assertFailsWith<CloudFailure> { api.discoverServer() }.code)
+        assertEquals(1, calls)
+    }
+
+    @Test fun onlyExplicitNotFoundOrNoDelegationUsesTheMxidDomainDefault() {
+        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, headers, body ->
+            assertTrue(headers.isEmpty()); assertNull(body)
+            reply(emptyMap<String, Any?>(), 404)
+        }))
+        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ ->
+            reply(emptyMap<String, Any?>())
+        }))
     }
 }
