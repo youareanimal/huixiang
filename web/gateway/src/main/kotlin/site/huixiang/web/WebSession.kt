@@ -9,7 +9,6 @@ import io.github.korppujauho.pocketts.proto.Json
 import io.github.korppujauho.pocketts.proto.Pictures
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
-import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -72,7 +71,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
          */
         private val fileSessions = ConcurrentHashMap<String, WebSession>()
 
-        /** The most either direction will carry in one request. The server has quotas of its own; this is a ceiling. */
+        /** 一次下载最多这么大。服务器自己也有配额，这里是个防滥用的天花板，也防止一个请求把浏览器撑爆。 */
         const val MAX_FILE_BYTES = 1L shl 30 // 1 GiB
 
         fun byFile(id: String): WebSession? = fileSessions[id]
@@ -277,12 +276,12 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
 
     // ====== Files: the channel's own file area, which lives on the TeamSpeak server ======
     //
-    // 一个文件传上去，落点是服务器的频道文件区（`ftinitupload` 的 cid + 虚拟路径），不是这台网关的磁盘。
-    // 这是有意的：安卓 App 和 TeamSpeak 官方客户端都从那儿取文件，存在服务器上才算「发出去」了；网关
-    // 因此不需要磁盘、不需要清理、重启也不丢东西，它只是个搬运工。
+    // 文件在服务器的频道文件区里（`ftgetfilelist` / `ftinitdownload` 的 cid + 虚拟路径），不在网关磁盘上，
+    // 也不在浏览器缓存里。这是有意的：安卓 App 和 TeamSpeak 官方客户端读的是同一批文件，网页这边只是
+    // 多开一个查看和取用的入口。**只读**——上传、删除、改名都不做，那些动的是服务器上的东西。
     //
-    // 字节不走 WebSocket：一帧上限 64 KB，200 MB 的文件要拆三千多帧，重组和流控都得自己写。所以命令走
-    // WS（[listFiles]），字节走 HTTP（[uploadFile] / [downloadFile]，由 Gateway.kt 的两个端点调用，令牌
+    // 字节不走 WebSocket：一帧上限 64 KB，一个大文件要拆成上千帧，重组和流控都得自己写。所以命令走
+    // WS（[listFiles]），字节走 HTTP（[downloadFile]，由 Gateway.kt 的 /files/download 调用，令牌
     // 见 [fileSessions]）。两边都靠 [FileTransfer] 做真正的事。
 
     /** 这个会话的传输令牌。只随状态快照发给这一个标签页，别人拿到也用不上（它认的是会话不是服务器）。 */
@@ -313,15 +312,6 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         }
     }
 
-    /**
-     * 上行：从 [input] 读 [size] 字节写到频道 [cid] 的 [path]。阻塞，调用方必须不在连接线程上。
-     * 同名文件在 [overwrite] 为假时被服务器拒绝（[FileTransfer.FILE_EXISTS]）。
-     */
-    fun uploadFile(cid: Int, path: String, input: InputStream, size: Long, overwrite: Boolean) {
-        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
-        f.upload(cid, path, input, size, filePassword(cid), overwrite)
-    }
-
     /** 下行：把频道 [cid] 的 [path] 写进 [out]，超过 [maxBytes] 的一开始就拒掉。阻塞。 */
     fun downloadFile(cid: Int, path: String, out: OutputStream, maxBytes: Long) {
         val f = ft ?: throw FileTransfer.Error("还没连上服务器")
@@ -339,36 +329,6 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         return f.list(cid, parent, filePassword(cid)).firstOrNull { it.name == name }
     }
 
-    /**
-     * 删掉一个文件（文件夹会连里面的一起删）。阻塞，所以和列表走同一个池子；删完顺手把上一层重列一遍，
-     * 标签页不必再问一次。
-     *
-     * 面板这一版没有删除按钮——文件是传到服务器上的，删错了别人也跟着没了，值得单独做一次带确认的交互。
-     * 但传上去的东西总得能撤：联调脚本靠它收尾，以后加删除也走这条命令。
-     */
-    fun deleteFile(cid: Int, path: String) {
-        val parent = path.substringBeforeLast('/', "").ifEmpty { "/" }
-        val f = ft
-        if (f == null) {
-            sink.text(filesMessage(cid, parent, emptyList(), "还没连上服务器"))
-            return
-        }
-        try {
-            listPool.execute {
-                val body = try {
-                    f.delete(cid, path, filePassword(cid))
-                    filesMessage(cid, parent, f.list(cid, parent, filePassword(cid)), null)
-                } catch (e: Exception) {
-                    log("$address: deleting $path in $cid failed: ${e.message}")
-                    filesMessage(cid, parent, emptyList(), fileError(e))
-                }
-                sink.text(body)
-            }
-        } catch (e: RejectedExecutionException) {
-            // 会话已经关掉了
-        }
-    }
-
     /** 密码频道的文件区要同一个密码，形态是哈希（进入频道时用的是明文，见 [joinChannel]）。 */
     private fun filePassword(cid: Int): String = channelPasswords[cid].orEmpty()
 
@@ -383,7 +343,6 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             else "没有权限操作这个频道的文件"
         }
         FileTransfer.FILE_NOT_FOUND, FileTransfer.INVALID_PATH -> "文件不存在"
-        FileTransfer.FILE_EXISTS -> "同名文件已经在了"
         else -> when (e) {
             is java.net.SocketTimeoutException -> "传输超时"
             is java.net.ConnectException -> "连不上服务器的文件端口（通常是 30033）"

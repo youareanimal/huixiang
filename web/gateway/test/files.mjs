@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// 文件传输的端到端验证：连接 → 列目录 → 上传 → 再列确认 → 下载比对 → 删除 → 再列确认。
+// 频道文件区（只读）的端到端验证：连接 → 列目录 → 进一层文件夹 → 下载比对 → 确认写入口已经不在。
 //
 // 用法：node files.mjs <host> [port]
-// 会真的在服务器上留一个几字节的说明文件，验证完自己删掉；中途失败时请手动清掉 web-e2e-*.txt。
+// 只读，不会在服务器上留下任何东西。
 //
-// 注意这里验的是**两条线**：列表走 WebSocket（`{"t":"file","act":"list"}` → `{"t":"files"}`），
-// 字节走 HTTP（/files/upload、/files/download，靠状态快照里的 fileToken 认会话）。两条线在网关那头
-// 汇到同一个 FileTransfer 上，所以任何一条断了这里都会失败。
+// 这里验的是**两条线**：列表走 WebSocket（`{"t":"file","act":"list"}` → `{"t":"files"}`），
+// 字节走 HTTP（/files/download，靠状态快照里的 fileToken 认会话）。两条线在网关那头汇到同一个
+// FileTransfer 上，所以任何一条断了这里都会失败。
 
 const host = process.argv[2] ?? 'pi.animal26.site';
 const port = Number(process.argv[3] ?? 9987);
@@ -14,8 +14,7 @@ const nickname = process.env.NICKNAME ?? `webtest-${Math.floor(Math.random() * 9
 const WS_URL = process.env.WS ?? 'ws://127.0.0.1:8080/ws';
 const TOKEN = process.env.TOKEN ?? null;
 /**
- * 在哪个频道里试。默认待在自己进去的那个；上传权限是按频道（和身份）给的，游客往往只有其中几个能写，
- * 所以换一个再试是常事：`CHANNEL=2 node files.mjs`。
+ * 在哪个频道里试。默认待在自己进去的那个；想看别的频道就 `CHANNEL=2 node files.mjs`。
  */
 const WANT_CHANNEL = Number(process.env.CHANNEL ?? 0);
 /** HTTP 端点和 WebSocket 同一个源，从 WS 地址推出来就够。 */
@@ -26,10 +25,6 @@ const fail = (why) => {
   log(`\n失败：${why}`);
   finish(1);
 };
-
-const name = `web-e2e-${Date.now()}.txt`;
-const content = `huixiang web file transfer ${new Date().toISOString()}\n`;
-const remote = `/${name}`;
 
 const ws = new WebSocket(WS_URL);
 let fileToken = null;
@@ -119,87 +114,44 @@ const listFiles = (path) => {
   return waitFiles(cid, path);
 };
 
-const uploadUrl = (path, overwrite) =>
-  `${BASE}/files/upload?cid=${cid}&path=${encodeURIComponent(path)}&overwrite=${overwrite ? '1' : '0'}`;
 const downloadUrl = (path) => `${BASE}/files/download?cid=${cid}&path=${encodeURIComponent(path)}`;
-
-/**
- * 下行链路的单独验证：从目录里挑一个不大的现成文件下载，比字节数。
- * 上传没权限时靠它证明 /files/download 那一半是通的。
- */
-async function probeExisting(entries) {
-  const pick = entries.find((x) => !x.folder && x.size > 0 && x.size < 8 * 1024 * 1024);
-  if (!pick) {
-    log('目录里没有合适的文件，下行链路这次跳过');
-    return;
-  }
-  const res = await fetch(downloadUrl(`/${pick.name}`), { headers: { 'X-File-Token': fileToken } });
-  if (!res.ok) {
-    log(`下行链路验证失败：${res.status} ${(await res.text()).trim()}`);
-    return;
-  }
-  const buf = Buffer.from(await res.arrayBuffer());
-  const same = buf.length === pick.size;
-  log(
-    `下行链路验证：下载「${pick.name}」${buf.length} 字节，` +
-      (same ? '与目录里的大小一致' : `目录说 ${pick.size}，不一致`),
-  );
-}
 
 async function run() {
   if (ran) return;
   ran = true;
 
-  // 1. 当前目录先看一眼：这一步只验证命令线，服务器拒绝（没权限）也要如实报出来
-  const before = await listFiles('/');
-  log(`根目录现有 ${before.length} 项`);
+  // 1. 根目录
+  const root = await listFiles('/');
+  const shown = root.map((x) => (x.folder ? `${x.name}/` : x.name)).join(' · ');
+  log(`根目录 ${root.length} 项${shown ? `：${shown}` : '（空）'}`);
 
-  // 2. 上传
-  const up = await fetch(uploadUrl(remote, false), {
-    method: 'POST',
-    headers: { 'X-File-Token': fileToken, 'Content-Type': 'application/octet-stream' },
-    body: Buffer.from(content, 'utf8'),
-  });
-  if (!up.ok) {
-    const why = (await up.text()).trim();
-    // 上传被服务器权限挡住时，至少还能验证下行：下载现成的一个文件，看看字节能不能原样下来
-    await probeExisting(before);
-    return fail(
-      why.includes('权限')
-        ? `上传被拒：${why}\n  这个身份在频道 #${cid} 没有传文件的权限（服务器的文件权限位）。\n  换一个频道再试：CHANNEL=<频道号> node files.mjs ${host}`
-        : `上传被拒：${up.status} ${why}`,
-    );
+  // 2. 进一层文件夹：验证路径拼接和「换目录」那条命令
+  const folder = root.find((x) => x.folder);
+  if (folder) {
+    const inner = await listFiles(`/${folder.name}`);
+    log(`进「${folder.name}」看到 ${inner.length} 项`);
   }
-  log(`上传成功：${name}（${content.length} 字节）`);
 
-  // 3. 列表里应该出现
-  const after = await listFiles('/');
-  const entry = after.find((x) => x.name === name);
-  if (!entry) return fail('上传报成功，但目录里没有这个文件');
-  if (entry.size !== content.length) return fail(`大小对不上：服务器 ${entry.size}，本地 ${content.length}`);
-  log(`目录里出现了它，大小 ${entry.size}`);
+  // 3. 下载一个现成的文件，比对字节数
+  const file = root.find((x) => !x.folder && x.size > 0 && x.size < 32 * 1024 * 1024);
+  if (!file) {
+    log('根目录没有适合下载的文件，这一步跳过');
+  } else {
+    const res = await fetch(downloadUrl(`/${file.name}`), { headers: { 'X-File-Token': fileToken } });
+    if (!res.ok) return fail(`下载被拒：${res.status} ${(await res.text()).trim()}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length !== file.size) return fail(`大小对不上：目录说 ${file.size}，实际下来 ${buf.length}`);
+    log(`下载「${file.name}」${buf.length} 字节，与目录一致`);
+  }
 
-  // 4. 下载回来逐字节比对
-  const down = await fetch(downloadUrl(remote), { headers: { 'X-File-Token': fileToken } });
-  if (!down.ok) return fail(`下载被拒：${down.status} ${(await down.text()).trim()}`);
-  const back = await down.text();
-  if (back !== content) return fail(`内容对不上：${JSON.stringify(back)}`);
-  log(`下载回来 ${back.length} 字节，内容一致`);
-
-  // 5. 同名再传一次应当被服务器挡住（不覆盖）
-  const again = await fetch(uploadUrl(remote, false), {
+  // 4. 只读该是只读的：上传端点已经拆掉了
+  const up = await fetch(`${BASE}/files/upload?cid=${cid}&path=/x.txt`, {
     method: 'POST',
     headers: { 'X-File-Token': fileToken, 'Content-Type': 'application/octet-stream' },
     body: Buffer.from('x'),
   });
-  if (again.ok) return fail('同名文件本来该被拒绝，却传上去了');
-  log(`同名重传被拒（${again.status}）：${(await again.text()).trim()}`);
-
-  // 6. 删掉，恢复原样
-  ws.send(JSON.stringify({ t: 'file', act: 'delete', cid, path: remote }));
-  const cleaned = await waitFiles(cid, '/');
-  if (cleaned.some((x) => x.name === name)) return fail('删了还在');
-  log('删除完成，目录已复原');
+  if (up.ok) return fail('上传端点居然还能用，只读的面板不该留着它');
+  log(`上传端点确实不在（HTTP ${up.status}）`);
 
   finish(0);
 }

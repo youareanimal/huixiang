@@ -45,13 +45,13 @@ node smoke.mjs                                  # 只验证 WS 管线和地址�
 node smoke.mjs pi.animal26.site                 # 连真实服务器，打印频道树
 node flow.mjs  pi.animal26.site                 # 连接 → 切频道 → 发文字，全流程
 node voice.mjs pi.animal26.site                 # 两个会话同频道互发 Opus 帧，验证语音链路
-node files.mjs pi.animal26.site                 # 文件：列目录 → 上传 → 下载比对 → 删除
+node files.mjs pi.animal26.site                 # 文件：列目录 → 进文件夹 → 下载比对 → 确认写入口不在
 node security.mjs 你的口令                       # Origin 白名单与访问口令，逐项打勾
 ```
 
 `flow.mjs`、`voice.mjs` 和 `files.mjs` 会真的在那台服务器上以随机昵称登录一次，结束后离开。
 
-`files.mjs` 会留一个几字节的 `web-e2e-*.txt`，验证完自己删掉。上传权限是按身份和频道给的，游客身份常常没有——被挡时它会退一步只验证下载链路，并告诉你换个频道再试：`CHANNEL=2 node files.mjs pi.animal26.site`。
+`files.mjs` 是只读的，不会在服务器上留下任何东西；它顺带确认 `POST /files/upload` 确实已经拆掉。想看别的频道的文件区：`CHANNEL=2 node files.mjs pi.animal26.site`。
 
 网关配了口令时，前三个脚本加 `TOKEN=你的口令`，端口不同加 `WS=ws://127.0.0.1:端口/ws`：
 
@@ -75,7 +75,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 静音 | 麦克风和扬声器状态同步到服务器 |
 | 语音 | 双向裸 Opus，浏览器 WebCodecs 编解码 |
 | 屏幕 / 摄像头串流 | WebRTC 直连，能看别人也能自己播；画面不经网关，这里只走信令 |
-| 文件 | 频道文件区：浏览、上传、下载。文件存在服务器上，安卓 App 和官方客户端能看到同一批；命令走 WS，字节走 HTTP |
+| 文件 | 频道文件区（只读）：浏览目录、下载。文件在服务器上，安卓 App 和官方客户端看到的是同一批；命令走 WS，字节走 HTTP |
 | 断开 | 主动离开，之后可再连 |
 
 **还没接**（`tsproto` 里都有现成实现，缺的是网关这一层把它暴露出来）
@@ -85,7 +85,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | myTeamSpeak 账号登录 | 低 | `MyTsAccount.login()`，纯 JVM，但要处理密码经手网关的问题 |
 | 账号服务器书签（收藏列表） | 低 | `MyTsBookmarks.read(session)`，登录后直接拿到地址、昵称、密码 |
 | 好友列表 / 云聊天 | 中 | `MyTsAccount.contacts()` + `MatrixCloud`，需要连 Matrix |
-| 文件管理（删/改名/建文件夹） | 低 | `FileTransfer` 现成，缺的是一个带确认的交互（删错了别人也跟着没了） |
+| 文件上传与管理（传 / 删 / 改名 / 建文件夹） | 低 | `FileTransfer` 现成，缺的是一个带确认的交互：传上去、删错了，同频道的人都跟着变 |
 | 头像 | 中 | `Pictures`，需要缓存 |
 | 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
 
@@ -253,7 +253,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"rename"}` | `name` |
 | `{"t":"mute"}` | `input` `output` 布尔 |
 | `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
-| `{"t":"file"}` | `act`（`list` / `delete`）`cid` `path`，见下面的「文件」一节 |
+| `{"t":"file"}` | `act`（只有 `list`）`cid` `path`，见下面的「文件」一节 |
 
 `identity` 是身份导出串（`Identity.export()` 的字符串）。**第一次连接前传空，网关会生成一个并通过 `identity` 消息下发**，前端存到 localStorage，之后每次带上——不带的话每次都是新身份，服务器上的权限不会继承。
 
@@ -343,22 +343,23 @@ NAT 打不通时要 TURN。构建时给 `VITE_TURN_URL` / `VITE_TURN_USER` / `VI
 
 ### 文件
 
-**文件存在 TeamSpeak 服务器上，不是网关的磁盘，也不是浏览器缓存。** 上传走
-`ftinitupload`（虚拟路径，`/` 是频道文件区的根），网关只当搬运工——所以安卓 App 和官方客户端在自己的文件
-浏览器里能看到同一批文件，网关也不需要磁盘、不需要清理，重启不丢东西。
+**文件在 TeamSpeak 服务器的频道文件区里，不是网关的磁盘，也不是浏览器缓存。** 网页这边**只读**：浏览目录、
+下载文件。上传、删除、改名都不做——那些动的是服务器上的东西，同频道的人都会跟着变，值得单独做一次带确认
+的交互。
+
+正因为文件本来就在服务器上，安卓 App 和官方客户端在自己的文件浏览器里看到的是同一批，网关不需要磁盘、
+不需要清理，重启也不丢东西。
 
 命令和字节分两条线走：
 
 | | 走哪 | 为什么 |
 |---|---|---|
-| 列目录 / 删除 | WebSocket `{"t":"file"}` → `{"t":"files"}` | 本来就短，往返快，一个命令不值得开一次 HTTP |
-| 字节 | HTTP `/files/upload`、`/files/download` | WS 一帧上限 64 KB，200 MB 要拆三千多帧，分片、重组、流控都得自己写；HTTP 这三样都是现成的，还顺手给了进度、取消和准确的错误码 |
+| 列目录 | WebSocket `{"t":"file","act":"list"}` → `{"t":"files"}` | 本来就短，往返快，一个命令不值得开一次 HTTP |
+| 字节 | HTTP `/files/download` | WS 一帧上限 64 KB，一个大文件要拆成上千帧，分片、重组、流控都得自己写；HTTP 这三样都是现成的，还顺手给了进度、取消和准确的错误码 |
 
 ```jsonc
 // 上行：要某一层
 { "t": "file", "act": "list", "cid": 2, "path": "/" }
-// 上行：删（面板这一版没做按钮，留给联调脚本收尾）
-{ "t": "file", "act": "delete", "cid": 2, "path": "/旧文件.zip" }
 
 // 下行
 { "t": "files", "cid": 2, "path": "/", "error": null,
@@ -367,27 +368,23 @@ NAT 打不通时要 TURN。构建时给 `VITE_TURN_URL` / `VITE_TURN_USER` / `VI
 
 `error` 非空时 `entries` 是空的：服务器拒绝（没权限、要频道密码）和「这个文件夹是空的」是两回事，得分开说。
 
-两个 HTTP 端点：
+下载端点：
 
 ```
-POST /files/upload?cid=2&path=/report.pdf&overwrite=0    body 就是文件本身
-GET  /files/download?cid=2&path=/report.pdf
-     都得带 X-File-Token: <state 里的 fileToken>
+GET /files/download?cid=2&path=/report.pdf
+    带 X-File-Token: <state 里的 fileToken>
 ```
 
 - **令牌认会话，不认服务器。** 它随状态快照下发、每个标签页各不相同、断开就作废，网关靠它在内存的
   `WebSession.fileSessions` 里找回「这次请求属于哪个标签页」。
 - **放在头里而不是 URL 里**，所以不会落进 Nginx 的 access log；也不用 cookie，cookie 会跟着人进这个站的
   其它标签页，活得比它所代表的会话还长。
-- 上传必须带 `Content-Length`（要先告诉 TeamSpeak 尺寸才能开传），chunked 会被挡回 `411`。
 - 下载会**先查一次目录**再开流：`respondOutputStream` 一开头 200 就已经发出去了，此后再发现文件不存在，
   浏览器只能收到半截下载。多一次往返，换一个说得清的 `404` / `400` / `413`。
-- 单次传输上限 1 GiB（`WebSession.MAX_FILE_BYTES`）。真正的配额由服务器管（`virtualserver_upload_quota`），
-  这里只是个防滥用的天花板。
-- **上传权限是按身份和频道给的。** 被拒时服务器回 `2568`，消息里带着卡在哪一项，网关把原始原因记进日志、
-  给浏览器的是一句人话。游客身份最常撞上的是 `i_ft_needed_file_upload_power`——频道要求「上传所需的上传
-  power」，而游客的 power 是 0。这不是网关的问题：在服务器上把该频道的这项需求调成 0（或给 Guest 组提
-  上传 power）就能传了。
+- 单次下载上限 1 GiB（`WebSession.MAX_FILE_BYTES`），防止一个请求把浏览器内存撑爆。
+- **下载权限也是按身份和频道给的。** 被拒时服务器回 `2568`，消息里带着卡在哪一项，网关把原始原因记进日志、
+  给浏览器的是一句人话（例如「服务器卡在 `i_ft_needed_file_download_power`」）——那一项正是服务器管理员
+  要改的东西。
 - 频道密码：进频道时用的是明文，文件区要的是它的哈希，所以网关在 `clientmove` 那一步把哈希记下来
   （`Crypto.hashPassword`，和安卓端一样），之后传文件自动带上。
 
@@ -440,7 +437,7 @@ const opusHead = new Uint8Array([
 - 网页关掉连接就断，没有 App 那种后台保活。
 - 头像这一版没接，`tsproto` 里有现成实现（服务器横幅已经在用它下载了）。
 - 文件传输的两个 HTTP 端点靠 `X-File-Token` 认会话，令牌只发给对应的那个标签页、断开即失效；但它和
-  `ACCESS_TOKEN` 一样不是身份认证——拿到令牌的人可以在那次会话的有效期内传文件，就这么长的时间窗。
-  上传有 1 GiB 的单次上限，真正的配额由服务器管。
+  `ACCESS_TOKEN` 一样不是身份认证——拿到令牌的人可以在那次会话的有效期内读这个频道文件区里的文件，
+  就这么长的时间窗。面板只读，所以这个令牌换不来任何写操作；单次下载上限 1 GiB。
 - 串流的画面不经过网关，但共享是 mesh：N 个人看就有 N 份上行从**浏览器**出去（不是网关的带宽）。
   5 个人看 4 Mbps 的屏幕，发布者要 20 Mbps 上行，家宽基本到顶了。

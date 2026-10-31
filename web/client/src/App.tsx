@@ -261,23 +261,6 @@ export default function App() {
     gatewayRef.current?.listFiles(cid, path);
   }, []);
 
-  /**
-   * 文件传完，在频道里说一声。
-   *
-   * TeamSpeak 的文本消息里没有附件这回事，所以只能说一句人话——文件本身在频道文件区，谁要谁去取。
-   * 一次拖进来的几个合成一条，免得频道里刷一屏。
-   */
-  const announceFiles = useCallback((paths: string[]) => {
-    const s = stateRef.current;
-    if (!s || paths.length === 0) return;
-    const names = paths.map((p) => p.slice(p.lastIndexOf('/') + 1));
-    const text =
-      names.length === 1
-        ? `发了个文件：${names[0]}，在频道文件区`
-        : `发了 ${names.length} 个文件：${names.join('、')}，在频道文件区`;
-    gatewayRef.current?.say(text, s.ownChannel, 0);
-  }, []);
-
   const rename = useCallback((name: string) => {
     if (!name.trim()) return;
     gatewayRef.current?.rename(name.trim());
@@ -403,7 +386,6 @@ export default function App() {
         onJoinChannel={joinChannel}
         onSay={say}
         onListFiles={listFiles}
-        onFilesUploaded={announceFiles}
         onRename={rename}
         onMicGain={changeMicGain}
         onMemberVolume={changeMemberVolume}
@@ -440,7 +422,6 @@ export default function App() {
     joinChannel,
     say,
     listFiles,
-    announceFiles,
     rename,
     changeMicGain,
     changeMemberVolume,

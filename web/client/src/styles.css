@@ -2272,11 +2272,6 @@ body {
   background: var(--danger-soft);
 }
 
-.files-transfer.is-exists {
-  border-color: #f3e2c4;
-  background: var(--warn-soft);
-}
-
 .files-transfer-head {
   display: flex;
   align-items: baseline;
@@ -2323,32 +2318,11 @@ body {
   background: var(--danger);
 }
 
-.files-bar-fill.is-exists {
-  background: var(--warn);
-}
-
 .files-transfer-err {
   margin-top: 6px;
   font-size: 11.5px;
   color: var(--text-2);
   line-height: 1.5;
-}
-
-.files-overwrite {
-  margin-left: 8px;
-  border: none;
-  background: var(--brand);
-  color: #fff;
-  font: inherit;
-  font-size: 11.5px;
-  padding: 3px 9px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.files-overwrite:hover {
-  background: var(--brand-deep);
 }
 
 /* --- 目录内容 --- */
@@ -2476,59 +2450,4 @@ button.files-name:hover {
   .files-get {
     opacity: 1;
   }
-}
-
-/* --- 拖放 --- */
-
-.files-body.is-dragging {
-  background: var(--brand-soft);
-  border-radius: 12px;
-}
-
-.files-drop {
-  position: absolute;
-  inset: 0;
-  border: 2px dashed var(--brand);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.86);
-  display: grid;
-  place-items: center;
-  color: var(--brand-deep);
-  font-size: 13px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-/* --- 底部上传入口 --- */
-
-.files-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.files-pick {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 999px;
-  background: var(--brand);
-  color: #fff;
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.files-pick:hover {
-  background: var(--brand-deep);
-}
-
-.files-foot-hint {
-  font-size: 11.5px;
-  color: var(--text-4);
 }
