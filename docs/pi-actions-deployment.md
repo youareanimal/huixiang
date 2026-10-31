@@ -1,4 +1,4 @@
-# 从 GitHub Actions 发布回响到 PI
+# 从 GitHub Actions 发布回响到 更新服务器
 
 工作流：`.github/workflows/deploy-pi.yml`，仅 `workflow_dispatch`，仅允许 `main`。
 不重新构建 App、不执行产物中的代码、不创建 GitHub Release。
@@ -9,18 +9,18 @@
 
 | Actions Secret | 用途 / 非敏感固定配置 |
 | --- | --- |
-| `PI_SSH_HOST` | `pi.animal26.site` |
+| `PI_SSH_HOST` | `updates.example.invalid` |
 | `PI_SSH_PORT` | `22` |
 | `PI_SSH_USER` | `huixiang-deploy` |
 | `PI_SSH_PRIVATE_KEY` | 此仓库专用的受限部署私钥，通过本机 stdin 加密写入 Secrets |
-| `PI_SSH_KNOWN_HOSTS` | PI 本机 `/etc/ssh/ssh_host_ed25519_key.pub` 生成的可信主机记录 |
+| `PI_SSH_KNOWN_HOSTS` | 更新服务器 本机 `/etc/ssh/ssh_host_ed25519_key.pub` 生成的可信主机记录 |
 
 私钥、密码、令牌不得放入仓库、聊天、日志或命令行参数。不要以未验证的 `ssh-keyscan` 结果替换可信主机记录。
 
 ## 日常使用
 
 1. 由现有 `Build HuiXiang` 工作流在 `main` 完成构建、测试和原证书签名。
-2. 打开 Actions → Deploy HuiXiang to PI → Run workflow，选择 `main`。
+2. 打开 Actions → Deploy HuiXiang to 更新服务器 → Run workflow，选择 `main`。
 3. `build_run_id` 可指定成功构建的 run ID，留空则选最新受信成功构建。
 4. `dry_run=true`（默认）完整校验产物后只运行 SSH 状态查询，不修改镜像。
 5. 确认目标版本后，另一次手动运行将 `dry_run=false`，才会上传并切换清单。
@@ -42,10 +42,10 @@ gh workflow run deploy-pi.yml -R youareanimal/huixiang --ref main -f build_run_i
 - 产物只按数据读取和白名单文件复制；不运行其脚本，不解开源代码 ZIP 或 APK，不执行 PR 构建内容。
 - SSH 使用独立账号，无口令登录、交互终端、转发或用户启动脚本；只允许 `huixiang-check` 和有大小/摘要约束的 `huixiang-publish`。
 - 远端接收包拒绝链接、目录、路径穿越、重复文件和超限数据；发布脚本及目录由 root 控制。
-- 连接时核对 PI 安装脚本与当前受信部署代码的 SHA-256，避免服务端规则漂移。
+- 连接时核对 更新服务器 安装脚本与当前受信部署代码的 SHA-256，避免服务端规则漂移。
 - 镜像进程只可写回响发布目录和私有状态；无 sudo、Docker 或其他服务权限。
 
-## PI 文件位置
+## 更新服务器 文件位置
 
 - 固定入口：`/usr/local/lib/huixiang-mirror/deploy-gate.py`
 - 发布脚本：`/usr/local/lib/huixiang-mirror/sync-release.py`
@@ -53,7 +53,7 @@ gh workflow run deploy-pi.yml -R youareanimal/huixiang --ref main -f build_run_i
 - 私有发布历史及锁：`/var/lib/huixiang-deploy/state/`
 - 受限 SSH 配置：`/etc/ssh/sshd_config.d/60-huixiang-deploy.conf`
 - 公共镜像：`/opt/1panel/apps/openresty/openresty/www/sites/huixiang-mirror/public/`
-- 下载入口：`https://pi.animal26.site:8443/huixiang/`
+- 下载入口：`https://updates.example.invalid:8443/huixiang/`
 
 发布时先校验整个批次和已有文件，再写不可变版本文件；使用原子文件链接避免覆盖竞态、文件锁串行发布，最后 `fsync` 并原子替换 `latest.json`。旧安装包和历史清单均保留。
 

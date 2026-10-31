@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Certbot hook for the PI's existing Cloudflare DDNS configuration. No secret is copied or logged."""
+"""Certbot hook for the server's existing Cloudflare DDNS configuration. No secret is copied or logged."""
 import json
 import os
 from pathlib import Path
@@ -11,8 +11,10 @@ import urllib.request
 
 CONFIG = Path('/opt/1panel/apps/ddns-go/ddns-go/data/.ddns_go_config.yaml')
 STATE = Path('/run/huixiang-acme-txt.json')
-ZONE = 'animal26.site'
-DOMAIN = 'pi.animal26.site'
+PRIVATE_CONFIG = Path('/etc/huixiang-mirror/private.json')
+local_config = json.loads(PRIVATE_CONFIG.read_text()) if PRIVATE_CONFIG.exists() else {}
+ZONE = os.environ.get('HUIXIANG_CERT_ZONE') or local_config.get('certificateZone', '')
+DOMAIN = os.environ.get('HUIXIANG_CERT_DOMAIN') or local_config.get('certificateDomain', '')
 
 def scalar(value):
     value = value.strip()
@@ -51,7 +53,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 def api(method, path, body=None):
-    headers = credentials() | {'Content-Type': 'application/json', 'User-Agent': 'HuiXiang-PI-certificate'}
+    headers = credentials() | {'Content-Type': 'application/json', 'User-Agent': 'HuiXiang-server-certificate'}
     req = urllib.request.Request('https://api.cloudflare.com/client/v4' + path,
         data=json.dumps(body).encode() if body is not None else None, headers=headers, method=method)
     try:
@@ -71,6 +73,8 @@ def main():
             api('DELETE', '/zones/' + data['zone'] + '/dns_records/' + data['record'])
             STATE.unlink()
         return
+    if not ZONE or not DOMAIN:
+        raise RuntimeError('Local certificate configuration is required')
     zones = api('GET', '/zones?name=' + ZONE + '&status=active')
     if len(zones) != 1:
         raise RuntimeError('DNS zone unavailable')

@@ -140,8 +140,8 @@ class UpdateMirrorTest {
     }
 
     @Test fun piUrlsCannotEscapeTheConfiguredPortAndDirectory() {
-        for (bad in listOf("https://pi.animal26.site/huixiang/a.apk", "http://pi.animal26.site:8443/huixiang/a.apk",
-            "https://pi.animal26.site:8443/private/a.apk", "https://pi.animal26.site:8443/huixiang/%2e%2e/a.apk"))
+        for (bad in listOf("https://updates.example.invalid/huixiang/a.apk", "http://updates.example.invalid:8443/huixiang/a.apk",
+            "https://updates.example.invalid:8443/private/a.apk", "https://updates.example.invalid:8443/huixiang/%2e%2e/a.apk"))
             assertFalse(bad, UpdateFeed.allowedUrl(bad, pi.feedUrl))
         assertFalse(UpdateFeed.allowedUrl(apk(cf), pi.feedUrl))
         assertTrue(UpdateFeed.allowedUrl(apk(cf), cf.feedUrl))
