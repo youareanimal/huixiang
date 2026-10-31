@@ -1,54 +1,77 @@
-# 回响 · Android
+# 回响 · HuiXiang
 
-回响是一款非官方 TeamSpeak 3 / 6 安卓客户端，支持语音、服务器聊天、myTeamSpeak 账号和基础好友文字聊天。需要 **Android 10 或更高版本**。
+非官方 TeamSpeak 3 / 6 客户端。一套协议实现，两个端：Android 应用，和跑在浏览器里的网页版。
 
-## 下载与安装
+## 两个端
 
-当前版本：**0.5.3 预览版**。
+| | Android | 网页版 |
+|---|---|---|
+| 安装 | APK，Android 10+ | 打开网关地址即用，无需安装 |
+| 语音 | 系统音频 + Opus，可后台 | WebCodecs + Web Audio，关页即断 |
+| 账号 | myTeamSpeak 登录、书签、好友文字聊天 | 暂未接入，游客身份 |
+| 状态 | 0.5.3 预览版 | 实验性，需自建网关 |
 
-近年的手机优先选择 `arm64-v8a.apk`，较旧的手机可选择 `armeabi-v7a.apk`；不确定时选择不带架构后缀的通用 APK。只需安装其中一个。
+安装包由 Actions 构建、原证书签名后发布，按架构选或直接用通用包，可直接覆盖升级。
+两端都是填地址和昵称就能连，支持 `ts3server://` 邀请链接。
 
-已安装回响的用户可直接覆盖升级，保留账号和设置，无需先卸载。
+网页版必须有一个网关：浏览器发不了 UDP 包，而语音和信令全在 UDP 9987 上。
+网关跑的是 App 里同一份 `tsproto`，音频是裸 Opus 帧直通，不转码。
 
-## 连接服务器
+## 功能
 
-1. 打开应用，选择登录 myTeamSpeak 账号或访客进入。
-2. 点击已保存的服务器书签，或输入服务器地址。自定义端口使用 `域名:端口`。
-3. 按需填写服务器密码；这里不是 myTeamSpeak 账号密码。
-4. 连接后允许麦克风权限，默认按住说话，也可在设置中切换语音激活。
+- 频道树、成员列表、切换频道（含频道密码）、断线重连
+- 语音通话：回声消除、降噪，按住说话或自动检测人声
+- 频道消息与私聊；文件传输（Android）
+- 屏幕与摄像头共享：WebRTC 直连，画面不经服务器，网关只转发信令
+- 谁在说话：头像亮起 + 电平条，按收到的语音帧判断，不依赖服务器状态
+- 在线更新（Android）
 
-支持从其他应用打开或分享 `ts3server://`、`teamspeak://` 邀请链接，加入前会显示连接信息。
+网页版的实现细节、协议、部署方式见 [web/README.md](web/README.md)。
 
-## 主要功能
+## 结构
 
-- 频道和成员列表、服务器收藏、断线重连。
-- 语音通话、回声消除、降噪及后台语音。
-- 频道聊天、服务器私聊、文件传输。
-- 屏幕与摄像头共享；实际可用性受设备、服务器及权限影响。
-- myTeamSpeak 登录、服务器书签读取、好友列表和基础文字聊天。
+```
+app/            Android 应用：Compose 界面、音频、WebRTC
+tsproto/        TeamSpeak 协议，纯 Kotlin/JVM，两端共用同一份
+web/gateway/    网页版网关：Ktor + WebSocket，代持 UDP 连接
+web/client/     网页前端：React + TypeScript + Vite
+scripts/        构建、发布、版本与部署脚本
+docs/           设计、验证与研究文档
+```
 
-## 账号与好友聊天
+## 构建
 
-在“我的”登录 myTeamSpeak，开启两步验证的账号需填写验证码。登录后可查看账号服务器书签和好友；访客也能连接语音服务器。
+Android（只需要 Docker）：
 
-在“好友”中选择好友并点击“发消息”，或在“消息”页连接云消息。好友聊天依赖 TeamSpeak 官方云服务，服务异常可能导致连接失败，但不会因此退出账号。
+```bash
+ACCEPT_ANDROID_SDK_LICENSE=yes scripts/dev.sh image   # 首次，装 JDK 与 Android SDK
+scripts/dev.sh test
+scripts/dev.sh apk                                    # 产物在 dist/
+```
 
-**暂不支持好友聊天的端到端加密、图片和附件。** 已加密的会话无法读取或发送消息。
+发行包由 GitHub Actions 构建，用 Secrets 里的原证书签名，不自动发布 Release。
+完整约定见 [DEVELOPING.md](DEVELOPING.md)。
 
-账号头像与服务器头像分别设置。0.5.3 增加了自己资料卡中的“myTeamSpeak 账号关联”状态；官方客户端能否正常显示账号头像和资料，仍需实际连接验证。
+网页版（JDK 21，不需要 Android SDK，命令都在仓库根执行）：
 
-## 在线更新
+```bash
+cd web/client && npm install && npm run build && cd ../..      # 前端产物到 web/client/dist
 
-进入 **我的 → 关于回响 → 检查更新**。
+WEB_DIST="$PWD/web/client/dist" ./gradlew -p web/gateway run   # 网关，默认 8080
+```
 
-发现新版后，可下载并由 Android 确认安装。首次可能需要允许回响安装应用。升级会中断当前语音，建议结束通话后操作。
+浏览器打开 `http://127.0.0.1:8080`。不设 `WEB_DIST` 时网关只提供 `/ws`，没有页面。
+对外部署要加 TLS、来源白名单和访问口令，见 [web/deploy/DEPLOY.md](web/deploy/DEPLOY.md)。
 
-## 隐私与反馈
+## 隐私
 
-原始账号密码不保存在手机上；登录会话、身份和已保存密码加密存储。移除账号只清除本机登录信息，不会删除 TeamSpeak 账号。详情见[隐私说明](PRIVACY.md)。
+账号密码不存原文；登录会话、语音身份、已保存的服务器密码加密存储。
+myTeamSpeak 的私钥和登录令牌不会发给语音服务器。详见[隐私说明](PRIVACY.md)。
 
-遇到问题可在 [GitHub Issues](https://github.com/youareanimal/huixiang/issues) 反馈，请附上应用版本、手机型号及复现步骤，勿提交密码、验证码或账号导出文件。
+问题请提到 [GitHub Issues](https://github.com/youareanimal/huixiang/issues)，附版本号、机型与复现步骤；
+不要贴密码、验证码或身份导出文件。
 
 ## 来源与许可
 
-基于 [PocketTS](https://github.com/KorppuJauho/pocketts) 开发，采用 [GPL-3.0](LICENSE) 许可证，参见[致谢](CREDITS.md)。本项目与 TeamSpeak 官方无关联。
+基于 [PocketTS](https://github.com/KorppuJauho/pocketts) 开发，[GPL-3.0](LICENSE) 许可，致谢见 [CREDITS.md](CREDITS.md)。
+本项目与 TeamSpeak 官方无关联。
