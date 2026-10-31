@@ -31,7 +31,9 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
 
     fun login(account: CloudAccountTransfer, deviceId: String): Session {
         require(account.domain == domain && deviceId.matches(Regex("[A-Za-z0-9_-]{8,100}")))
-        val data = requestWithTransientRetry("POST", "/login", mapOf(
+        // A 5xx response does not prove that the server did not process a login.
+        // Do not create multiple device sessions through automatic POST retries.
+        val data = request("POST", "/login", mapOf(
             "type" to "m.login.password", "identifier" to mapOf("type" to "m.id.user", "user" to account.userId),
             "password" to account.password, "device_id" to deviceId, "initial_device_display_name" to "回响 Android",
         ))
@@ -229,26 +231,6 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
             }
         }
         return (previous ?: Room(id, "", false, emptyList(), emptyMap())).copy(name = name, encrypted = encrypted, members = members)
-    }
-
-    /**
-     * The hostname seen in TeamSpeak's desktop traffic intermittently returned a route-level 503 while the same
-     * Matrix deployment worked in its own client. Retry only an idempotent login attempt and only when no server
-     * response could have changed account state. Message sends stay strictly single-attempt for the caller to retry.
-     */
-    private fun requestWithTransientRetry(method: String, path: String, body: Map<String, Any?>): Map<*, *> {
-        var last: CloudFailure? = null
-        repeat(3) { attempt ->
-            try { return request(method, path, body) } catch (e: CloudFailure) {
-                if (e.code !in setOf("HTTP_502", "HTTP_503", "HTTP_504")) throw e
-                last = e
-                if (attempt < 2) try { Thread.sleep(500L shl attempt) } catch (interrupted: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw interrupted
-                }
-            }
-        }
-        throw last!!
     }
 
     private fun request(method: String, path: String, body: Map<String, Any?>? = null, token: String? = null): Map<*, *> =
