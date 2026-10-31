@@ -65,6 +65,11 @@ export interface State {
   inputMuted: boolean;
   outputMuted: boolean;
   clientCount: number;
+  /**
+   * 文件传输的会话令牌：HTTP 端点靠它认出「这是哪个标签页的会话」，所以只能给这一个页面用。
+   * 每次连接都是新的，断开就作废。
+   */
+  fileToken?: string;
   server?: ServerInfo | null;
   tree: ChannelNode[];
 }
@@ -78,6 +83,27 @@ export interface ChatLine {
   mode: number;
   text: string;
   time: number;
+}
+
+/** 频道文件区里的一个文件或文件夹，字段与 FileTransfer.Entry 一致。 */
+export interface FileEntry {
+  name: string;
+  folder: boolean;
+  size: number;
+  /** 毫秒；服务器没给就是 0。 */
+  time: number;
+}
+
+/**
+ * 一次目录列表的回复。`error` 非空时 `entries` 是空的——服务器拒绝（没权限、要密码）比「空文件夹」
+ * 更需要说清楚。
+ */
+export interface FilesMessage {
+  t: 'files';
+  cid: number;
+  path: string;
+  entries: FileEntry[];
+  error: string | null;
 }
 
 /** 下行语音帧的头部长度：[2][codec][clientId 高][clientId 低] */

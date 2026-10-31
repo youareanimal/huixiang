@@ -2154,3 +2154,381 @@ body {
     right: 8px;
   }
 }
+
+/* ===== 频道文件（右侧抽屉） =====
+   文件存在 TeamSpeak 服务器上，这个面板只是浏览和搬字节的入口；字节走 HTTP，所以进度条是准的。 */
+
+.pill-action {
+  border: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pill-action:hover:not(:disabled) {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.pill-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.files-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  padding: 0 2px;
+}
+
+.files-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+.files-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.files-crumbs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.files-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.files-crumb-sep {
+  color: var(--text-4);
+}
+
+.files-crumb {
+  border: none;
+  background: transparent;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text-3);
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.files-crumb:hover:not(:disabled) {
+  background: var(--bg-fill);
+  color: var(--text-1);
+}
+
+.files-crumb.is-here {
+  color: var(--text-1);
+  font-weight: 600;
+  cursor: default;
+}
+
+/* --- 传输中的行 --- */
+
+.files-transfers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.files-transfer {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--bg-panel);
+}
+
+.files-transfer.is-done {
+  border-color: #cdeee6;
+  background: var(--speaking-soft);
+}
+
+.files-transfer.is-failed {
+  border-color: #f6d4d4;
+  background: var(--danger-soft);
+}
+
+.files-transfer.is-exists {
+  border-color: #f3e2c4;
+  background: var(--warn-soft);
+}
+
+.files-transfer-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.files-transfer-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-transfer-note {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.files-bar-track {
+  margin-top: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--bg-fill-2);
+  overflow: hidden;
+}
+
+.files-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand);
+  transition: width 0.2s ease;
+}
+
+.files-bar-fill.is-done {
+  background: var(--speaking);
+}
+
+.files-bar-fill.is-failed {
+  background: var(--danger);
+}
+
+.files-bar-fill.is-exists {
+  background: var(--warn);
+}
+
+.files-transfer-err {
+  margin-top: 6px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.files-overwrite {
+  margin-left: 8px;
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.files-overwrite:hover {
+  background: var(--brand-deep);
+}
+
+/* --- 目录内容 --- */
+
+.files-list {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.files-empty {
+  padding: 36px 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-4);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.6;
+}
+
+.files-empty.is-error {
+  color: #a3242b;
+}
+
+.files-empty-title {
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.files-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  transition: background 0.12s ease;
+}
+
+.files-row:hover {
+  background: var(--bg-fill);
+}
+
+.files-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-app);
+  color: var(--text-3);
+}
+
+.files-icon.is-folder {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.files-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.files-name {
+  font-size: 13px;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+button.files-name {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+button.files-name:hover {
+  color: var(--brand);
+}
+
+.files-meta {
+  font-size: 11.5px;
+  color: var(--text-4);
+}
+
+.files-get {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.files-row:hover .files-get {
+  opacity: 1;
+}
+
+.files-get:hover {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+@media (hover: none) {
+  /* 触摸屏没有 hover，下载键常显 */
+  .files-get {
+    opacity: 1;
+  }
+}
+
+/* --- 拖放 --- */
+
+.files-body.is-dragging {
+  background: var(--brand-soft);
+  border-radius: 12px;
+}
+
+.files-drop {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed var(--brand);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  display: grid;
+  place-items: center;
+  color: var(--brand-deep);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* --- 底部上传入口 --- */
+
+.files-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.files-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.files-pick:hover {
+  background: var(--brand-deep);
+}
+
+.files-foot-hint {
+  font-size: 11.5px;
+  color: var(--text-4);
+}

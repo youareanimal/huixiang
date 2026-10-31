@@ -1,4 +1,4 @@
-import type { ChatLine, ConnectOptions, State } from './protocol';
+import type { ChatLine, ConnectOptions, FilesMessage, State } from './protocol';
 import type { StreamEvent } from './stream';
 
 export interface GatewayHandlers {
@@ -8,6 +8,8 @@ export interface GatewayHandlers {
   onIdentity?: (identity: string) => void;
   onState?: (state: State) => void;
   onChat?: (line: ChatLine) => void;
+  /** 一层目录的文件列表（或者一次失败的列表）。 */
+  onFiles?: (msg: FilesMessage) => void;
   /** 一帧语音，已去掉 4 字节头：codec 和说话的人。 */
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
   /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
@@ -93,6 +95,9 @@ export class Gateway {
           case 'chat':
             this.handlers.onChat?.(m as unknown as ChatLine);
             break;
+          case 'files':
+            this.handlers.onFiles?.(m as unknown as FilesMessage);
+            break;
           case 'stream':
             this.handlers.onStream?.(m as unknown as StreamEvent);
             break;
@@ -161,6 +166,14 @@ export class Gateway {
   /** 串流的信令。画面不经过这里：那是浏览器和对方之间的 WebRTC。 */
   stream(msg: Record<string, unknown>) {
     this.send({ t: 'stream', ...msg });
+  }
+
+  /**
+   * 要一层目录的文件列表。字节不走这里（WebSocket 一帧只有 64 KB），答案从 `onFiles` 回来，
+   * 文件本身的收发在 files.ts 里走 HTTP。
+   */
+  listFiles(cid: number, path: string) {
+    this.send({ t: 'file', act: 'list', cid, path });
   }
 
   /** 一帧 Opus（960 采样 / 20ms）。空数组表示停止说话。 */
