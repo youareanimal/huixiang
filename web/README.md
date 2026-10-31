@@ -66,6 +66,10 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 能力 | 说明 |
 |---|---|
 | 匿名进入 | 游客身份，网关按需生成 Ed25519 身份并下发；前端存下来复用，才能在服务器上保留权限 |
+| myTeamSpeak 登录 | 连接页可登录，也可直接以游客进入；账号会话只活在当前标签页的 WebSocket 里，刷新后重新登录，不落浏览器存储 |
+| 云书签 | 登录后读取账号的服务器书签；点一条就填入地址、昵称和服务器密码（密码不显示，也不写 localStorage） |
+| 好友列表 | 登录后显示 myTeamSpeak 好友的昵称/备注；不接 Matrix 云聊天，也没有在线状态 |
+| 头像 | 自己的 myTeamSpeak 头像可上传/更换/删除；频道成员显示服务器头像或公开的 myTS 头像，失败退回首字母 |
 | 连接 | 地址 + 端口（默认 9987）、昵称、服务器密码、直接进指定频道（含频道密码） |
 | 频道树 | 名称、密码标记、话题、人数上限、编解码器、权限等级、分隔符频道 |
 | 成员列表 | 昵称、UID、说话状态、离开、输入/输出静音、talk power、优先发言人、频道组、服务器组 |
@@ -82,12 +86,21 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 
 | 能力 | 难度 | 说明 |
 |---|---|---|
-| myTeamSpeak 账号登录 | 低 | `MyTsAccount.login()`，纯 JVM，但要处理密码经手网关的问题 |
-| 账号服务器书签（收藏列表） | 低 | `MyTsBookmarks.read(session)`，登录后直接拿到地址、昵称、密码 |
-| 好友列表 / 云聊天 | 中 | `MyTsAccount.contacts()` + `MatrixCloud`，需要连 Matrix |
+| 好友云聊天 | 中 | `MyTsAccount.chatCredentials()` + `MatrixCloud`，需要连 Matrix；加密房间仍只读 |
 | 文件上传与管理（传 / 删 / 改名 / 建文件夹） | 低 | `FileTransfer` 现成，缺的是一个带确认的交互：传上去、删错了，同频道的人都跟着变 |
-| 头像 | 中 | `Pictures`，需要缓存 |
 | 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
+
+## myTeamSpeak 账号
+
+连接页可以登录，也可以不登录直接填地址进；登录不是连接服务器的前置条件。
+
+- **密码只换会话，不落盘。** 邮箱和密码经这条已认证的 WebSocket 交给网关，换成 myTeamSpeak 会话；会话只存在网关内存和这个标签页的连接里。浏览器不保存密码或令牌，刷新或关页后需要重新登录。公开部署仍然必须走 TLS，并尽量配 `ACCESS_TOKEN`。
+- **登录后连接带账号身份。** 网关把 `MyTsVoiceIdentity` 放进 `TsClient.Options`，服务器就能显示账号徽章和签名头像；连接后再登录不会追溯，重新连接一次才生效。
+- **云书签在服务端加密。** 网关用登录密码派生的密钥解锁，再把地址、昵称和服务器密码发给这一个标签页。密码只用来填隐藏的输入框，不显示、不写 localStorage；这也是刷新要重新登录的原因。
+- **好友只做列表。** 显示昵称/备注；myTeamSpeak 联系人接口没有在线状态，这一版也不接 Matrix 云聊天。
+- **头像。** 自己的 myTeamSpeak 在线头像可上传、更换、删除；浏览器先裁成 320×320、压到 512 KB 以内的 PNG，再走 `POST /account/avatar`。频道成员优先显示服务器头像，其次对方公开的 myTS 头像，都失败就退回首字母。
+- **匿名入口保留。** 登录状态下连接会携带账号身份；要完全匿名，先在账号卡片里退出再连。
+- **退出会撤销会话。** 点「退出」时网关调用 `deleteSession` 撤销它创建的会话；直接关页只丢弃内存里的会话，不等同于在服务端退出。
 
 ## 部署
 
@@ -254,6 +267,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"mute"}` | `input` `output` 布尔 |
 | `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
 | `{"t":"file"}` | `act`（只有 `list`）`cid` `path`，见下面的「文件」一节 |
+| `{"t":"account"}` | `act`：`login`（`email` `password` `otp`）、`logout`、`refresh`；与语音连接无关 |
 
 `identity` 是身份导出串（`Identity.export()` 的字符串）。**第一次连接前传空，网关会生成一个并通过 `identity` 消息下发**，前端存到 localStorage，之后每次带上——不带的话每次都是新身份，服务器上的权限不会继承。
 
@@ -268,6 +282,9 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"state", …}` | 全量状态快照，变化时最多每 120ms 一次 |
 | `{"t":"chat", …}` | 收到文字消息：`from` `name` `channel` `mode` `text` `time` |
 | `{"t":"files", …}` | 一层目录的文件列表：`cid` `path` `entries[]` `error`，见「文件」 |
+| `{"t":"account", …}` | 账号状态：`phase` 是 `guest` / `busy` / `signedIn`，`username` `email` `avatarUrl` `error`，以及头像上传用的 `fileToken` |
+| `{"t":"bookmarks", …}` | 云书签：`items[]`（`id` `name` `address` `nickname` `password`）`error` `loading` |
+| `{"t":"contacts", …}` | 好友：`items[]`（`id` `name` `subtitle`）`error` `loading` |
 | `{"t":"stream", …}` | 串流事件：`event` 是 `started` / `stopped` / `viewer` / `viewerLeft` / `offer` / `answer` / `candidate` / `ended` / `refused` / `failed` |
 
 二进制下行：`[0x02][codec][clientId:2 大端][opus…]`。`opus` 为空表示这个人停止说话。
@@ -289,6 +306,7 @@ ACCESS_TOKEN=你自己想一串
   "outputMuted": false,
   "clientCount": 1,
   "fileToken": "3f9c…",
+  "avatarToken": "7a21…",
   "tree": [
     {
       "id": 1, "parent": 0, "name": "基地大厅", "display": "基地大厅",
@@ -298,6 +316,7 @@ ACCESS_TOKEN=你自己想一串
         { "id": 106, "nickname": "webtest", "uid": "…", "talking": false,
           "away": false, "inputMuted": false, "outputMuted": false,
           "talkPower": 0, "isTalker": false, "priority": false, "streaming": false,
+          "avatar": "…", "avatarName": "…", "myTeamSpeakAvatar": "",
           "channelGroup": "…", "serverGroups": ["…"] }
       ],
       "children": []
@@ -388,6 +407,28 @@ GET /files/download?cid=2&path=/report.pdf
 - 频道密码：进频道时用的是明文，文件区要的是它的哈希，所以网关在 `clientmove` 那一步把哈希记下来
   （`Crypto.hashPassword`，和安卓端一样），之后传文件自动带上。
 
+### 头像
+
+成员头像是服务器频道 0 里的文件，`<img>` 又没法带 `X-File-Token` 头，所以地址里放一个**只认头像**的会话令牌：
+
+```
+GET /avatar/<avatarToken>/<clientId>?v=<avatarFlag>
+```
+
+- `avatarToken` 来自状态快照，只对这一个标签页有效，断开即作废；它只能读头像，不能读频道文件，所以就算落进反代日志也拿不到文件区。
+- `?v=` 是服务器给出的头像哈希，头像一换地址就变，可以放心 `Cache-Control: immutable`。
+- 网关按 `uid` / `avatarName` 算出几个可能的文件名逐个尝试，校验内容是图片后缓存在这个会话里。
+- 自己登录了账号时，前端优先用账号头像（直接是公开的 https 地址），再退回服务器头像。
+
+账号头像的写操作走 HTTP，凭账号消息里的 `fileToken`（`X-File-Token` 头）：
+
+```
+POST   /account/avatar      Content-Type: image/png，最多 512 KB
+DELETE /account/avatar
+```
+
+浏览器先把图片裁成正方形、压到 320×320 / 512 KB 以内的 PNG；网关再交给 `MyTsProfile.updateOnlineAvatar()`。这和安卓端用的是同一套 myTeamSpeak 接口。
+
 ## 浏览器侧怎么解 Opus
 
 下行帧的 payload 是标准 Opus 包，48kHz。用 WebCodecs：
@@ -431,11 +472,13 @@ const opusHead = new Uint8Array([
 
 - **这是一个 UDP 代理**：谁能让它连，谁就能让这台机器连任意 TS 服务器。所以要配 `ACCESS_TOKEN`，不配时启动日志会警告。内网、回环、链路本地地址一律拒绝，免得被拿来探测内网。
 - `ALLOWED_ORIGINS` 挡网页，`ACCESS_TOKEN` 挡脚本和人；两者都不是身份认证，原因见「接入控制」。
+- **myTeamSpeak 密码会经过网关**：网关必须代浏览器完成登录和书签解密，所以它能在这台机器的内存里看到密码。对外部署时 TLS 不是可选项；运行网关的人也因此被信任。浏览器侧不保存密码、会话或书签密钥，关页即失。
+- 账号会话只存在网关内存里，退出登录会撤销它创建的 myTeamSpeak 会话；直接关页不会远程撤销，只丢弃内存。
+- `/avatar/<token>/…` 的头像令牌只能读头像（频道 0），读不到频道文件；`/account/avatar` 的写接口仍然只认 `fileToken`。
 - 全局最多 96 个并发连接，单 IP 最多 4 个。反代后面所有请求都来自同一个 IP 时，这条限制会按反代地址算，需要按实际情况调整。
 - 每个连接是一个 UDP socket 加一个线程，扩到几百人需要改成分片或协程。
 - 身份安全等级低于服务器要求时（错误 519）只提示、不自动升级——升级很吃 CPU，放到后台跑要单独设计。
 - 网页关掉连接就断，没有 App 那种后台保活。
-- 头像这一版没接，`tsproto` 里有现成实现（服务器横幅已经在用它下载了）。
 - 文件传输的两个 HTTP 端点靠 `X-File-Token` 认会话，令牌只发给对应的那个标签页、断开即失效；但它和
   `ACCESS_TOKEN` 一样不是身份认证——拿到令牌的人可以在那次会话的有效期内读这个频道文件区里的文件，
   就这么长的时间窗。面板只读，所以这个令牌换不来任何写操作；单次下载上限 1 GiB。

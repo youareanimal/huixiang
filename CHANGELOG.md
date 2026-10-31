@@ -19,9 +19,26 @@
 - 新增 `web/gateway/test/files.mjs`：列目录 → 进一层文件夹 → 下载比对 → 确认上传端点确实已经拆掉，把命令线和字节线一起验。全程只读，不在服务器上留东西。
 - 部署提供 `web/Dockerfile`、`installDist` 产物与 systemd 示例，前端构建产物放在 `web/client/dist` 时由网关一并托管。
 
+### 网页版 myTeamSpeak 账号（未发布）
+
+- 网关新增 `AccountSession`，把 myTeamSpeak 登录、云书签、好友列表和账号头像接到网页版；登录与语音连接解耦，可以只登录不连服务器，离开服务器也不会退出账号。
+- 账号会话只存在网关内存和当前标签页的 WebSocket 里：浏览器不保存密码、令牌或书签密钥，刷新/关页后重新登录；退出登录会撤销网关创建的 myTeamSpeak 会话。
+- 登录后连接会携带 `MyTsVoiceIdentity`，服务器可以显示账号徽章；连接成功后再拉取签名证书、头像和徽章（`updatemytsdata`）。连接后再登录不会追溯，重新连接才生效。
+- 云书签由 `MyTsBookmarks` 在网关内解密，地址、昵称和服务器密码随 `bookmarks` 消息下发；密码只用于填隐藏输入框，不显示、不写 localStorage。
+- 好友列表用 `MyTsAccount.contacts()`，并用公开 Matrix 资料补显示名；这一版不做云聊天和在线状态。
+- 新增账号头像 HTTP 端点：`POST /account/avatar`（PNG，≤ 512 KB）和 `DELETE /account/avatar`，凭账号消息里的 `fileToken` 认会话；浏览器先裁成 320×320 的 PNG。
+- 成员快照新增 `avatar` / `avatarName` / `myTeamSpeakAvatar`，聊天消息也带上头像字段；新增 `GET /avatar/<avatarToken>/<clientId>?v=<flag>`，按会话下载并缓存服务器头像。该令牌只能读头像，读不到频道文件。
+- 消息协议新增上行 `account`（login/logout/refresh），下行 `account` / `bookmarks` / `contacts`；状态快照新增 `avatarToken`。CORS 增加 `DELETE` 与头像令牌头，开发代理补上 `/avatar` 与 `/account`。
+
 ### 网页前端（web/client）
 
 - React 18 + TypeScript + Vite + Semi Design，构建产物由网关同源托管，一个进程同时提供页面和 `/ws`。
+- 连接页新增 myTeamSpeak 账号卡片：可登录/退出/刷新、查看云书签和好友、设置或删除头像；游客表单保留，不登录直接填地址即可进入。
+- 登录后默认填入账号昵称；状态栏和提示明确说明登录状态下连接会携带账号身份，要完全匿名需先退出。
+- 云书签点一条即填入地址、昵称和服务器密码；好友列表显示昵称/备注，不做云聊天。
+- 新增 `UserAvatar` 组件，舞台、聊天、顶栏和右栏统一按「账号头像 > 服务器头像 > myTS 头像 > 首字母」回退。
+- 右栏新增账号卡：头像、邮箱、换/删头像、刷新、退出和好友列表；手机上隐藏，账号入口仍在连接页。
+- 离开服务器只发 `leave`，不关 WebSocket，账号、书签和好友在本次页面会话内保留；页面刷新或关闭才断开。
 - 连接页支持地址（含 `ts3server://` 邀请）、昵称、服务器密码、访问口令与最近连接；地址或昵称不合法时按钮不可点。
 - 服务器页为三栏布局：频道树（带成员与说话高亮）、频道文字、当前频道成员，底部麦克风/扬声器/离开控制条；频道密码、改昵称走弹窗。
 - 语音上行用 AudioWorklet 攒 20ms 一帧交给 `AudioEncoder`，下行每个说话人一个 `AudioDecoder` 加按时间排程的播放队列，落后 0.4 秒自动重新对齐避免延迟累积；全程不转码。

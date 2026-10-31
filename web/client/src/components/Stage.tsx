@@ -2,7 +2,8 @@ import { IconVolume1, IconVolumnSilent, IconMicrophoneOff } from '@douyinfe/semi
 import type { Member } from '../protocol';
 import { memberKey } from '../protocol';
 import { DEFAULT_GAIN, gainPercent } from '../audio/gain';
-import { avatarColor, initial } from '../ui';
+import { avatarSources } from '../ui';
+import UserAvatar from './UserAvatar';
 import VolumePopover from './VolumePopover';
 
 interface Props {
@@ -17,6 +18,10 @@ interface Props {
   ownTalking: boolean;
   /** 正在看谁（0 = 没在看），用来把按钮标成「看着」。 */
   watchingId?: number;
+  /** 服务器头像地址里的会话令牌。 */
+  avatarToken: string;
+  /** 自己登录的 myTeamSpeak 头像地址（空 = 没登录或没有）。 */
+  accountAvatar: string;
   onWatch?: (clientId: number) => void;
   onVolume: (member: Member, v: number) => void;
 }
@@ -42,6 +47,8 @@ export default function Stage({
   talkingIds,
   ownTalking,
   watchingId = 0,
+  avatarToken,
+  accountAvatar,
   onWatch,
   onVolume,
 }: Props) {
@@ -89,13 +96,12 @@ export default function Stage({
                 </VolumePopover>
               )}
               <div className={`avatar-ring${talking ? ' is-talking' : ''}`}>
-                <div
+                <UserAvatar
+                  name={m.nickname}
+                  sources={avatarSources(m, ownId, accountAvatar, avatarToken)}
+                  colorKey={me ? 'me' : m.uid || m.id}
                   className="avatar"
-                  style={{ background: avatarColor(me ? 'me' : m.uid || m.id) }}
-                  aria-hidden="true"
-                >
-                  {initial(m.nickname)}
-                </div>
+                />
               </div>
               <div className="tile-name-row">
                 <span className="tile-name" title={m.nickname}>

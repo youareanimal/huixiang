@@ -11,10 +11,12 @@ import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
 import java.io.OutputStream
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -57,8 +59,19 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
          */
         private val banners = ConcurrentHashMap<String, WebSession>()
 
+        /**
+         * Avatar image addresses are opened by `<img>`, which cannot send the file token as a header, so the address
+         * carries a token of its own. This one names a session too, but it only opens avatars (channel 0), never the
+         * channel file area — a proxy access log that captures it cannot read anyone's documents.
+         */
+        private val avatars = ConcurrentHashMap<String, WebSession>()
+
         /** Same ceiling tsproto applies to pictures in the chat: a banner is one of those files. */
         private const val MAX_BANNER_BYTES = Pictures.PICTURE_MAX_BYTES
+
+        /** A browser will ask for the same visible people many times; keep their pictures for this tab. */
+        private const val AVATAR_CACHE_ENTRIES = 64
+        private const val AVATAR_CACHE_BYTES = 32L * 1024 * 1024
 
         /**
          * The sessions a file transfer may be run for, by the token in their `files` address.
@@ -77,6 +90,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         fun byFile(id: String): WebSession? = fileSessions[id]
 
         fun byBanner(id: String): WebSession? = banners[id]
+
+        fun byAvatar(id: String): WebSession? = avatars[id]
     }
 
     private val model = ServerModel()
@@ -91,6 +106,22 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
      * meaningless to anyone else: it names a session, not a server, and dies with the tab.
      */
     private val fileId = UUID.randomUUID().toString().replace("-", "")
+
+    /** The token in avatar addresses; see [avatars]. */
+    private val avatarId = UUID.randomUUID().toString().replace("-", "")
+
+    /** The tab's myTeamSpeak account: independent of [client], so it survives leaving a server. */
+    private val account = AccountSession(
+        push = { sink.text(it) },
+        fileToken = fileId,
+        log = { log("account: $it") },
+    )
+
+    /** Downloaded server avatars, by "uid|flag"; the flag changes whenever the picture does. */
+    private data class CachedAvatar(val bytes: ByteArray, val type: String)
+    private data class AvatarInfo(val uid: String, val avatarName: String, val flag: String)
+    private val avatarCache = object : LinkedHashMap<String, CachedAvatar>(16, 0.75f, true) {}
+    private var avatarCacheBytes = 0L
 
     /**
      * A file listing blocks on the TeamSpeak answer, so it cannot run on the connection's thread and it must not
@@ -150,6 +181,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     init {
         banners[bannerId] = this
         fileSessions[fileId] = this
+        avatars[avatarId] = this
         pushTimer.scheduleWithFixedDelay({ if (dirty.getAndSet(false)) push() }, PUSH_MS, PUSH_MS, TimeUnit.MILLISECONDS)
     }
 
@@ -192,9 +224,24 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
                 serverPassword = password,
                 defaultChannel = channel,
                 defaultChannelPassword = channelPassword,
+                // Signed in: prove the account to the server, so it can show the account's badges and signed avatar.
+                myTsIdentity = account.voiceIdentity(),
             )
         )
     }
+
+    // ====== Account: independent of the voice connection ======
+
+    fun accountLogin(email: String, password: String, otp: String) = account.login(email, password, otp)
+
+    fun accountLogout() = account.logout()
+
+    fun accountRefresh() = account.refresh()
+
+    /** Blocks on an HTTPS round trip; callers run it off Netty's event loop. */
+    fun accountSetAvatar(png: ByteArray): String? = account.setAvatar(png)
+
+    fun accountRemoveAvatar(): String? = account.removeAvatar()
 
     fun leave() {
         val c = client ?: return
@@ -332,6 +379,67 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     /** 密码频道的文件区要同一个密码，形态是哈希（进入频道时用的是明文，见 [joinChannel]）。 */
     private fun filePassword(cid: Int): String = channelPasswords[cid].orEmpty()
 
+    /**
+     * Someone's server avatar, downloaded through the connection's file transfer on channel 0 and remembered here.
+     * Null when the person has none, or their avatar file is gone: the tab then falls back to their myTeamSpeak
+     * picture or an initial.
+     */
+    fun avatar(clientId: Int): Pair<ByteArray, String>? {
+        val info = avatarInfo(clientId) ?: return null
+        val key = "${info.uid}|${info.flag}"
+        synchronized(avatarCache) { avatarCache[key] }?.let { return it.bytes to it.type }
+        val transfer = ft ?: return null
+        for (path in Pictures.avatarFileNames(info.uid, info.avatarName)) {
+            try {
+                val bytes = transfer.download(0, path, Pictures.AVATAR_MAX_BYTES)
+                val type = Pictures.type(bytes) ?: continue
+                rememberAvatar(key, CachedAvatar(bytes, type.mime))
+                return bytes to type.mime
+            } catch (e: Exception) {
+                // Try the next name: the server does not tell which of them it has.
+            }
+        }
+        return null
+    }
+
+    /** The model is only safe to read on the connection's own thread, so ask it there and wait a moment. */
+    private fun avatarInfo(clientId: Int): AvatarInfo? {
+        val c = client ?: return null
+        val answer = CompletableFuture<AvatarInfo?>()
+        try {
+            c.post {
+                val person = model.clients[clientId]
+                answer.complete(
+                    if (person == null || person.avatar.isBlank()) null
+                    else AvatarInfo(person.uid, person.avatarName, person.avatar)
+                )
+            }
+        } catch (_: RejectedExecutionException) {
+            return null
+        }
+        return try {
+            answer.get(2, TimeUnit.SECONDS)
+        } catch (e: TimeoutException) {
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun rememberAvatar(key: String, avatar: CachedAvatar) {
+        synchronized(avatarCache) {
+            avatarCache[key]?.let { avatarCacheBytes -= it.bytes.size }
+            avatarCache[key] = avatar
+            avatarCacheBytes += avatar.bytes.size
+            val oldest = avatarCache.entries.iterator()
+            while ((avatarCache.size > AVATAR_CACHE_ENTRIES || avatarCacheBytes > AVATAR_CACHE_BYTES) && oldest.hasNext()) {
+                val entry = oldest.next()
+                avatarCacheBytes -= entry.value.bytes.size
+                oldest.remove()
+            }
+        }
+    }
+
     /** 传输失败的原因，说人话。错误码是服务器自己的，见 tsproto 的 [FileTransfer]。 */
     fun fileError(e: Throwable): String = when ((e as? FileTransfer.Error)?.code) {
         FileTransfer.WRONG_PASSWORD -> "这个频道的文件需要频道密码"
@@ -368,6 +476,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         closed = true
         banners.remove(bannerId)
         fileSessions.remove(fileId)
+        avatars.remove(avatarId)
+        account.close()
         leave()
         owned?.close()
         owned = null
@@ -403,6 +513,9 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         }
         syncMutes()
         dirty.set(true)
+        // Signed avatar, certificate and badges: optional, and only useful once the server accepted the proof.
+        val c = client
+        if (c != null) account.sendVoiceData { data -> if (client === c) c.sendMyTsData(data) }
     }
 
     override fun onCommand(cmd: Command) {
@@ -413,16 +526,21 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             "channellistfinished" -> client?.sendCommand("channelsubscribeall")
             "notifychannelcreated" -> client?.sendCommand(Commands.build("channelsubscribe", "cid" to cmd["cid"]))
             "notifytextmessage" -> {
+                val from = cmd["invokerid"]?.toIntOrNull() ?: 0
+                val person = model.clients[from]
                 sink.text(
                     Json.write(
                         mapOf(
                             "t" to "chat",
-                            "from" to (cmd["invokerid"]?.toIntOrNull() ?: 0),
+                            "from" to from,
                             "name" to cmd["invokername"].orEmpty(),
                             "channel" to (cmd["target"]?.toIntOrNull() ?: 0),
                             "mode" to (cmd["targetmode"]?.toIntOrNull() ?: 2),
                             "text" to cmd["msg"].orEmpty(),
                             "time" to System.currentTimeMillis(),
+                            "avatar" to (person?.avatar ?: ""),
+                            "avatarName" to (person?.avatarName ?: ""),
+                            "myTeamSpeakAvatar" to (person?.myTeamSpeakAvatar ?: ""),
                         )
                     )
                 )
@@ -521,6 +639,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             "outputMuted" to outputMuted,
             "clientCount" to model.clients.values.count { it.type == 0 },
             "fileToken" to fileId,
+            "avatarToken" to avatarId,
             "server" to serverInfo(),
             "tree" to model.tree().map { node(it) },
         )
@@ -619,6 +738,9 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         "isTalker" to c.isTalker,
         "priority" to c.prioritySpeaker,
         "streaming" to c.streaming,
+        "avatar" to c.avatar,
+        "avatarName" to c.avatarName,
+        "myTeamSpeakAvatar" to c.myTeamSpeakAvatar,
         "channelGroup" to (model.channelGroups[c.channelGroup]?.name ?: ""),
         "serverGroups" to c.serverGroups.mapNotNull { model.serverGroups[it]?.name },
     )
