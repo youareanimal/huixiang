@@ -41,7 +41,7 @@ class AppUpdateUiTest {
         compose.setContent { PocketTsTheme {
             AppUpdateDialog(AppUpdater.State(activeSource = UpdateFeed.Source.PI), {}, {}, {}, {}, {}, {}, onSource = { selected = it })
         } }
-        compose.onNodeWithText("当前来源：PI 直连").assertExists()
+        compose.onNodeWithText("当前来源：直连更新源").assertExists()
         compose.onNodeWithText("Cloudflare", substring = false).performScrollTo().performClick()
         assertEquals(UpdateFeed.Source.CLOUDFLARE, selected)
     }

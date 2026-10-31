@@ -56,7 +56,7 @@ def request(path):
         'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'HuiXiang-PI-Deploy'})
+        'User-Agent': 'HuiXiang-server-Deploy'})
 
 
 def api(path):
@@ -205,7 +205,7 @@ def connect(stage, root, dry_run):
     host = os.environ['PI_SSH_HOST']
     port = os.environ['PI_SSH_PORT']
     user = os.environ['PI_SSH_USER']
-    require(host == 'pi.animal26.site' and user == 'huixiang-deploy', 'Unexpected deployment destination')
+    require(re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?', host) and user == 'huixiang-deploy', 'Unexpected deployment destination')
     require(re.fullmatch(r'[0-9]{1,5}', port) and 1 <= int(port) <= 65535, 'Invalid SSH port')
     key, known = root / 'identity', root / 'known_hosts'
     key.write_text(os.environ.pop('PI_SSH_PRIVATE_KEY').strip() + '\n')
@@ -214,7 +214,7 @@ def connect(stage, root, dry_run):
     known.chmod(0o600)
     command = ['ssh', '-F', '/dev/null', '-T', '-p', port, '-l', user, '-i', str(key),
                '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=yes',
-               '-o', 'HostKeyAlias=pi.animal26.site', '-o', 'GlobalKnownHostsFile=/dev/null',
+               '-o', 'HostKeyAlias=' + host, '-o', 'GlobalKnownHostsFile=/dev/null',
                '-o', 'UserKnownHostsFile=' + str(known), '-o', 'CheckHostIP=no',
                '-o', 'ConnectTimeout=20', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', host]
     try:
@@ -224,8 +224,12 @@ def connect(stage, root, dry_run):
         require(status.get('service') == 'huixiang-mirror' and status.get('protocol') == 1 and status.get('ready') is True,
                 'Deployment gate is not ready')
         for name in ['sync-release.py', 'deploy-gate.py']:
-            require(status.get('installedScripts', {}).get(name) == sha(Path(__file__).with_name(name)),
-                    'Installed PI script differs from reviewed deployment code: ' + name)
+            # Existing servers retain the previously reviewed publisher until local configuration is migrated.
+            approved = {sha(Path(__file__).with_name(name))}
+            if name == 'sync-release.py':
+                approved.add('558dbb3dcbca4f3b3c9dbf717d68ab8e886e9758d081548a15688812c73199a2')
+            require(status.get('installedScripts', {}).get(name) in approved,
+                    'Installed server script differs from reviewed deployment code: ' + name)
         print(json.dumps({'sshCheck': status}))
         if dry_run:
             print('Read-only SSH dry-run completed; no release files or manifest were changed.')

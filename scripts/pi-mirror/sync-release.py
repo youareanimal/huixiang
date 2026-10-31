@@ -12,7 +12,10 @@ import shutil
 import tempfile
 from urllib.parse import urlsplit
 
-BASE = 'https://pi.animal26.site:8443/huixiang'
+PRIVATE_CONFIG = Path('/etc/huixiang-mirror/private.json')
+local_config = json.loads(PRIVATE_CONFIG.read_text()) if PRIVATE_CONFIG.exists() else {}
+BASE = (os.environ.get('HUIXIANG_UPDATE_BASE_URL') or local_config.get('updateBaseUrl')
+        or 'https://updates.example.invalid:8443/huixiang').rstrip('/')
 DEST = Path('/opt/1panel/apps/openresty/openresty/www/sites/huixiang-mirror/public')
 STATE = Path('/var/lib/huixiang-deploy/state')
 PATTERN = re.compile(r'HuiXiang-[A-Za-z0-9._-]+\.(?:apk|zip|txt)\Z')
@@ -149,7 +152,7 @@ def publish(stage, dest=DEST, state=STATE):
         arm = html.escape(Path(urlsplit(feed['artifacts']['arm64-v8a']['url']).path).name, quote=True)
         source = html.escape(Path(urlsplit(feed['sourceUrl']).path).name, quote=True)
         index = ('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-                 '<title>回响 PI 镜像</title><h1>回响 ' + html.escape(feed['versionName']) + '</h1><p>PI 直连下载镜像</p>'
+                 '<title>回响 server 镜像</title><h1>回响 ' + html.escape(feed['versionName']) + '</h1><p>server 直连下载镜像</p>'
                  '<p><a href="' + arm + '">下载 arm64 安装包</a></p><p><a href="' + source + '">对应源代码 ZIP</a></p>')
         atomic(dest / 'index.html', index.encode())
         atomic(current, json.dumps(feed, ensure_ascii=False, indent=2).encode())
@@ -164,7 +167,8 @@ if __name__ == '__main__':
     parser.add_argument('--state', type=Path, default=STATE)
     args = parser.parse_args()
     try:
-        require(args.base_url.rstrip('/') == BASE, 'PI mirror base URL is fixed')
+        require(urlsplit(BASE).scheme == 'https' and urlsplit(BASE).hostname not in (None, 'updates.example.invalid'), 'Private update URL is not configured')
+        require(args.base_url.rstrip('/') == BASE, 'server mirror base URL is fixed')
         publish(args.stage, args.dest, args.state)
     except (ValueError, OSError, KeyError, TypeError) as error:
         parser.exit(1, 'Publish refused: ' + str(error) + '\n')
