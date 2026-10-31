@@ -70,7 +70,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 云书签 | 登录后读取账号的服务器书签；点一条就填入地址、昵称和服务器密码（密码不显示，也不写 localStorage） |
 | 好友列表 | 登录后显示 myTeamSpeak 好友的昵称/备注；不接 Matrix 云聊天，也没有在线状态 |
 | 头像 | 自己的 myTeamSpeak 头像可上传/更换/删除；频道成员显示服务器头像或公开的 myTS 头像，失败退回首字母 |
-| 连接 | 地址 + 端口（默认 9987）、昵称、服务器密码、直接进指定频道（含频道密码） |
+| 连接 | 地址 + 端口（默认 9987）、昵称、服务器密码、直接进指定频道（含频道密码）；信息栏显示延迟（浏览器↔网关 + 网关↔服务器） |
 | 频道树 | 名称、密码标记、话题、人数上限、编解码器、权限等级、分隔符频道 |
 | 成员列表 | 昵称、UID、说话状态、离开、输入/输出静音、talk power、优先发言人、频道组、服务器组 |
 | 切换频道 | 含频道密码 |
@@ -261,6 +261,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"auth"}` | `token` — 仅在服务端要求口令时，且必须是第一帧 |
 | `{"t":"connect"}` | `host` `port`(9987) `nickname` `password` `identity` `channel` `channelPassword` |
 | `{"t":"leave"}` | 断开，之后可以再 connect |
+| `{"t":"ping"}` | `v` 探针序号；网关原样回 `pong`，用来量浏览器 ↔ 网关的往返 |
 | `{"t":"join"}` | `cid` 频道 id，`password` 可选 |
 | `{"t":"say"}` | `text`，`channel` 频道 id（频道消息）或 `client` 成员 id（私聊） |
 | `{"t":"rename"}` | `name` |
@@ -285,6 +286,8 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"account", …}` | 账号状态：`phase` 是 `guest` / `busy` / `signedIn`，`username` `email` `avatarUrl` `error`，以及头像上传用的 `fileToken` |
 | `{"t":"bookmarks", …}` | 云书签：`items[]`（`id` `name` `address` `nickname` `password`）`error` `loading` |
 | `{"t":"contacts", …}` | 好友：`items[]`（`id` `name` `subtitle`）`error` `loading` |
+| `{"t":"pong","v":…}` | 上行 `ping` 的原样回应 |
+| `{"t":"serverPing","v":18}` | 网关 ↔ TeamSpeak 服务器的 UDP 往返毫秒数，跟着每秒的 keepalive 更新 |
 | `{"t":"stream", …}` | 串流事件：`event` 是 `started` / `stopped` / `viewer` / `viewerLeft` / `offer` / `answer` / `candidate` / `ended` / `refused` / `failed` |
 
 二进制下行：`[0x02][codec][clientId:2 大端][opus…]`。`opus` 为空表示这个人停止说话。

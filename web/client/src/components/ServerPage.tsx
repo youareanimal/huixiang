@@ -32,6 +32,10 @@ interface Props {
   avatarToken: string;
   /** myTeamSpeak 账号：头像和账号操作。 */
   account: AccountState;
+  /** 浏览器 ↔ 网关的往返（毫秒），还没测到是 null。 */
+  pingGateway: number | null;
+  /** 网关 ↔ TeamSpeak 服务器的往返（毫秒），还没测到是 null。 */
+  pingServer: number | null;
   micOn: boolean;
   micLevel: number;
   micGain: number;
@@ -84,6 +88,8 @@ export default function ServerPage({
   fileToken,
   avatarToken,
   account,
+  pingGateway,
+  pingServer,
   micOn,
   micLevel,
   micGain,
@@ -402,6 +408,8 @@ export default function ServerPage({
             clientCount={state.clientCount}
             channelCount={countChannels(state.tree)}
             account={account}
+            pingGateway={pingGateway}
+            pingServer={pingServer}
             onAccountLogout={onAccountLogout}
             onAccountRefresh={onAccountRefresh}
             onAvatarChange={onAvatarChange}

@@ -27,6 +27,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {}
         /** A voice packet: who is talking, the codec (4 Opus Voice, 5 Opus Music), and the frame (empty = stopped). */
         fun onVoice(voice: Voice) {}
+        /** Round trip of a keepalive ping, in milliseconds (one goes out every second). */
+        fun onPing(millis: Int) {}
         /** The connection ended: [reason] is null when we left ourselves. */
         fun onDisconnected(reason: String?) {}
     }
@@ -143,6 +145,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     private var initPending: Pending? = null
     private var lastHeard = 0L
     private var heardAny = false // anything from the server since this connection started
+    // When each keepalive ping went out; the matching pong gives the round trip. One thread only.
+    private val pingSent = ArrayDeque<Long>()
 
     // Crypto
     private var cryptoReady = false
@@ -262,6 +266,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         alpha = null
         outId.fill(0); outGen.fill(0); inGen.fill(0); nextIn.fill(-1)
         early.forEach { it.clear() }
+        pingSent.clear()
         pending.clear()
         initPending = null
         fragments = null
@@ -409,6 +414,11 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
 
     private fun sendOutgoing(data: ByteArray, type: Int, extraFlags: Int = 0) {
         val (id, gen) = nextOutId(type)
+        if (type == Type.PING) {
+            // A server that stops answering pings while still sending other things shouldn't grow this forever.
+            if (pingSent.size >= 16) pingSent.removeFirst()
+            pingSent.addLast(now())
+        }
         var flags = extraFlags
         when (type) {
             Type.VOICE, Type.VOICE_WHISPER -> { data[0] = (id shr 8).toByte(); data[1] = id.toByte() }
@@ -492,7 +502,11 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
                 pending.remove((ackedType shl 16) or acked)
             }
             Type.PING -> sendOutgoing(ByteArray(2).also { it[0] = (id shr 8).toByte(); it[1] = id.toByte() }, Type.PONG)
-            Type.PONG -> {}
+            Type.PONG -> {
+                // The server answers every keepalive ping, so the oldest unanswered one is this pong's match.
+                val sentAt = pingSent.removeFirstOrNull()
+                if (sentAt != null) listener.onPing((now() - sentAt).toInt().coerceAtLeast(0))
+            }
             Type.VOICE, Type.VOICE_WHISPER -> if (data.size >= 5) {
                 listener.onVoice(
                     Voice(

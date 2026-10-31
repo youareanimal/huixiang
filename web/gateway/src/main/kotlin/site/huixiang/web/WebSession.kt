@@ -576,6 +576,16 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         sink.binary(head + voice.data)
     }
 
+    override fun onPing(millis: Int) {
+        // The tab adds this to its own round trip to the gateway for the latency it shows.
+        sink.text(Json.write(mapOf("t" to "serverPing", "v" to millis)))
+    }
+
+    /** The tab's own round-trip probe: echo the token straight back so it can time the WebSocket hop. */
+    fun pong(token: Any?) {
+        sink.text(Json.write(mapOf("t" to "pong", "v" to token)))
+    }
+
     override fun onDisconnected(reason: String?) {
         phase = Phase.IDLE
         client = null

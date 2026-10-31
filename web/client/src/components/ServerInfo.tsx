@@ -12,6 +12,10 @@ interface Props {
   clientCount: number;
   channelCount: number;
   account: AccountState;
+  /** 浏览器 ↔ 网关的往返（毫秒）；还没测到是 null。 */
+  pingGateway: number | null;
+  /** 网关 ↔ TeamSpeak 服务器的往返（毫秒）；还没测到是 null。 */
+  pingServer: number | null;
   onAccountLogout: () => void;
   onAccountRefresh: () => void;
   onAvatarChange: (file: File) => void;
@@ -44,6 +48,8 @@ export default function ServerInfoPanel({
   clientCount,
   channelCount,
   account,
+  pingGateway,
+  pingServer,
   onAccountLogout,
   onAccountRefresh,
   onAvatarChange,
@@ -81,10 +87,14 @@ export default function ServerInfoPanel({
   const versionLine = [info?.platform, version].filter(Boolean).join(' · ');
   const site = info?.hostbuttonUrl ?? null;
 
+  // 语音走「浏览器 → 网关 → 服务器」，两段往返都算上才是真正感受到的延迟
+  const pingTotal = pingGateway != null && pingServer != null ? pingGateway + pingServer : null;
+
   const rows: Array<[string, string]> = [];
   rows.push(['用户', maxClients != null ? `${usersOnline} / ${maxClients}` : String(usersOnline)]);
   rows.push(['频道', String(channels)]);
   if (liveUptime != null) rows.push(['运行时间', humanUptime(liveUptime)]);
+  if (pingTotal != null) rows.push(['延迟', `${pingTotal} ms`]);
   if (info?.createdAt) {
     rows.push(['创建于', new Date(info.createdAt * 1000).toLocaleDateString('zh-CN')]);
   }

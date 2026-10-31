@@ -28,6 +28,10 @@ export interface GatewayHandlers {
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
   /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
   onStream?: (event: StreamEvent) => void;
+  /** 网关这句话走了多久：浏览器 ↔ 网关的 WebSocket 往返（毫秒）。 */
+  onRoundTrip?: (ms: number) => void;
+  /** 网关到 TeamSpeak 服务器的 UDP 往返（毫秒），由服务器每秒的 keepalive ping 算出。 */
+  onServerPing?: (ms: number) => void;
   /** 服务端关了连接：1008 多半是口令不对或来源不被允许。 */
   onClose?: (code: number, reason: string) => void;
   onError?: (message: string) => void;
@@ -44,6 +48,10 @@ export class Gateway {
   private queue: string[] = [];
   /** 登录和连接可能同时想开这条连接；只让第一个真的握手。 */
   private opening: Promise<void> | null = null;
+  /** 自己的往返探针：发出去的序号 → 发出时刻。 */
+  private pingSent = new Map<number, number>();
+  private pingSeq = 0;
+  private pingTimer: number | null = null;
 
   constructor(
     private readonly url: string,
@@ -80,6 +88,7 @@ export class Gateway {
           settled = true;
           resolve();
           this.flush();
+          this.startPing();
         }
       };
 
@@ -108,6 +117,18 @@ export class Gateway {
               resolve();
             }
             this.flush();
+            this.startPing();
+            break;
+          case 'pong': {
+            const sentAt = this.pingSent.get(Number(m.v));
+            if (sentAt != null) {
+              this.pingSent.delete(Number(m.v));
+              this.handlers.onRoundTrip?.(Math.max(0, Math.round(performance.now() - sentAt)));
+            }
+            break;
+          }
+          case 'serverPing':
+            if (typeof m.v === 'number') this.handlers.onServerPing?.(m.v);
             break;
           case 'identity':
             this.handlers.onIdentity?.(String(m.v ?? ''));
@@ -139,6 +160,7 @@ export class Gateway {
       ws.onclose = (e) => {
         this.ready = false;
         this.ws = null;
+        this.stopPing();
         if (!settled) {
           settled = true;
           const why = e.code === 1008 ? '网关拒绝了这次连接（口令或来源不被允许）' : e.reason || `连接关闭 ${e.code}`;
@@ -164,6 +186,31 @@ export class Gateway {
   private flush() {
     const items = this.queue.splice(0);
     for (const s of items) this.ws?.send(s);
+  }
+
+  /** 每两秒探一次浏览器 ↔ 网关的往返；只有连上之后才探，免得占着队列。 */
+  private startPing() {
+    if (this.pingTimer != null) return;
+    const probe = () => {
+      if (!this.ready) return;
+      const id = ++this.pingSeq;
+      this.pingSent.set(id, performance.now());
+      // 丢了的探针别一直留着
+      for (const key of this.pingSent.keys()) {
+        if (key <= id - 8) this.pingSent.delete(key);
+      }
+      this.send({ t: 'ping', v: id });
+    };
+    probe();
+    this.pingTimer = window.setInterval(probe, 2000);
+  }
+
+  private stopPing() {
+    if (this.pingTimer != null) {
+      window.clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
+    this.pingSent.clear();
   }
 
   private send(msg: unknown) {
@@ -239,6 +286,7 @@ export class Gateway {
   close() {
     this.ready = false;
     this.queue.length = 0;
+    this.stopPing();
     this.ws?.close();
     this.ws = null;
   }

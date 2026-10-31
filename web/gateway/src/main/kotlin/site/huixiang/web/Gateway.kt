@@ -490,6 +490,7 @@ private fun onText(session: WebSession, text: String, ip: String) {
             )
         }
         "leave" -> session.leave()
+        "ping" -> session.pong(m["v"])
         "join" -> session.joinChannel((m["cid"] as? Number)?.toInt() ?: return, (m["password"] as? String).orEmpty())
         "say" -> session.sendMessage(
             (m["text"] as? String).orEmpty(),

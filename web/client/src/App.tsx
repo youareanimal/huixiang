@@ -50,6 +50,11 @@ export default function App() {
   const [friends, setFriends] = useState<ContactsMessage>(() => emptyContacts());
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 延迟拆成两段：浏览器↔网关、网关↔服务器（TeamSpeak 的 UDP ping）
+  const [ping, setPing] = useState<{ gateway: number | null; server: number | null }>({
+    gateway: null,
+    server: null,
+  });
   const [micOn, setMicOn] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [audioReady, setAudioReady] = useState(false);
@@ -156,9 +161,14 @@ export default function App() {
           if (s.phase === 'connected') {
             setConnecting(false);
             if (s.address) store.addRecent(s.address);
+          } else {
+            // 已经不在语音连接里了，服务器那半段延迟作废；网关那半段还活着
+            setPing((p) => (p.server == null ? p : { ...p, server: null }));
           }
           if (s.error) setError(s.error);
         },
+        onRoundTrip: (ms) => setPing((p) => (p.gateway === ms ? p : { ...p, gateway: ms })),
+        onServerPing: (ms) => setPing((p) => (p.server === ms ? p : { ...p, server: ms })),
         onChat: (line) => setChat((prev) => [...prev, line].slice(-MAX_CHAT)),
         onFiles: setFiles,
         onAccount: setAccount,
@@ -179,6 +189,7 @@ export default function App() {
           setState(null);
           setChat([]);
           setFiles(null);
+          setPing({ gateway: null, server: null });
           setAccount(guestAccount());
           setBookmarks(emptyBookmarks());
           setFriends(emptyContacts());
@@ -213,6 +224,7 @@ export default function App() {
     setState(null);
     setChat([]);
     setFiles(null);
+    setPing({ gateway: null, server: null });
     setConnecting(false);
   }, [talking]);
 
@@ -221,6 +233,7 @@ export default function App() {
       setError(null);
       setConnecting(true);
       talking.reset();
+      setPing({ gateway: null, server: null });
       lastAddress.current = { address: opts.host, nickname: opts.nickname };
       setChat([]);
       try {
@@ -488,6 +501,8 @@ export default function App() {
         onAccountRefresh={accountRefresh}
         onAvatarChange={changeAccountAvatar}
         onAvatarRemove={removeAccountAvatarNow}
+        pingGateway={ping.gateway}
+        pingServer={ping.server}
         micOn={micOn}
         micLevel={micLevel}
         micGain={micGain}
@@ -524,6 +539,7 @@ export default function App() {
     account,
     bookmarks,
     friends,
+    ping,
     tokenNeeded,
     token,
     connecting,
