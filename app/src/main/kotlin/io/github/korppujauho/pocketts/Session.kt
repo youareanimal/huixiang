@@ -9,6 +9,7 @@ import io.github.korppujauho.pocketts.proto.Commands
 import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.MessageText
+import io.github.korppujauho.pocketts.proto.MyTsVoiceCheck
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
 import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import io.github.korppujauho.pocketts.proto.MyTsAccount
@@ -42,6 +43,8 @@ object Session : TsClient.Listener {
         val phase: Phase = Phase.IDLE,
         val error: String? = null,
         val myTsVoiceStatus: MyTsVoiceStatus = MyTsVoiceStatus.NOT_REQUESTED,
+        val myTsVoiceReceipt: String = "",
+        val myTsMetadataReceipt: String = "",
         val address: String = "",
         val serverName: String = "",
         val tree: List<ServerModel.Node> = emptyList(),
@@ -816,8 +819,25 @@ object Session : TsClient.Listener {
     // ====== From the connection (its own thread) ======
 
     override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {
-        _state.update { it.copy(myTsVoiceStatus = status) }
+        _state.update { if (status == MyTsVoiceStatus.PROOF_SENT)
+            it.copy(myTsVoiceStatus = status, myTsVoiceReceipt = "", myTsMetadataReceipt = "")
+            else it.copy(myTsVoiceStatus = status) }
         AppLog.log("myTeamSpeak voice status: ${status.name}")
+    }
+
+    override fun onMyTsVoiceCheck(check: MyTsVoiceCheck, errorCode: Int?) {
+        val code = errorCode?.let { "（错误码 $it）" }.orEmpty()
+        val text = when (check) {
+            MyTsVoiceCheck.ID_MATCHED -> "服务器返回的账号标识匹配"
+            MyTsVoiceCheck.ID_ABSENT -> "服务器返回的账号标识为空"
+            MyTsVoiceCheck.ID_MISMATCH -> "服务器返回的账号标识与登录账号不匹配"
+            MyTsVoiceCheck.QUERY_REJECTED -> "服务器拒绝账号查询$code"
+            MyTsVoiceCheck.QUERY_NO_ID -> "查询完成，但服务器未返回账号标识"
+            MyTsVoiceCheck.METADATA_ACCEPTED -> "服务器已接受账号资料命令"
+            MyTsVoiceCheck.METADATA_REJECTED -> "服务器拒绝账号资料命令$code"
+        }
+        _state.update { if (check in setOf(MyTsVoiceCheck.METADATA_ACCEPTED, MyTsVoiceCheck.METADATA_REJECTED))
+            it.copy(myTsMetadataReceipt = text) else it.copy(myTsVoiceReceipt = text) }
     }
 
     override fun onConnected(clientId: Int) {

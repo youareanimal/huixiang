@@ -25,6 +25,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         fun onConnected(clientId: Int) {}
         fun onCommand(cmd: Command) {}
         fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {}
+        fun onMyTsVoiceCheck(check: MyTsVoiceCheck, errorCode: Int?) {}
         /** A voice packet: who is talking, the codec (4 Opus Voice, 5 Opus Music), and the frame (empty = stopped). */
         fun onVoice(voice: Voice) {}
         /** Round trip of a keepalive ping, in milliseconds (one goes out every second). */
@@ -125,6 +126,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     private lateinit var opts: Options
     private var myTsAuthenticated = false
     private var myTsServerConfirmed = false
+    private var myTsSawServerId = false
     private var socket: DatagramSocket? = null
     @Volatile private var server: InetSocketAddress? = null
     private var ticker: ScheduledFuture<*>? = null
@@ -261,6 +263,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         cryptoReady = false
         myTsAuthenticated = false
         myTsServerConfirmed = false
+        myTsSawServerId = false
         ivStruct = null
         fakeSignature.fill(0)
         alpha = null
@@ -635,18 +638,43 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
             if (cmd.name in setOf("clientvariables", "notifyclientupdated")) {
                 for (fields in cmd.groups) {
                     if (fields["clid"]?.toIntOrNull() == clientId && "client_myteamspeak_id" in fields) {
+                        myTsSawServerId = true
                         myTsServerConfirmed = opts.myTsIdentity?.matchesServerId(
                             fields["client_myteamspeak_id"].orEmpty()) == true
+                        reportMyTsCheck(when {
+                            myTsServerConfirmed -> MyTsVoiceCheck.ID_MATCHED
+                            fields["client_myteamspeak_id"].isNullOrEmpty() -> MyTsVoiceCheck.ID_ABSENT
+                            else -> MyTsVoiceCheck.ID_MISMATCH
+                        })
                         listener.onMyTsVoiceStatus(if (myTsServerConfirmed)
                             MyTsVoiceStatus.SERVER_CONFIRMED else MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
                     }
                 }
-            } else if (cmd.name == "error" && cmd["return_code"] == "quiet-myts-verify" && !myTsServerConfirmed) {
-                listener.onMyTsVoiceStatus(MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
+            } else if (cmd.name == "error") {
+                val code = cmd["id"]?.toIntOrNull()?.takeIf { it in 0..65535 }
+                when (cmd["return_code"]) {
+                    "quiet-myts-verify", "quiet-myts-recheck" -> if (!myTsServerConfirmed) {
+                        if (code != 0) reportMyTsCheck(MyTsVoiceCheck.QUERY_REJECTED, code)
+                        else if (!myTsSawServerId) reportMyTsCheck(MyTsVoiceCheck.QUERY_NO_ID)
+                        listener.onMyTsVoiceStatus(MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
+                    }
+                    "quiet-myts-data" -> if (code == 0) {
+                        reportMyTsCheck(MyTsVoiceCheck.METADATA_ACCEPTED)
+                        // The initial query may precede certificate/avatar registration.
+                        // Re-read after its successful receipt; a receipt alone never confirms identity.
+                        if (!myTsServerConfirmed) sendCommand(Commands.build("clientgetvariables",
+                            "clid" to clientId, "return_code" to "quiet-myts-recheck"))
+                    } else reportMyTsCheck(MyTsVoiceCheck.METADATA_REJECTED, code)
+                }
             }
         }
         listener.onCommand(cmd)
         if (cmd.name == "notifyclientleftview" && cmd.groups.any { it["clid"]?.toIntOrNull() == clientId }) finish(disconnectReason)
+    }
+
+    private fun reportMyTsCheck(check: MyTsVoiceCheck, errorCode: Int? = null) {
+        log("myTeamSpeak receipt: ${check.name}" + (errorCode?.let { " code=$it" } ?: ""))
+        listener.onMyTsVoiceCheck(check, errorCode)
     }
 
     // ====== Handshake ======
@@ -741,6 +769,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         ivStruct = iv
         Crypto.sha1(iv).copyInto(fakeSignature, 0, 0, MAC)
         cryptoReady = true
+        myTsSawServerId = false
         alpha = null
         val o = opts
         val accountFields = try { o.myTsIdentity?.authentication(iv).orEmpty() }
