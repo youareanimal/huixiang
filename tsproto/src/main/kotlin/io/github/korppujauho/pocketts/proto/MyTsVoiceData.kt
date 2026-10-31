@@ -24,7 +24,7 @@ class MyTsVoiceData private constructor(private val certificate: ByteArray, priv
                 fields.singleOrNull { it.number == 1 }?.bytes != null && fields.number(2) != null &&
                     fields.singleOrNull { it.number == 3 }?.bytes?.size == 64
             }
-            val badges = signedBadges?.takeIf { bytes ->
+            val badges = signedBadges?.takeIf { it.isNotEmpty() }?.takeIf { bytes ->
                 require(bytes.size <= 65536)
                 CloudProto.read(bytes).all { field ->
                     if (field.number != 1) true else {
