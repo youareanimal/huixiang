@@ -8,5 +8,5 @@ enum class MyTsVoiceStatus {
 /** Bounded server receipt information only; no account identifiers or remote text. */
 enum class MyTsVoiceCheck {
     ID_MATCHED, ID_ABSENT, ID_MISMATCH, QUERY_REJECTED, QUERY_NO_ID,
-    METADATA_ACCEPTED, METADATA_REJECTED
+    METADATA_ACCEPTED, METADATA_REJECTED, METADATA_UNAVAILABLE, METADATA_FETCH_FAILED
 }
