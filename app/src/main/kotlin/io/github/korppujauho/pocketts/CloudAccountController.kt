@@ -184,7 +184,17 @@ class CloudAccountController(
         finally { if (currentRequest()) mutable.update { it.copy(contactsLoading = false) } }
     }
 
-    fun refresh() { if (!lock.isLocked && mutable.value.cloudConnected) cloudOperation(showBusy = false) { refreshNow() } }
+    fun refresh() {
+        if (!lock.isLocked && mutable.value.cloudConnected) cloudOperation(showBusy = false) {
+            try { refreshNow() } catch (e: CloudFailure) {
+                // A failed polling request must not leave the UI claiming that cloud chat is online.
+                // Keep cached rooms and drafts; only a user action retries the connection.
+                if (e.code in setOf("NETWORK", "HTTP_502", "HTTP_503", "HTTP_504", "M_UNKNOWN_TOKEN"))
+                    mutable.update { it.copy(cloudConnected = false) }
+                throw e
+            }
+        }
+    }
     fun refreshFriends() {
         mutable.update { it.copy(localServers = Favorites.load(app)) }
         refreshBookmarks()
@@ -330,6 +340,9 @@ class CloudAccountController(
 
     fun connectCloud() = cloudOperation { connectCloudNow() }
     private fun connectCloudNow() {
+        // Explicit reconnect is also available after a previously successful login.
+        // Mark it offline until the new initial sync succeeds, retaining cached conversations.
+        mutable.update { it.copy(cloudConnected = false) }
         fun freshCredentials(): CloudAccountTransfer {
             val current = identity ?: throw CloudFailure("MYTS_103")
             val credentials = chatStage("CREDENTIALS") { MyTsAccount(http).chatCredentials(current) }
