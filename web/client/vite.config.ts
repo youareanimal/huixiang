@@ -13,6 +13,10 @@ export default defineConfig({
     proxy: {
       '/ws': { target: `ws://${target}`, ws: true },
       '/auth': { target: `http://${target}` },
+      // 文件的字节是 HTTP，不走 /ws：dev 下不代理就会打到 vite 自己，拿回一个 index.html
+      '/files': { target: `http://${target}` },
+      // 会话横幅同理（ts3image 的那种要网关去下载再给出来）
+      '/server-banner': { target: `http://${target}` },
     },
   },
   build: { outDir: 'dist', emptyOutDir: true },
