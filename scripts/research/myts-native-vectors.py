@@ -125,3 +125,32 @@ for value in (128, 1700000128, 2**63 - 1, 2**63, 2**64 - 1):
     creation_times.append(dict(loginValue=str(value), voiceAcTime=actual))
 print(json.dumps(dict(synthetic=True, nativeBinarySHA256=hashlib.sha256(binary).hexdigest(),routine='0x474bab0',vectors=vectors,creationTimes=creation_times),indent=2))
 
+
+# Compare the actual native command byte builder, not a text reconstruction.
+import base64
+native_command_init = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)(base + 0x4625290)
+native_command_add = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool, ctypes.c_bool)(base + 0x4625510)
+escapes = {92:b"\\\\",47:b"\\/",32:b"\\s",124:b"\\p",7:b"\\a",8:b"\\b",12:b"\\f",10:b"\\n",13:b"\\r",9:b"\\t",11:b"\\v"}
+def escape_bytes(data):
+    return b"".join(escapes.get(value,bytes([value])) for value in data)
+def view(data):
+    storage=ctypes.create_string_buffer(data)
+    pair=(ctypes.c_uint64*2)(ctypes.addressof(storage),len(data))
+    return storage,pair
+command_vectors=[]
+for payload in (b"synthetic-certificate", bytes(range(256)), b"\x0a\x05hello\x00\x80\xff \\|/\x07\x08"):
+    command=ctypes.create_string_buffer(0x120)
+    name_storage,name=view(b"updatemytsdata")
+    key_storage,key=view(b"myts_certificate")
+    value_storage,value=view(payload)
+    native_command_init(command,name)
+    native_command_add(command,key,value,True,False)
+    length=struct.unpack_from("<Q",command.raw,0)[0]
+    begin,end=struct.unpack_from("<QQ",command.raw,0x108)
+    address=begin if begin!=end else ctypes.addressof(command)+8
+    actual=ctypes.string_at(address,length)
+    expected=b"updatemytsdata myts_certificate="+escape_bytes(payload)
+    assert actual==expected,"Native binary command escaping differs"
+    assert payload==b"synthetic-certificate" or actual!=b"updatemytsdata myts_certificate="+base64.b64encode(payload)
+    command_vectors.append(dict(inputBase64=base64.b64encode(payload).decode(),wireBase64=base64.b64encode(actual).decode(),wireSHA256=hashlib.sha256(actual).hexdigest()))
+Path("evidence/native-binary-commands.json").write_text(json.dumps(dict(synthetic=True,nativeBinarySHA256=hashlib.sha256(binary).hexdigest(),commandVectors=command_vectors),indent=2))
