@@ -5,8 +5,8 @@
 ## 版本与证据范围
 
 - 官方 Windows 客户端：6.0.0-beta5。来自本机 `C:/Users/93608/AppData/Local/TeamSpeak/Logs/Default/` 下的官方启动日志；2026-10-29 日志仍记录此版本。EXE 的 ProductVersion 只有 `6, 0, 0, 0`，不能代替 beta 版本。
-- PI 服务器：6.0.0-beta13.1。只读 Docker 镜像为 `teamspeaksystems/teamspeak6-server:6.0.0-beta13.1`，容器 `teamspeak6-server`；启动日志独立确认相同补丁号。
-- 官方历史日志包含 `pi.animal26.site` 连接目标。服务器版本是调查时的实际部署版本，不能保证与所有历史连接时的部署相同。
+- 更新服务器 服务器：6.0.0-beta13.1。只读 Docker 镜像为 `teamspeaksystems/teamspeak6-server:6.0.0-beta13.1`，容器 `teamspeak6-server`；启动日志独立确认相同补丁号。
+- 官方历史日志包含 `updates.example.invalid` 连接目标。服务器版本是调查时的实际部署版本，不能保证与所有历史连接时的部署相同。
 - 本轮没有可用的官方客户端活动进程，未捕获本次实时登录或 UDP 明文命令。下文明确区分静态定义、公开实现和待确认的线上行为。
 - 重新从当前安装的 `C:/Users/93608/AppData/Local/Programs/TeamSpeak/TeamSpeak.dll` 提取 protobuf 描述符。DLL SHA-256 与原始字段编号见 `static-schemas.json`；其中没有任何账号值。
 

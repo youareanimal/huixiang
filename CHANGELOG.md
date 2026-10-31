@@ -30,6 +30,12 @@
 - 新增 `web/deploy/verify.sh`：部署后自检 7 项（存活、口令配置、首页、静态资源 MIME、同源握手、陌生来源拒绝、本站来源握手）。WebSocket 握手用原始 socket 测——`curl` 会自己改写 `Connection` 头，拿到的永远是 200。
 - 修正 `web/Dockerfile`：原版没有 COPY `app/`，而 `settings.gradle.kts` 里 include 了 `:app`，配置阶段必然失败；改为三阶段构建（node 编前端 → JDK 编后端 → JRE 运行）并补 `.dockerignore`。
 
+## 回响 0.5.3 (2026-10-31)
+
+- 修复 myTeamSpeak 账号证明把无符号 64 位值当作有符号正数校验的问题，避免合法账号证明被跳过，并按官方格式发送 acTime。
+- 自己的用户资料卡显示账号证明生成和服务器确认状态；只有服务器返回匹配的账号标识后才显示“服务器已确认”。
+- 补充无符号边界值、实际发送报文及服务器确认回归测试；安装包仍由 Actions 构建并使用原证书签名。
+
 ## 回响 0.5.2 (2026-10-30)
 
 - 接入 myTeamSpeak 账号与语音连接的证明链路，每次连接独立签名，并发送签名头像、证书和徽章数据；私钥和登录令牌不发送给语音服务器。
@@ -40,9 +46,9 @@
 ## 回响 0.5.1 (2026-10-29)
 
 - 修复手动连接页大标题两行文字重叠，给连接、登录及同类标题设置与字号匹配的行高，支持放大字体后的换行。
-- 在线更新默认使用 PI HTTPS 直连镜像，关于页可选择 PI 或 Cloudflare，并显示当前来源；检查和下载失败时尝试备用源。
+- 在线更新默认使用 更新服务器 HTTPS 直连镜像，关于页可选择 更新服务器 或 Cloudflare，并显示当前来源；检查和下载失败时尝试备用源。
 - 下载切源前重新核对版本、手机架构、长度与 SHA-256，仍检查包名、版本和原签名证书；各来源保持各自 HTTPS 主机、端口和路径限制。
-- 增加 PI 只读镜像与证书续期维护脚本；发布时同步同一批签名安装包和对应源码。旧客户端的 Cloudflare 更新清单继续保留。
+- 增加 更新服务器 只读镜像与证书续期维护脚本；发布时同步同一批签名安装包和对应源码。旧客户端的 Cloudflare 更新清单继续保留。
 
 ## 回响 0.5.0 (2026-10-29)
 
@@ -69,7 +75,7 @@
 - Require the public HTTPS release origin, a matching size/hash/package/version, and the installed signing certificate.
   Keep TeamSpeak authentication and private cloud-drive credentials out of the update channel.
 - Add a dedicated Cloudflare Pages feed and repeatable publication script, preserving versioned downloads and
-  publishing the matching GPL source archive. Continue copying the arm64 APK to the existing PI cloud-drive folder.
+  publishing the matching GPL source archive. Continue copying the arm64 APK to the existing 更新服务器 cloud-drive folder.
 
 ## 回响 0.4.1 (2026-10-27)
 
