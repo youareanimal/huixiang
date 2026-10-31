@@ -23,6 +23,9 @@ src/
   App.tsx                  连接生命周期、状态、语音开关
   protocol.ts              网关协议类型、本地存储、树查找
   gateway.ts               WebSocket 封装（含口令认证）
+  files.ts                 文件字节：HTTP 上传 / 下载（列表命令仍走 gateway.ts）
+  stream.ts                屏幕 / 摄像头串流（画面是 WebRTC，不经网关）
+  talking.ts               谁在说话：从下行语音帧判读
   audio/
     player.ts              下行：每人一个 AudioDecoder，Web Audio 排程播放
     mic.ts                 上行：AudioWorklet 攒 20ms → AudioEncoder 编 Opus
@@ -32,8 +35,12 @@ src/
     ServerPage.tsx         整体布局 + 改名、频道密码弹窗
     ChannelTree.tsx        频道与成员
     ChatPanel.tsx          频道文字
-    MemberList.tsx         右栏当前频道成员
-    ControlBar.tsx         麦克风、扬声器、离开
+    Stage.tsx              当前频道成员（谁在说话、单人音量）
+    StreamPanel.tsx        串流画面与工具条（全屏、静音）
+    FilesPanel.tsx         频道文件区（右侧抽屉：浏览、上传、下载）
+    ServerInfo.tsx         右栏服务器信息
+    ControlBar.tsx         麦克风、扬声器、直播、离开
+    VolumePopover.tsx      音量滑块
 ```
 
 ## 语音是怎么走的
@@ -96,8 +103,22 @@ FAKE_MIC=1 node test/shot.mjs http://127.0.0.1:8080/ shot.png 3000 "..."
 
 ## 还没做
 
-- 文件传输、头像、屏幕串流（网关也还没接）
-- 每个人的音量调节
+- 头像
+- 文件管理：删除 / 改名 / 建文件夹（网关已经有 `delete` 命令，缺的是一个带确认的交互）
 - 私聊：**不做**（按需求砍掉了，网关侧仍支持，将来要加只需改前端）
 
-已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**按住说话 / 常开麦切换**（按住说话支持空格键，输入框内不拦截）。
+已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**按住说话 / 常开麦切换**（按住说话支持空格键，输入框内不拦截）、单人音量、屏幕与摄像头串流、**频道文件的上传 / 下载 / 浏览**。
+
+## 文件是怎么走的
+
+列表走 WebSocket（`{"t":"file","act":"list"}` → `{"t":"files"}`），字节走 HTTP：
+
+```
+File / Blob ──XHR POST /files/upload──▶ 网关 ──ftinitupload + TCP 30033──▶ TS 服务器
+                                              （文件落在服务器的频道文件区）
+```
+
+- 上传用 `XMLHttpRequest` 而不是 `fetch`：后者至今没有可用的上传进度事件。
+- 下载用 `fetch` + `ReadableStream` 一块块读，进度是真的，中途断线立刻能发现（比 `res.blob()` 强）。
+- 两个端点都要带 `X-File-Token`，值来自状态快照里的 `fileToken`——它代表这次会话，断开就作废。
+- 开发模式下 `/files` 和 `/server-banner` 也要反代到网关（见 `vite.config.ts`），否则会打到 vite 自己。
