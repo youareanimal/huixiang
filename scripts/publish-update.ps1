@@ -1,5 +1,7 @@
 param(
-    [string]$PiHost = 'pi.animal26.site',
+    [Parameter(Mandatory = $true)][string]$PiHost,
+    [Parameter(Mandatory = $true)][string]$RemoteRoot,
+    [Parameter(Mandatory = $true)][string]$WranglerPath,
     [string]$Python = 'python',
     [string]$ReleaseNotes = ''
 )
@@ -12,7 +14,7 @@ try {
     & $Python @prepareArgs
     if ($LASTEXITCODE -ne 0) { throw 'Preparing update assets failed.' }
     $stage = Join-Path $projectRoot 'dist/update-site'
-    $remoteRoot = '/home/maxin/huixiang-update-host'
+    $remoteRoot = $RemoteRoot
     $stamp = [Guid]::NewGuid().ToString('N')
     $remoteStage = "$remoteRoot/release-$stamp"
     & ssh -o BatchMode=yes $PiHost "mkdir -p '$remoteStage'"
@@ -28,10 +30,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cloud-drive copy failed.' }
     # A configured direct HTTPS mirror receives the same immutable assets, then its own manifest.
     & ssh -o BatchMode=yes $PiHost "if test -x /usr/local/lib/huixiang-mirror/sync-release.py; then sudo -n python3 /usr/local/lib/huixiang-mirror/sync-release.py --stage '$remoteStage'; fi"
-    if ($LASTEXITCODE -ne 0) { throw 'PI HTTPS mirror synchronization failed.' }
-    # Publish the primary mirror first. Existing OAuth login/refresh uses the PI's established proxy.
-    $deploy = "cd '$remoteRoot' && HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 node /home/maxin/.npm/_npx/32026684e21afda6/node_modules/wrangler/bin/wrangler.js pages deploy '$remoteStage' --project-name huixiang-updates --branch main --commit-dirty=true"
+    if ($LASTEXITCODE -ne 0) { throw 'server HTTPS mirror synchronization failed.' }
+    # Publish the primary mirror first. Existing OAuth login/refresh uses the server's established proxy.
+    $deploy = "cd '$remoteRoot' && HTTP_PROXY=http://127.0.0.1:7890 HTTPS_PROXY=http://127.0.0.1:7890 node '$WranglerPath' pages deploy '$remoteStage' --project-name huixiang-updates --branch main --commit-dirty=true"
     & ssh -o BatchMode=yes $PiHost $deploy
-    if ($LASTEXITCODE -ne 0) { throw 'PI mirror is synchronized, but publishing the Cloudflare fallback failed.' }
+    if ($LASTEXITCODE -ne 0) { throw 'server mirror is synchronized, but publishing the Cloudflare fallback failed.' }
     Write-Output 'Published: https://huixiang-updates.pages.dev/latest.json'
 } finally { Pop-Location }
