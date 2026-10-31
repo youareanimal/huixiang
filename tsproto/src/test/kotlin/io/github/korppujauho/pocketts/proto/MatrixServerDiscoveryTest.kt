@@ -52,4 +52,22 @@ class MatrixServerDiscoveryTest {
         assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> throw CloudFailure("NETWORK") }))
         assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> reply(emptyMap<String, Any?>()) }))
     }
+
+    @Test fun http5xxDuringLoginNeverAutomaticallyRetriesTheCredentialedPost() {
+        for (status in listOf(502, 503, 504)) {
+            var loginPosts = 0
+            val api = MatrixCloud(domain, CloudTransport { method, url, _, body ->
+                assertEquals("POST", method)
+                assertEquals("https://$domain/_matrix/client/r0/login", url)
+                assertNotNull(body)
+                loginPosts++
+                reply(emptyMap<String, Any?>(), status)
+            })
+            val account = CloudAccountTransfer(domain, "@fixture:$domain", "fixture-password", "", "Fixture")
+            assertEquals("HTTP_$status", assertFailsWith<CloudFailure> {
+                api.login(account, "DEVICE_TEST")
+            }.code)
+            assertEquals("A failed login must not issue repeated authenticated requests", 1, loginPosts)
+        }
+    }
 }
