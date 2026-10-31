@@ -9,30 +9,45 @@ package io.github.korppujauho.pocketts.proto
  */
 class CommandPacer(private val burst: Int = 10, private val perSecond: Double = 4.0) {
 
-    private val queue = ArrayDeque<String>()
+    class Packet internal constructor(val text: String, val bytes: ByteArray? = null) {
+        override fun toString() = "PacedCommand(redacted)"
+    }
+
+    private val queue = ArrayDeque<Packet>()
     private var credit = burst.toDouble()
     private var refilled = Long.MIN_VALUE
     private var pausedUntil = Long.MIN_VALUE
     private var nextCode = 0
 
     // What each sent command was (by its return code) until the server answers it
-    private val sent = object : LinkedHashMap<String, String>() {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 200
+    private val sent = object : LinkedHashMap<String, Packet>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Packet>?) = size > 200
     }
 
     fun add(cmd: String) {
-        queue.addLast(if (returnCode(cmd) != null) cmd else "$cmd return_code=pq-${nextCode++}")
+        queue.addLast(Packet(if (returnCode(cmd) != null) cmd else "$cmd return_code=pq-${nextCode++}"))
     }
 
-    /** The commands that may go [now], in order. */
-    fun take(now: Long): List<String> {
+    fun add(cmd: ByteArray) {
+        // Latin-1 is only a reversible view for finding the ASCII return_code delimiter.
+        // The original bytes, not this view, are retained for transport and flood retries.
+        val text = cmd.toString(Charsets.ISO_8859_1)
+        val suffix = if (returnCode(text) == null) " return_code=pq-${nextCode++}" else ""
+        queue.addLast(Packet(text + suffix, cmd.copyOf() + suffix.toByteArray(Charsets.US_ASCII)))
+    }
+
+    /** Compatibility view for text-only callers. Binary senders use [takePackets]. */
+    fun take(now: Long): List<String> = takePackets(now).map { it.text }
+
+    /** The commands that may go [now], in order, retaining any binary payload. */
+    fun takePackets(now: Long): List<Packet> {
         refill(now)
         if (now < pausedUntil) return emptyList()
-        val out = ArrayList<String>()
+        val out = ArrayList<Packet>()
         while (queue.isNotEmpty() && credit >= 1) {
             credit -= 1
             val cmd = queue.removeFirst()
-            returnCode(cmd)?.let { sent[it] = cmd }
+            returnCode(cmd.text)?.let { sent[it] = cmd }
             out.add(cmd)
         }
         return out

@@ -14,11 +14,11 @@ class Command(val name: String, val groups: List<Map<String, String>>) {
 object Commands {
     private val ESCAPE = mapOf(
         '\\' to "\\\\", '/' to "\\/", ' ' to "\\s", '|' to "\\p",
-        '\u000c' to "\\f", '\n' to "\\n", '\r' to "\\r", '\t' to "\\t", '\u000b' to "\\v",
+        '\u0007' to "\\a", '\b' to "\\b", '\u000c' to "\\f", '\n' to "\\n", '\r' to "\\r", '\t' to "\\t", '\u000b' to "\\v",
     )
     private val UNESCAPE = mapOf(
         '\\' to '\\', '/' to '/', 's' to ' ', 'p' to '|',
-        'f' to '\u000c', 'n' to '\n', 'r' to '\r', 't' to '\t', 'v' to '\u000b',
+        'a' to '\u0007', 'b' to '\b', 'f' to '\u000c', 'n' to '\n', 'r' to '\r', 't' to '\t', 'v' to '\u000b',
     )
 
     fun escape(s: String): String {
@@ -26,6 +26,38 @@ object Commands {
         for (ch in s) sb.append(ESCAPE[ch] ?: ch)
         return sb.toString()
     }
+
+    /** The command protocol also carries opaque binary values; never UTF-8 encode those values. */
+    fun escapeBytes(bytes: ByteArray): ByteArray {
+        val out = java.io.ByteArrayOutputStream(bytes.size)
+        for (byte in bytes) {
+            val value = byte.toInt() and 255
+            val replacement = ESCAPE[value.toChar()]
+            if (replacement == null) out.write(value)
+            else out.write(replacement.toByteArray(Charsets.US_ASCII))
+        }
+        return out.toByteArray()
+    }
+
+    fun buildBytes(name: String, params: Map<String, Any?>): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        out.write(escapeBytes(name.toByteArray(Charsets.UTF_8)))
+        for ((key, value) in params) {
+            if (value == null) continue
+            out.write(' '.code)
+            out.write(escapeBytes(key.toByteArray(Charsets.UTF_8)))
+            out.write('='.code)
+            val bytes = when (value) {
+                is ByteArray -> value
+                is Boolean -> (if (value) "1" else "0").toByteArray(Charsets.US_ASCII)
+                else -> value.toString().toByteArray(Charsets.UTF_8)
+            }
+            out.write(escapeBytes(bytes))
+        }
+        return out.toByteArray()
+    }
+
+    fun buildBytes(name: String, vararg params: Pair<String, Any?>): ByteArray = buildBytes(name, linkedMapOf(*params))
 
     fun unescape(s: String): String {
         val sb = StringBuilder(s.length)

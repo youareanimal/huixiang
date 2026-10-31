@@ -1,17 +1,15 @@
 package io.github.korppujauho.pocketts.proto
 
 import io.github.korppujauho.pocketts.proto.CloudProto.number
-import java.util.Base64
 
 /** Signed, public account metadata. The server validates the original signatures. */
 class MyTsVoiceData private constructor(private val certificate: ByteArray, private val avatar: ByteArray?,
     private val badges: ByteArray?) {
     override fun toString() = "MyTsVoiceData(redacted)"
 
-    fun command(): String {
-        fun encode(bytes: ByteArray) = Base64.getEncoder().encodeToString(bytes)
-        return Commands.build("updatemytsdata", "myts_certificate" to encode(certificate),
-            "myts_avatar" to avatar?.let(::encode), "myts_signed_badge" to badges?.let(::encode),
+    fun commandBytes(): ByteArray {
+        return Commands.buildBytes("updatemytsdata", "myts_certificate" to certificate,
+            "myts_avatar" to avatar, "myts_signed_badge" to badges,
             "return_code" to "quiet-myts-data")
     }
 

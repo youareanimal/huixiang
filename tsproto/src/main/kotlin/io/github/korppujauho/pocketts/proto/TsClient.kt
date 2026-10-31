@@ -232,7 +232,7 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     fun sendMyTsData(data: MyTsVoiceData) {
         exec.execute {
             if (state == State.CONNECTED && myTsAuthenticated) {
-                pacer.add(data.command())
+                pacer.add(data.commandBytes())
                 drain()
             }
         }
@@ -393,7 +393,9 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
     /** Sends the commands that may go now, and comes back when the next one may. */
     private fun drain() {
         if (state != State.CONNECTED) return
-        for (cmd in pacer.take(now())) sendCommandNow(cmd)
+        for (cmd in pacer.takePackets(now())) {
+            if (cmd.bytes != null) sendCommandNow(cmd.bytes) else sendCommandNow(cmd.text)
+        }
         val wait = pacer.waitMs(now()) ?: return
         if (drainLater != null) return
         drainLater = exec.schedule({
@@ -402,8 +404,9 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         }, wait, TimeUnit.MILLISECONDS)
     }
 
-    private fun sendCommandNow(cmd: String) {
-        val data = cmd.toByteArray(Charsets.UTF_8)
+    private fun sendCommandNow(cmd: String) = sendCommandNow(cmd.toByteArray(Charsets.UTF_8))
+
+    private fun sendCommandNow(data: ByteArray) {
         if (data.size <= MAX_CONTENT) {
             sendOutgoing(data, Type.COMMAND)
             return
