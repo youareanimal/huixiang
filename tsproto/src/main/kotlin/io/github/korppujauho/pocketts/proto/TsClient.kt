@@ -638,22 +638,21 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
             }
         }
         if (state == State.CONNECTED && myTsAuthenticated) {
-            if (cmd.name in setOf("clientvariables", "notifyclientupdated")) {
-                for (fields in cmd.groups) {
-                    if (fields["clid"]?.toIntOrNull() == clientId && "client_myteamspeak_id" in fields) {
-                        myTsSawServerId = true
-                        myTsServerConfirmed = opts.myTsIdentity?.matchesServerId(
-                            fields["client_myteamspeak_id"].orEmpty()) == true
-                        reportMyTsCheck(when {
-                            myTsServerConfirmed -> MyTsVoiceCheck.ID_MATCHED
-                            fields["client_myteamspeak_id"].isNullOrEmpty() -> MyTsVoiceCheck.ID_ABSENT
-                            else -> MyTsVoiceCheck.ID_MISMATCH
-                        })
-                        listener.onMyTsVoiceStatus(if (myTsServerConfirmed)
-                            MyTsVoiceStatus.SERVER_CONFIRMED else MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
-                    }
+            for (fields in myTsIdentityIdGroups(cmd, clientId)) {
+                if ("client_myteamspeak_id" in fields) {
+                    myTsSawServerId = true
+                    myTsServerConfirmed = opts.myTsIdentity?.matchesServerId(
+                        fields["client_myteamspeak_id"].orEmpty()) == true
+                    reportMyTsCheck(when {
+                        myTsServerConfirmed -> MyTsVoiceCheck.ID_MATCHED
+                        fields["client_myteamspeak_id"].isNullOrEmpty() -> MyTsVoiceCheck.ID_ABSENT
+                        else -> MyTsVoiceCheck.ID_MISMATCH
+                    })
+                    listener.onMyTsVoiceStatus(if (myTsServerConfirmed)
+                        MyTsVoiceStatus.SERVER_CONFIRMED else MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
                 }
-            } else if (cmd.name == "error") {
+            }
+            if (cmd.name == "error") {
                 val code = cmd["id"]?.toIntOrNull()?.takeIf { it in 0..65535 }
                 when (cmd["return_code"]) {
                     "quiet-myts-verify", "quiet-myts-recheck" -> if (!myTsServerConfirmed) {
