@@ -181,6 +181,8 @@ internal fun PersonDetails(person: ServerModel.Client, isSelf: Boolean, channelN
                             Text(connection.myTsVoiceReceipt, color = Ts.text, fontSize = 13.sp)
                         if (connection.myTsMetadataReceipt.isNotBlank())
                             Text(connection.myTsMetadataReceipt, color = Ts.text, fontSize = 13.sp)
+                        if (connection.myTsBadgeReceipt.isNotBlank())
+                            Text(connection.myTsBadgeReceipt, color = Ts.text, fontSize = 13.sp)
                     }
                 }
                 Text("昵称：${person.nickname}", color = Ts.text, fontSize = 13.sp)
