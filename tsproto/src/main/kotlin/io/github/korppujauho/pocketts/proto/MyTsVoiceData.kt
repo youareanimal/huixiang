@@ -18,20 +18,26 @@ class MyTsVoiceData private constructor(private val certificate: ByteArray, priv
          * Validate the bounded signed-badge envelope without exposing or logging its contents.
          * Returns null for malformed data, otherwise the number of signed badge entries.
          */
-        fun signedBadgeCount(bytes: ByteArray): Int? = try {
-            if (bytes.isEmpty()) return 0
-            if (bytes.size > 65536) return null
-            val fields = CloudProto.read(bytes)
-            val entries = fields.filter { it.number == 1 }
-            val valid = fields.all { field ->
-                if (field.number != 1) true else {
-                    val nested = CloudProto.read(requireNotNull(field.bytes))
-                    nested.singleOrNull { it.number == 1 }?.bytes != null && nested.number(3) != null &&
-                        nested.singleOrNull { it.number == 2 }?.bytes?.size == 64
+        fun signedBadgeCount(bytes: ByteArray): Int? {
+            return try {
+                when {
+                    bytes.isEmpty() -> 0
+                    bytes.size > 65536 -> null
+                    else -> {
+                        val fields = CloudProto.read(bytes)
+                        val entries = fields.filter { it.number == 1 }
+                        val valid = fields.all { field ->
+                            if (field.number != 1) true else {
+                                val nested = CloudProto.read(requireNotNull(field.bytes))
+                                nested.singleOrNull { it.number == 1 }?.bytes != null && nested.number(3) != null &&
+                                    nested.singleOrNull { it.number == 2 }?.bytes?.size == 64
+                            }
+                        }
+                        if (valid) entries.size else null
+                    }
                 }
-            }
-            if (valid) entries.size else null
-        } catch (_: Exception) { null }
+            } catch (_: Exception) { null }
+        }
 
         fun fromSession(session: MyTsAccount.Session, signedBadges: ByteArray? = null): MyTsVoiceData? {
             val material = session.voiceMaterial ?: return null
