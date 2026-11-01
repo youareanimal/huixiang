@@ -39,6 +39,25 @@ class CloudAccountTest {
         assertFalse(MyTsAccount.Session("private", "Fixture").toString().contains("private"))
     }
 
+    @Test fun sessionStatusCanBeReadWithoutCollapsingTheRawServerCode() {
+        var calls = 0
+        val api = MyTsAccount(CloudTransport { method, url, _, body ->
+            assertEquals("POST", method)
+            assertEquals("https://clientapi.myteamspeak.com/authentication", url)
+            val payload = body!!
+            val methodLength = payload[0].toInt()
+            assertEquals("session", payload.copyOfRange(1, 1 + methodLength).decodeToString())
+            val fields = CloudProto.read(payload.copyOfRange(1 + methodLength, payload.size))
+            assertEquals("fixture-session", fields.string(1))
+            calls++
+            CloudReply(200, CloudProto.integer(1, if (calls == 1) 102 else 5))
+        })
+        val session = MyTsAccount.Session("fixture-session", "Fixture")
+        assertEquals(102L, api.sessionStatus(session))
+        assertFalse(api.valid(session))
+        assertEquals(2, calls)
+    }
+
     @Test fun contactsAreReadUsingTheSessionWithoutCloudCredentialDependency() {
         val api = MyTsAccount(CloudTransport { _, url, _, body ->
             assertEquals("https://clientapi.myteamspeak.com/tschat", url)
