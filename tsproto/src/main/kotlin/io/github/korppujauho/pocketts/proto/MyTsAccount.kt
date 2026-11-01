@@ -87,8 +87,11 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
             email = email.trim(), voiceMaterial = material, voiceMaterialError = materialError)
     }
 
-    fun valid(session: Session): Boolean =
-        rpc("authentication", "session", CloudProto.text(1, session.token)).number(1) == 102L
+    /** Return the raw authentication/session status so diagnostics can distinguish invalid sessions from transport failures. */
+    fun sessionStatus(session: Session): Long? =
+        rpc("authentication", "session", CloudProto.text(1, session.token)).number(1)
+
+    fun valid(session: Session): Boolean = sessionStatus(session) == 102L
 
     /** Optional public metadata fetch; a badge service failure cannot interrupt voice or discard the avatar. */
     fun voiceData(session: Session): MyTsVoiceData? {

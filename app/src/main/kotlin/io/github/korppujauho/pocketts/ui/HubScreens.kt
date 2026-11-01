@@ -173,7 +173,8 @@ fun ServerHub(account: CloudAccountController.State, favorites: List<Favorite>, 
 }
 
 @Composable
-fun FriendsHub(state: CloudAccountController.State, onLogin: () -> Unit, onRefresh: () -> Unit, onContact: (MyTsAccount.Contact) -> Unit) {
+fun FriendsHub(state: CloudAccountController.State, onLogin: () -> Unit, onRefresh: () -> Unit,
+    onContact: (MyTsAccount.Contact) -> Unit, onDiagnose: () -> Unit = {}) {
     var query by rememberSaveable { mutableStateOf("") }
     Column(Modifier.fillMaxSize()) {
         HubTopBar("好友", "熟悉的人，不用重新找") {
@@ -182,6 +183,24 @@ fun FriendsHub(state: CloudAccountController.State, onLogin: () -> Unit, onRefre
         if (!state.hasAccount) { Box(Modifier.padding(20.dp)) { HubEmpty("登录，和好友保持联系", "语音服务器依然可以用访客身份连接。", "登录账号", onLogin) }; return }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { TsField(query, { query = it }, "搜索好友") }
+            item {
+                OutlinedButton(
+                    onClick = onDiagnose,
+                    enabled = !state.accountDiagnosing && !state.contactsLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (state.accountDiagnosing) "正在诊断账号连接…" else "诊断 MyTeamSpeak 账号连接",
+                        color = Ts.brand)
+                }
+            }
+            state.accountDiagnostic?.let { diagnostic -> item {
+                Surface(shape = RoundedCornerShape(14.dp), color = Ts.panel, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("账号连接诊断结果", color = Ts.bright, fontWeight = FontWeight.SemiBold)
+                        Text(diagnostic, color = Ts.muted, fontSize = 12.sp, lineHeight = 19.sp)
+                    }
+                }
+            } }
             if (state.contactsLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Ts.brand, trackColor = Ts.panel) }
             state.contactError?.let { code -> item { HubError("好友暂时没加载成功，已缓存的好友仍会保留。", code, onRefresh) } }
             val shown = state.contacts.filter { it.displayName.contains(query, ignoreCase = true) || it.subtitle.contains(query, ignoreCase = true) }

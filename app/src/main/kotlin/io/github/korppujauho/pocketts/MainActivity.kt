@@ -378,7 +378,8 @@ private fun App() {
                                 onAdd = { seed = null; route = "CONNECT" }, onJoin = ::join,
                                 onRecent = { seed = entry.recentTarget(account, it, favs); route = "CONNECT" }, onEdit = { editing = it },
                                 onRefresh = controller::refreshBookmarks, onLogin = { route = "LOGIN" })
-                            HubTab.FRIENDS -> FriendsHub(account, { route = "LOGIN" }, controller::refreshContacts, { contact = it })
+                            HubTab.FRIENDS -> FriendsHub(account, { route = "LOGIN" }, controller::refreshContacts,
+                                { contact = it }, controller::diagnoseAccountConnection)
                             HubTab.MESSAGES -> MessagesHub(account, { route = "LOGIN" }, { controller.connectCloud() },
                                 { roomId = it; route = "ROOM" }, controller::diagnoseChatLogin)
                             HubTab.ME -> MeHub(account, state.voice, { route = "LOGIN" }, { logout = true },
