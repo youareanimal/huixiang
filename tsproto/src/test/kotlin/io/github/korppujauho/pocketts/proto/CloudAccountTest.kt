@@ -199,15 +199,14 @@ class CloudAccountTest {
         assertEquals("HTTP_302", assertFailsWith<CloudFailure> { redirect.login("fixture@example.com", "x") }.code)
     }
 
-    @Test fun loginRetriesTransientGatewayFailuresButNotAuthenticationFailures() {
+    @Test fun loginReportsGatewayFailuresWithoutRepeatingAuthenticatedPosts() {
         var gatewayAttempts = 0
-        val retried = MatrixCloud(domain, CloudTransport { _, _, _, _ ->
+        val gateway = MatrixCloud(domain, CloudTransport { _, _, _, _ ->
             gatewayAttempts++
-            if (gatewayAttempts < 3) CloudReply(503, byteArrayOf()) else
-                reply(mapOf("user_id" to uid, "access_token" to "token", "device_id" to "DEVICE_TEST"))
+            CloudReply(503, byteArrayOf())
         })
-        retried.login(account(), "DEVICE_TEST")
-        assertEquals(3, gatewayAttempts)
+        assertEquals("HTTP_503", assertFailsWith<CloudFailure> { gateway.login(account(), "DEVICE_TEST") }.code)
+        assertEquals(1, gatewayAttempts)
 
         var forbiddenAttempts = 0
         val forbidden = MatrixCloud(domain, CloudTransport { _, _, _, _ ->
