@@ -29,6 +29,7 @@ class CloudAccountController(
         val directRooms: Map<String, List<String>> = emptyMap(), val sent: Int = 0, val authRevision: Int = 0,
         val notice: String? = null,
         val cloudConnected: Boolean = false, val cloudError: String? = null,
+        val chatProbe: String? = null,
         val cloudUserId: String = "", val openRoomId: String? = null,
         val sending: Boolean = false, val sendError: String? = null, val sendErrorRoomId: String? = null,
         val lastSentRoomId: String? = null, val lastSentText: String? = null,
@@ -46,6 +47,8 @@ class CloudAccountController(
     private val mutable = MutableStateFlow(State(restored = false))
     val state = mutable.asStateFlow()
     private var account: CloudAccountTransfer? = null
+    // Only an official host name; no password/token is held for the public diagnostic.
+    private var lastChatDomain: String? = null
     @Volatile private var identity: MyTsAccount.Session? = null
     private var contactsJob: Job? = null
     private var bookmarksJob: Job? = null
@@ -66,6 +69,7 @@ class CloudAccountController(
     init { operation {
         migrateLegacySecrets()
         account = store.account()
+        lastChatDomain = account?.domain
         identity = store.identity() ?: account?.takeIf { it.myTsSession.isNotBlank() }?.let {
             MyTsAccount.Session(it.myTsSession, it.username)
         }
@@ -121,7 +125,7 @@ class CloudAccountController(
         val first = candidate.sync(candidateSession)
         store.write(imported, candidateSession)
         cancelAccountLoads()
-        account = imported; api = candidate; session = candidateSession; cursor = first.cursor
+        account = imported; lastChatDomain = imported.domain; api = candidate; session = candidateSession; cursor = first.cursor
         pending.clear(); readEvents.clear()
         ConnectionEntry(app).clearGuest()
         Settings(app).applyAccountUsername(imported.username, overwrite = true)
@@ -325,7 +329,7 @@ class CloudAccountController(
         identity = fresh
         ConnectionEntry(app).clearGuest()
         Settings(app).applyAccountUsername(fresh.username, overwrite = true)
-        account = null; api = null; session = null; cursor = ""; pending.clear()
+        account = null; lastChatDomain = null; api = null; session = null; cursor = ""; pending.clear()
         readEvents.clear()
         mutable.value = State(
             hasAccount = true, username = fresh.username, email = fresh.email,
@@ -339,13 +343,34 @@ class CloudAccountController(
     }
 
     fun connectCloud() = cloudOperation { connectCloudNow() }
+
+    /** Read-only diagnostics on the official service; never request or print the chat password/token. */
+    fun diagnoseChatLogin() = scope.launch {
+        lock.withLock {
+            mutable.update { it.copy(busy = true, chatProbe = "正在检测公开登录接口…") }
+            try {
+                val domain = lastChatDomain ?: throw CloudFailure("CHAT_DIAG_NO_DOMAIN")
+                val result = MatrixLoginDiagnostics.inspect(domain, http)
+                mutable.update { it.copy(chatProbe =
+                    "官方服务：${result.host}\n旧版 r0/login：${result.legacy.status} · ${result.legacy.millis}ms" +
+                    "\n新版 v3/login：${result.stable.status} · ${result.stable.millis}ms" +
+                    "\n仅测试公开 GET；结果不代表携带凭据的 POST 登录一定成功。") }
+            } catch (e: CancellationException) { throw e }
+            catch (e: CloudFailure) { mutable.update { it.copy(chatProbe = "公开接口检测失败：${e.code}") } }
+            catch (_: Exception) { mutable.update { it.copy(chatProbe = "公开接口检测失败：NETWORK") } }
+            finally { mutable.update { it.copy(busy = false) } }
+        }
+    }
+
     private fun connectCloudNow() {
+        mutable.update { it.copy(chatProbe = null) }
         // Explicit reconnect is also available after a previously successful login.
         // Mark it offline until the new initial sync succeeds, retaining cached conversations.
         mutable.update { it.copy(cloudConnected = false) }
         fun freshCredentials(): CloudAccountTransfer {
             val current = identity ?: throw CloudFailure("MYTS_103")
             val credentials = chatStage("CREDENTIALS") { MyTsAccount(http).chatCredentials(current) }
+            lastChatDomain = credentials.domain
             return CloudAccountTransfer(credentials.domain, credentials.userId, credentials.password, current.token, current.username)
         }
         fun connect(value: CloudAccountTransfer): Triple<MatrixCloud, MatrixCloud.Session, MatrixCloud.Snapshot> {
@@ -361,6 +386,7 @@ class CloudAccountController(
             return Triple(candidate, candidateSession, first)
         }
         val cached = account
+        if (cached != null) lastChatDomain = cached.domain
         var updated = cached ?: freshCredentials()
         val (candidate, candidateSession, first) = try { connect(updated) } catch (e: CloudFailure) {
             // Keep valid saved Matrix sessions usable even if an imported myTS session has expired. Only a failed
@@ -390,7 +416,7 @@ class CloudAccountController(
         ConnectionEntry(app).clearGuest()
         Settings(app).clearAccountUsername()
         prefs.edit().remove("account").remove("matrix-session").commit()
-        identity = null; account = null; api = null; session = null; cursor = ""; pending.clear()
+        identity = null; account = null; lastChatDomain = null; api = null; session = null; cursor = ""; pending.clear()
         readEvents.clear()
         mutable.value = State()
     }
