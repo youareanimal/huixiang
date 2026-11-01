@@ -207,7 +207,7 @@ class CloudAccountControllerTest {
         var loginCalls = 0
         var syncCalls = 0
         var loginDevice = ""
-        val c = controller(saved, CloudTransport { method, url, _, body ->
+        val c = controller(saved, CloudTransport { method, url, headers, body ->
             when {
                 url.endsWith("/tschat") && body!!.toString(Charsets.UTF_8).contains("createAccount") -> {
                     val credentials = text(1, "chat-2.tmspk.net") + text(2, "fixture") + text(3, "chat-password")
@@ -227,7 +227,7 @@ class CloudAccountControllerTest {
                     )).toByteArray())
                 }
                 url.contains("/_matrix/client/r0/sync") -> {
-                    assertEquals("Bearer matrix-token", "Bearer " + "matrix-token")
+                    assertEquals("Bearer matrix-token", headers["Authorization"])
                     syncCalls++
                     if (syncFails) CloudReply(503, byteArrayOf()) else CloudReply(200, Json.write(mapOf(
                         "next_batch" to "cursor-1",
