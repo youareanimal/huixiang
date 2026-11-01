@@ -67,7 +67,7 @@ class MatrixServerDiscoveryTest {
             assertEquals("HTTP_$status", assertFailsWith<CloudFailure> {
                 api.login(account, "DEVICE_TEST")
             }.code)
-            assertEquals("A failed login must not issue repeated authenticated requests", 1, loginPosts)
+            assertEquals(1, loginPosts, "A failed login must not issue repeated authenticated requests")
         }
     }
 }
