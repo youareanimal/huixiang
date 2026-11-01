@@ -46,6 +46,32 @@ class MyTsVoiceDataTest {
         }
     }
 
+    @Test fun reportsNoBadgesSeparatelyFromFetchFailureAndInvalidPayload() {
+        val noBadges = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(200, byteArrayOf()) })
+            .voiceDataResult(session())
+        assertEquals(MyTsBadgeStatus.NO_BADGES, noBadges.badgeStatus)
+        assertEquals(0, noBadges.badgeCount)
+        assertNotNull(noBadges.data)
+
+        val available = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(200, CloudProto.bytes(1, badgeList)) })
+            .voiceDataResult(session())
+        assertEquals(MyTsBadgeStatus.AVAILABLE, available.badgeStatus)
+        assertEquals(1, available.badgeCount)
+        assertNotNull(available.data)
+        assertEquals(1, available.data.badgeCount)
+
+        val failed = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(503, byteArrayOf()) })
+            .voiceDataResult(session())
+        assertEquals(MyTsBadgeStatus.FETCH_FAILED, failed.badgeStatus)
+        assertNotNull(failed.data) // Badge lookup is optional; certificate and avatar remain available.
+
+        val invalid = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(200, CloudProto.bytes(1, byteArrayOf(0x80.toByte()))) })
+            .voiceDataResult(session())
+        assertEquals(MyTsBadgeStatus.INVALID, invalid.badgeStatus)
+        assertNotNull(invalid.data)
+        assertEquals(0, invalid.data.badgeCount)
+    }
+
     @Test fun invalidOptionalSignaturesAreOmittedAndLegacySessionsHaveNoMetadata() {
         val command = parse(assertNotNull(MyTsVoiceData.fromSession(session(CloudProto.bytes(3, byteArrayOf(1))), CloudProto.bytes(1, byteArrayOf()))))
         assertNull(command["myts_avatar"])
