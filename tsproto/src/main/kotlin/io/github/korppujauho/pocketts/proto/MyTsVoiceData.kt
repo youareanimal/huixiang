@@ -4,7 +4,7 @@ import io.github.korppujauho.pocketts.proto.CloudProto.number
 
 /** Signed, public account metadata. The server validates the original signatures. */
 class MyTsVoiceData private constructor(private val certificate: ByteArray, private val avatar: ByteArray?,
-    private val badges: ByteArray?) {
+    private val badges: ByteArray?, val badgeCount: Int) {
     override fun toString() = "MyTsVoiceData(redacted)"
 
     fun commandBytes(): ByteArray {
@@ -14,6 +14,25 @@ class MyTsVoiceData private constructor(private val certificate: ByteArray, priv
     }
 
     companion object {
+        /**
+         * Validate the bounded signed-badge envelope without exposing or logging its contents.
+         * Returns null for malformed data, otherwise the number of signed badge entries.
+         */
+        fun signedBadgeCount(bytes: ByteArray): Int? = try {
+            if (bytes.isEmpty()) return 0
+            if (bytes.size > 65536) return null
+            val fields = CloudProto.read(bytes)
+            val entries = fields.filter { it.number == 1 }
+            val valid = fields.all { field ->
+                if (field.number != 1) true else {
+                    val nested = CloudProto.read(requireNotNull(field.bytes))
+                    nested.singleOrNull { it.number == 1 }?.bytes != null && nested.number(3) != null &&
+                        nested.singleOrNull { it.number == 2 }?.bytes?.size == 64
+                }
+            }
+            if (valid) entries.size else null
+        } catch (_: Exception) { null }
+
         fun fromSession(session: MyTsAccount.Session, signedBadges: ByteArray? = null): MyTsVoiceData? {
             val material = session.voiceMaterial ?: return null
             val wrapper = material.userCertificate ?: return null
@@ -24,17 +43,9 @@ class MyTsVoiceData private constructor(private val certificate: ByteArray, priv
                 fields.singleOrNull { it.number == 1 }?.bytes != null && fields.number(2) != null &&
                     fields.singleOrNull { it.number == 3 }?.bytes?.size == 64
             }
-            val badges = signedBadges?.takeIf { it.isNotEmpty() }?.takeIf { bytes ->
-                require(bytes.size <= 65536)
-                CloudProto.read(bytes).all { field ->
-                    if (field.number != 1) true else {
-                        val fields = CloudProto.read(requireNotNull(field.bytes))
-                        fields.singleOrNull { it.number == 1 }?.bytes != null && fields.number(3) != null &&
-                            fields.singleOrNull { it.number == 2 }?.bytes?.size == 64
-                    }
-                }
-            }
-            return MyTsVoiceData(certificate, avatar, badges?.copyOf())
+            val count = signedBadges?.let(::signedBadgeCount) ?: 0
+            val badges = signedBadges?.takeIf { count > 0 }?.copyOf()
+            return MyTsVoiceData(certificate, avatar, badges, count)
         }
     }
 }
