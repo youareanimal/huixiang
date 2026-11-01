@@ -17,7 +17,7 @@ class MatrixServerDiscoveryTest {
             } else {
                 assertEquals("https://chat-6.tmspk.net/_matrix/client/r0/login", url)
                 val data = Json.parse(body!!.decodeToString()) as Map<*, *>
-                assertEquals("@fixture:$domain", (data["identifier"] as Map<*, *>)["user"])
+                assertEquals("@fixture:$domain", (data["identifier"] as Map<*, *> )["user"])
                 reply(mapOf("user_id" to "@fixture:$domain", "access_token" to "fixture-token", "device_id" to "DEVICE_TEST"))
             }
         })
@@ -42,15 +42,43 @@ class MatrixServerDiscoveryTest {
         }
     }
 
-    @Test fun absentUnavailableOrRedirectedDiscoveryKeepsTheOriginalHomeserver() {
-        for (status in listOf(404, 503, 302)) {
-            assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, headers, body ->
-                assertTrue(headers.isEmpty()); assertNull(body)
+    @Test fun unavailableDiscoveryDoesNotFallBackAndAttemptLoginOnTheAccountDomain() {
+        for (status in listOf(500, 502, 503, 504, 302)) {
+            var calls = 0
+            val api = MatrixCloud(domain, CloudTransport { _, url, headers, body ->
+                calls++
+                if (calls == 1) {
+                    assertEquals("https://$domain/.well-known/matrix/client", url)
+                    assertTrue(headers.isEmpty()); assertNull(body)
+                } else {
+                    error("login must not be attempted after discovery fails")
+                }
                 reply(emptyMap<String, Any?>(), status)
-            }))
+            })
+            val expected = if (status in 300..399) "CHAT_DISCOVERY_REDIRECT" else "CHAT_DISCOVERY_HTTP_$status"
+            assertEquals(expected, assertFailsWith<CloudFailure> {
+                api.discoverServer()
+                api.login(CloudAccountTransfer(domain, "@fixture:$domain", "fixture-password", "", "Fixture"), "DEVICE_TEST")
+            }.code)
+            assertEquals(1, calls)
         }
-        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> throw CloudFailure("NETWORK") }))
-        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ -> reply(emptyMap<String, Any?>()) }))
+        var calls = 0
+        val api = MatrixCloud(domain, CloudTransport { _, _, _, _ -> calls++; throw CloudFailure("NETWORK") })
+        assertEquals("CHAT_DISCOVERY_NETWORK", assertFailsWith<CloudFailure> {
+            api.discoverServer()
+            api.login(CloudAccountTransfer(domain, "@fixture:$domain", "fixture-password", "", "Fixture"), "DEVICE_TEST")
+        }.code)
+        assertEquals(1, calls)
+    }
+
+    @Test fun onlyExplicitNotFoundOrNoDelegationUsesTheMxidDomainDefault() {
+        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, headers, body ->
+            assertTrue(headers.isEmpty()); assertNull(body)
+            reply(emptyMap<String, Any?>(), 404)
+        }))
+        assertEquals("https://$domain", MatrixServerDiscovery.resolve(domain, CloudTransport { _, _, _, _ ->
+            reply(emptyMap<String, Any?>())
+        }))
     }
 
     @Test fun http5xxDuringLoginNeverAutomaticallyRetriesTheCredentialedPost() {

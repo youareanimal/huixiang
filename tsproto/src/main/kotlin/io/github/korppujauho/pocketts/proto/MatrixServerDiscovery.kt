@@ -9,11 +9,14 @@ object MatrixServerDiscovery {
         val original = "https://$domain"
         // Discovery is public: never attach the account password or an access token.
         val reply = try { http.request("GET", "$original/.well-known/matrix/client", emptyMap(), null) }
-            catch (_: CloudFailure) { return original }
-        if (reply.status != 200) return original
+            catch (_: CloudFailure) { throw CloudFailure("CHAT_DISCOVERY_NETWORK") }
+        // Matrix uses 404 to mean there is no delegation, in which case the MXID domain is the homeserver.
+        if (reply.status == 404) return original
+        if (reply.status in 300..399) throw CloudFailure("CHAT_DISCOVERY_REDIRECT")
+        if (reply.status != 200) throw CloudFailure("CHAT_DISCOVERY_HTTP_${reply.status}")
         val data = try { Json.parse(reply.body.toString(Charsets.UTF_8)) as? Map<*, *> }
-            catch (_: Exception) { null }
-        val server = data?.get("m.homeserver") as? Map<*, *> ?: return original
+            catch (_: Exception) { null } ?: throw CloudFailure("CHAT_DISCOVERY_INVALID")
+        val server = data["m.homeserver"] as? Map<*, *> ?: return original
         val url = server["base_url"] as? String ?: throw CloudFailure("CHAT_DISCOVERY_INVALID")
         val uri = try { URI(url) } catch (_: Exception) { throw CloudFailure("CHAT_DISCOVERY_INVALID") }
         if (uri.scheme != "https" || uri.host == null || !CloudAccountTransfer.officialDomain(uri.host) ||
