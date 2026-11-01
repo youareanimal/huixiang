@@ -155,7 +155,8 @@ class CloudAccountController(
             api.sync(session!!)
         }
         cursor = snapshot.cursor
-        mutable.update { it.copy(rooms = snapshot.rooms, directRooms = snapshot.directRooms, cloudError = null) }
+        mutable.update { it.copy(rooms = snapshot.rooms, directRooms = snapshot.directRooms,
+            cloudConnected = true, cloudUserId = session!!.userId, cloudError = null) }
     }
 
     private suspend fun loadContacts() {
@@ -342,7 +343,9 @@ class CloudAccountController(
 
     /** Existing authenticated sessions only need a fresh sync; avoid re-logging on slow networks. */
     fun connectCloud() = cloudOperation {
-        if (mutable.value.cloudConnected && api != null && session != null) refreshNow()
+        // A prior login may have succeeded even if its first sync timed out.
+        // Reuse that in-memory session instead of creating another Matrix device session.
+        if (api != null && session != null) refreshNow()
         else connectCloudNow()
     }
 
@@ -380,9 +383,22 @@ class CloudAccountController(
             candidate.discoverServer()
             val saved = store.session(value.userId, deviceId)
             var candidateSession = saved ?: chatStage("LOGIN") { candidate.login(value, deviceId) }
+
+            // Login and initial sync are separate operations. Persist and retain a newly issued
+            // token before sync: the homeserver may accept POST /login but time out on /sync.
+            if (saved == null) store.write(value, candidateSession)
+            account = value
+            api = candidate
+            session = candidateSession
+
             val first = try { chatStage("SYNC") { candidate.sync(candidateSession) } } catch (e: CloudFailure) {
                 if (e.code != "M_UNKNOWN_TOKEN" || saved == null) throw e
                 candidateSession = chatStage("LOGIN") { candidate.login(value, deviceId) }
+                store.write(value, candidateSession)
+                account = value
+                api = candidate
+                session = candidateSession
+                cursor = ""
                 chatStage("SYNC") { candidate.sync(candidateSession) }
             }
             return Triple(candidate, candidateSession, first)
@@ -393,7 +409,7 @@ class CloudAccountController(
         val (candidate, candidateSession, first) = try { connect(updated) } catch (e: CloudFailure) {
             // Keep valid saved Matrix sessions usable even if an imported myTS session has expired. Only a failed
             // explicit connection needs to refresh persisted routing/credentials from the account service.
-            if (cached == null || identity == null || !e.code.matches(Regex("CHAT_(LOGIN|SYNC)_(HTTP_50[234]|NETWORK)"))) throw e
+            if (cached == null || identity == null || !e.code.matches(Regex("CHAT_LOGIN_(HTTP_50[234]|NETWORK)"))) throw e
             val fresh = freshCredentials()
             if (fresh.domain == updated.domain && fresh.userId == updated.userId && fresh.password == updated.password) throw e
             updated = fresh
