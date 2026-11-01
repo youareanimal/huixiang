@@ -90,15 +90,58 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
     fun valid(session: Session): Boolean =
         rpc("authentication", "session", CloudProto.text(1, session.token)).number(1) == 102L
 
-    /** Optional public metadata fetch; a badge service failure cannot interrupt voice or discard the avatar. */
-    fun voiceData(session: Session): MyTsVoiceData? {
-        val badges = try {
+    data class VoiceDataResult(
+        val data: MyTsVoiceData?,
+        val badgeStatus: MyTsBadgeStatus,
+        val badgeCount: Int = 0,
+    )
+
+    /**
+     * Fetch public signed badges separately from the required certificate/avatar.
+     * Failures are reported as safe states and never prevent the other voice metadata from being sent.
+     */
+    fun voiceDataResult(session: Session): VoiceDataResult {
+        var badgeStatus = MyTsBadgeStatus.FETCH_FAILED
+        var badgeCount = 0
+        var badges: ByteArray? = null
+        try {
             val fields = rpc("user", "getSignedBadges", CloudProto.text(1, session.token))
-            if ((fields.number(2) ?: 0L) == 0L) fields.singleOrNull { it.number == 1 }?.bytes else null
-        } catch (_: Exception) { null }
-        return try { MyTsVoiceData.fromSession(session, badges) }
-            catch (_: Exception) { MyTsVoiceData.fromSession(session) }
+            val serviceStatus = fields.number(2)
+            val badgeFields = fields.filter { it.number == 1 }
+            when {
+                serviceStatus != null && serviceStatus != 0L -> badgeStatus = MyTsBadgeStatus.FETCH_FAILED
+                badgeFields.isEmpty() -> badgeStatus = MyTsBadgeStatus.NO_BADGES
+                badgeFields.size != 1 -> badgeStatus = MyTsBadgeStatus.INVALID
+                badgeFields.single().bytes.isNullOrEmpty() -> badgeStatus = MyTsBadgeStatus.NO_BADGES
+                else -> {
+                    val payload = requireNotNull(badgeFields.single().bytes)
+                    val count = MyTsVoiceData.signedBadgeCount(payload)
+                    when {
+                        count == null -> badgeStatus = MyTsBadgeStatus.INVALID
+                        count == 0 -> badgeStatus = MyTsBadgeStatus.NO_BADGES
+                        else -> {
+                            badges = payload
+                            badgeCount = count
+                            badgeStatus = MyTsBadgeStatus.AVAILABLE
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            badgeStatus = MyTsBadgeStatus.FETCH_FAILED
+        }
+        val data = try {
+            MyTsVoiceData.fromSession(session, badges)
+        } catch (_: Exception) {
+            // Preserve the certificate/avatar path even if optional badge material is malformed.
+            if (badges != null) badgeStatus = MyTsBadgeStatus.INVALID
+            try { MyTsVoiceData.fromSession(session) } catch (_: Exception) { null }
+        }
+        return VoiceDataResult(data, badgeStatus, badgeCount)
     }
+
+    /** Compatibility helper for callers that only need the wire payload. */
+    fun voiceData(session: Session): MyTsVoiceData? = voiceDataResult(session).data
 
     fun contacts(session: Session): List<Contact> {
         val fields = rpc("tschat", "getContactList", CloudProto.text(1, session.token))
