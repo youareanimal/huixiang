@@ -171,7 +171,7 @@ class CloudFriendChatControllerTest {
         } finally { c.close() }
     }
 
-    @Test fun failedBackgroundSyncShowsOfflineAndManualReconnectRestoresRooms() {
+    @Test fun failedBackgroundSyncPreservesSessionAndRecoversWithoutRelogin() {
         val server = Server(); val c = controller(server)
         try {
             c.openFriendChat(friend)
@@ -180,17 +180,22 @@ class CloudFriendChatControllerTest {
 
             server.failSync = true
             c.refresh()
-            assertFalse(c.state.value.cloudConnected)
+            assertTrue(c.state.value.cloudConnected)
             assertEquals("HTTP_503", c.state.value.cloudError)
-            // A temporary outage must not erase the conversation displayed on the phone.
+            // Slow or temporarily unavailable homeservers must not erase rooms or force new logins.
             assertEquals(room, c.state.value.rooms.single().id)
 
             server.failSync = false
-            c.connectCloud()
+            c.refresh()
             assertTrue(c.state.value.cloudConnected)
             assertNull(c.state.value.cloudError)
             assertEquals(room, c.state.value.rooms.single().id)
             assertEquals(0, server.credentialRefreshes)
+
+            // A manual reconnect remains available without requesting new myTeamSpeak credentials.
+            c.connectCloud()
+            assertTrue(c.state.value.cloudConnected)
+            assertEquals(room, c.state.value.rooms.single().id)
         } finally { c.close() }
     }
 }
