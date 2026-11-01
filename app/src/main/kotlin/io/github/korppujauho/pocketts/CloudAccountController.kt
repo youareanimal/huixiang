@@ -216,48 +216,52 @@ class CloudAccountController(
                 return@withLock
             }
             mutable.update { it.copy(accountDiagnosing = true, accountDiagnostic = "正在检查 MyTeamSpeak 账号连接…") }
-            val auth = MyTsAccount(http)
-            val report = mutableListOf("本地账号 Session：已保存")
-            fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(0L)
-
-            val sessionStart = System.nanoTime()
             try {
-                val status = auth.sessionStatus(current)
-                val result = when (status) {
-                    102L -> "有效（服务端状态 102）"
-                    null -> "响应缺少状态字段"
-                    else -> "未确认（服务端状态 $status）"
+                val auth = MyTsAccount(http)
+                val report = mutableListOf("本地账号 Session：已保存")
+                fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(0L)
+
+                val sessionStart = System.nanoTime()
+                try {
+                    val status = auth.sessionStatus(current)
+                    val result = when (status) {
+                        102L -> "有效（服务端状态 102）"
+                        null -> "响应缺少状态字段"
+                        else -> "未确认（服务端状态 $status）"
+                    }
+                    report += "Session：$result · ${elapsed(sessionStart)}ms"
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: CloudFailure) {
+                    report += "Session：请求失败（${e.code}） · ${elapsed(sessionStart)}ms"
+                } catch (_: Exception) {
+                    report += "Session：请求失败（NETWORK） · ${elapsed(sessionStart)}ms"
                 }
-                report += "Session：$result · ${elapsed(sessionStart)}ms"
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: CloudFailure) {
-                report += "Session：请求失败（${e.code}） · ${elapsed(sessionStart)}ms"
-            } catch (_: Exception) {
-                report += "Session：请求失败（NETWORK） · ${elapsed(sessionStart)}ms"
-            }
 
-            val contactsStart = System.nanoTime()
-            try {
-                val contacts = auth.contacts(current)
-                report += "好友接口：成功 · ${contacts.size} 位好友 · ${elapsed(contactsStart)}ms"
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: CloudFailure) {
-                report += "好友接口：失败（${e.code}） · ${elapsed(contactsStart)}ms"
-            } catch (_: Exception) {
-                report += "好友接口：失败（CONTACTS_INVALID_REPLY） · ${elapsed(contactsStart)}ms"
-            }
+                val contactsStart = System.nanoTime()
+                try {
+                    val contacts = auth.contacts(current)
+                    report += "好友接口：成功 · ${contacts.size} 位好友 · ${elapsed(contactsStart)}ms"
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: CloudFailure) {
+                    report += "好友接口：失败（${e.code}） · ${elapsed(contactsStart)}ms"
+                } catch (_: Exception) {
+                    report += "好友接口：失败（CONTACTS_INVALID_REPLY） · ${elapsed(contactsStart)}ms"
+                }
 
-            val previousContactError = mutable.value.contactError?.takeIf { it.startsWith("CONTACTS_") }
-            if (previousContactError != null) report += "此前好友刷新：$previousContactError"
-            val previousChatError = mutable.value.cloudError?.takeIf { it.startsWith("MYTS_CHAT_") }
-            report += if (previousChatError != null) {
-                "此前聊天凭据请求：$previousChatError（本次未重复调用）"
-            } else {
-                "聊天凭据请求：本次未调用（诊断不会重复创建聊天账号）"
+                val previousContactError = mutable.value.contactError?.takeIf { it.startsWith("CONTACTS_") }
+                if (previousContactError != null) report += "此前好友刷新：$previousContactError"
+                val previousChatError = mutable.value.cloudError?.takeIf { it.startsWith("MYTS_CHAT_") }
+                report += if (previousChatError != null) {
+                    "此前聊天凭据请求：$previousChatError（本次未重复调用）"
+                } else {
+                    "聊天凭据请求：本次未调用（诊断不会重复创建聊天账号）"
+                }
+                mutable.update { it.copy(accountDiagnostic = report.joinToString("\n")) }
+            } finally {
+                mutable.update { it.copy(accountDiagnosing = false) }
             }
-            mutable.update { it.copy(accountDiagnostic = report.joinToString("\\n"), accountDiagnosing = false) }
         }
     }
 
