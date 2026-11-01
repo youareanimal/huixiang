@@ -192,7 +192,8 @@ fun FriendsHub(state: CloudAccountController.State, onLogin: () -> Unit, onRefre
 }
 
 @Composable
-fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConnect: () -> Unit, onRoom: (String) -> Unit) {
+fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConnect: () -> Unit, onRoom: (String) -> Unit,
+    onDiagnose: () -> Unit = {}) {
     Column(Modifier.fillMaxSize()) {
         HubTopBar("消息", "好友云消息 · 与服务器聊天分开")
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Ts.brand)
@@ -204,7 +205,26 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
                 item { PrimaryButton(if (state.busy) "正在连接…" else "连接云消息", !state.busy, Modifier.fillMaxWidth(), onConnect) }
             }
             state.cloudError?.let { code -> item { HubError(chatErrorMessage(code), code, onConnect) } }
+            if (state.cloudError?.startsWith("CHAT_LOGIN_") == true) {
+                item {
+                    OutlinedButton(onClick = onDiagnose, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
+                        Spacer(Modifier.width(8.dp))
+                        Text("检测官方聊天登录接口（不发送密码）", color = Ts.brand)
+                    }
+                }
+            }
+            state.chatProbe?.let { probe -> item {
+                Text(probe, color = Ts.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(8.dp))
+            } }
             if (state.cloudConnected) {
+                item {
+                    OutlinedButton(onClick = onConnect, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
+                        Spacer(Modifier.width(8.dp))
+                        Text("重新连接云消息", color = Ts.brand)
+                    }
+                }
                 items(state.rooms, key = { it.id }) { room ->
                     HubRow(roomTitle(room, state.username, state.cloudUserId, state.contacts), if (!room.joined) "聊天邀请 · 点击查看" else if (room.encrypted) "加密会话 · 当前只读" else room.messages.lastOrNull()?.body ?: "还没有文字消息",
                         Icons.AutoMirrored.Rounded.Chat, { onRoom(room.id) }, trailing = {

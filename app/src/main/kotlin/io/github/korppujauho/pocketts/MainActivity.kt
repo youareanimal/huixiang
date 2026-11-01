@@ -357,7 +357,9 @@ private fun App() {
                 }
                 route == "ROOM" -> Column(Modifier.fillMaxSize().imePadding()) {
                     val room = account.rooms.firstOrNull { it.id == roomId }
-                    HubTopBar(room?.let { roomTitle(it, account.username, account.cloudUserId, account.contacts) } ?: "云消息", onBack = ::home)
+                    HubTopBar(room?.let { roomTitle(it, account.username, account.cloudUserId, account.contacts) } ?: "云消息", onBack = ::home) {
+                        TextButton(onClick = controller::connectCloud, enabled = !account.busy) { Text("重连", color = Ts.brand) }
+                    }
                     account.cloudError?.let { HubError(chatErrorMessage(it), it, { controller.connectCloud() }) }
                     if (room != null) CloudConversation(room, account.busy || account.sending, account.sent,
                         { controller.history(room.id) }, { controller.send(room.id, it) },
@@ -377,7 +379,8 @@ private fun App() {
                                 onRecent = { seed = entry.recentTarget(account, it, favs); route = "CONNECT" }, onEdit = { editing = it },
                                 onRefresh = controller::refreshBookmarks, onLogin = { route = "LOGIN" })
                             HubTab.FRIENDS -> FriendsHub(account, { route = "LOGIN" }, controller::refreshContacts, { contact = it })
-                            HubTab.MESSAGES -> MessagesHub(account, { route = "LOGIN" }, { controller.connectCloud() }, { roomId = it; route = "ROOM" })
+                            HubTab.MESSAGES -> MessagesHub(account, { route = "LOGIN" }, { controller.connectCloud() },
+                                { roomId = it; route = "ROOM" }, controller::diagnoseChatLogin)
                             HubTab.ME -> MeHub(account, state.voice, { route = "LOGIN" }, { logout = true },
                                 ::openSettings, { importer.launch(arrayOf("*/*")) }, { about = true },
                                 controller::refreshProfile, { route = "AVATAR" })
