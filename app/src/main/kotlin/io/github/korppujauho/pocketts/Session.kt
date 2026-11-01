@@ -45,6 +45,7 @@ object Session : TsClient.Listener {
         val myTsVoiceStatus: MyTsVoiceStatus = MyTsVoiceStatus.NOT_REQUESTED,
         val myTsVoiceReceipt: String = "",
         val myTsMetadataReceipt: String = "",
+        val myTsBadgeReceipt: String = "",
         val address: String = "",
         val serverName: String = "",
         val tree: List<ServerModel.Node> = emptyList(),
@@ -820,7 +821,7 @@ object Session : TsClient.Listener {
 
     override fun onMyTsVoiceStatus(status: MyTsVoiceStatus) {
         _state.update { if (status == MyTsVoiceStatus.PROOF_SENT)
-            it.copy(myTsVoiceStatus = status, myTsVoiceReceipt = "", myTsMetadataReceipt = "")
+            it.copy(myTsVoiceStatus = status, myTsVoiceReceipt = "", myTsMetadataReceipt = "", myTsBadgeReceipt = "")
             else it.copy(myTsVoiceStatus = status) }
         AppLog.log("myTeamSpeak voice status: ${status.name}")
     }
@@ -849,10 +850,22 @@ object Session : TsClient.Listener {
         val connectedAccount = voiceAccount
         if (connectedClient != null && connectedAccount != null) worker.execute {
             try {
-                val data = MyTsAccount().voiceData(connectedAccount)
+                val result = MyTsAccount().voiceDataResult(connectedAccount)
+                val badgeText = when (result.badgeStatus) {
+                    io.github.korppujauho.pocketts.proto.MyTsBadgeStatus.NOT_CHECKED -> "MyTS 徽章：尚未检测"
+                    io.github.korppujauho.pocketts.proto.MyTsBadgeStatus.NO_BADGES -> "MyTS 徽章：账号当前没有已签名徽章"
+                    io.github.korppujauho.pocketts.proto.MyTsBadgeStatus.AVAILABLE ->
+                        "MyTS 徽章：已取得 ${result.badgeCount} 枚签名徽章，已加入账号资料命令"
+                    io.github.korppujauho.pocketts.proto.MyTsBadgeStatus.FETCH_FAILED ->
+                        "MyTS 徽章：获取失败，已跳过徽章（不影响头像和证书）"
+                    io.github.korppujauho.pocketts.proto.MyTsBadgeStatus.INVALID ->
+                        "MyTS 徽章：返回数据格式无效，已跳过徽章"
+                }
                 if (client === connectedClient && voiceAccount === connectedAccount &&
                     CloudAccountStore(cloudSecretPrefs(app)).identity()?.token == connectedAccount.token) {
-                    if (data != null) connectedClient.sendMyTsData(data)
+                    _state.update { it.copy(myTsBadgeReceipt = badgeText) }
+                    AppLog.log("myTeamSpeak badge fetch: ${result.badgeStatus.name}, count=${result.badgeCount}")
+                    if (result.data != null) connectedClient.sendMyTsData(result.data)
                     else onMyTsVoiceCheck(MyTsVoiceCheck.METADATA_UNAVAILABLE, null)
                 }
             } catch (_: Exception) {
