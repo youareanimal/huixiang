@@ -48,7 +48,7 @@ class CloudAccountTest {
             val methodLength = payload[0].toInt()
             assertEquals("session", payload.copyOfRange(1, 1 + methodLength).decodeToString())
             val fields = CloudProto.read(payload.copyOfRange(1 + methodLength, payload.size))
-            assertEquals("fixture-session", fields.string(1))
+            assertEquals("fixture-session", fields.first { it.number == 1 }.bytes!!.decodeToString())
             calls++
             CloudReply(200, CloudProto.integer(1, if (calls == 1) 102 else 5))
         })
