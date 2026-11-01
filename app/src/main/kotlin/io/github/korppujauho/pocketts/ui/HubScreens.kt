@@ -204,16 +204,20 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
                 item { Text("可在好友页点击好友发消息，或在这里查看会话。暂时不连接，不影响登录、书签和语音服务器。", color = Ts.muted, fontSize = 14.sp) }
                 item { PrimaryButton(if (state.busy) "正在连接…" else "连接云消息", !state.busy, Modifier.fillMaxWidth(), onConnect) }
             }
-            state.cloudError?.let { code -> item { HubError(chatErrorMessage(code), code, onConnect) } }
-            if (state.cloudError?.startsWith("CHAT_LOGIN_") == true) {
-                item {
-                    OutlinedButton(onClick = onDiagnose, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
-                        Spacer(Modifier.width(8.dp))
-                        Text("检测官方聊天登录接口（不发送密码）", color = Ts.brand)
+            state.cloudError?.let { code -> item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HubError(chatErrorMessage(code), code, onConnect)
+                    // Keep the diagnostic action inside the same visible error card block.
+                    // This avoids it being separated or missed when the lazy list updates.
+                    if (code.trim().startsWith("CHAT_LOGIN_")) {
+                        OutlinedButton(onClick = onDiagnose, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
+                            Spacer(Modifier.width(8.dp))
+                            Text("检测官方聊天登录接口（不发送密码）", color = Ts.brand)
+                        }
                     }
                 }
-            }
+            } }
             state.chatProbe?.let { probe -> item {
                 Text(probe, color = Ts.muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(8.dp))
             } }
