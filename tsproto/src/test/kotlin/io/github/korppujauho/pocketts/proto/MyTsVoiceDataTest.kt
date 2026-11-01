@@ -57,8 +57,7 @@ class MyTsVoiceDataTest {
             .voiceDataResult(session())
         assertEquals(MyTsBadgeStatus.AVAILABLE, available.badgeStatus)
         assertEquals(1, available.badgeCount)
-        assertNotNull(available.data)
-        assertEquals(1, available.data.badgeCount)
+        assertEquals(1, assertNotNull(available.data).badgeCount)
 
         val failed = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(503, byteArrayOf()) })
             .voiceDataResult(session())
@@ -68,8 +67,7 @@ class MyTsVoiceDataTest {
         val invalid = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(200, CloudProto.bytes(1, byteArrayOf(0x80.toByte()))) })
             .voiceDataResult(session())
         assertEquals(MyTsBadgeStatus.INVALID, invalid.badgeStatus)
-        assertNotNull(invalid.data)
-        assertEquals(0, invalid.data.badgeCount)
+        assertEquals(0, assertNotNull(invalid.data).badgeCount)
     }
 
     @Test fun invalidOptionalSignaturesAreOmittedAndLegacySessionsHaveNoMetadata() {
