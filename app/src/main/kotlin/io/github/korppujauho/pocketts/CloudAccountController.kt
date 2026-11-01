@@ -30,6 +30,7 @@ class CloudAccountController(
         val notice: String? = null,
         val cloudConnected: Boolean = false, val cloudError: String? = null,
         val chatProbe: String? = null,
+        val accountDiagnostic: String? = null, val accountDiagnosing: Boolean = false,
         val cloudUserId: String = "", val openRoomId: String? = null,
         val sending: Boolean = false, val sendError: String? = null, val sendErrorRoomId: String? = null,
         val lastSentRoomId: String? = null, val lastSentText: String? = null,
@@ -201,6 +202,63 @@ class CloudAccountController(
         mutable.update { it.copy(localServers = Favorites.load(app)) }
         refreshBookmarks()
         refreshContacts()
+    }
+
+    /**
+     * Read-only diagnostics for the MyTeamSpeak account path. It never refreshes credentials,
+     * creates a chat account, logs secrets, or mutates the cached contacts.
+     */
+    fun diagnoseAccountConnection() = scope.launch {
+        lock.withLock {
+            val current = identity
+            if (current == null) {
+                mutable.update { it.copy(accountDiagnostic = "本地账号 Session：不存在", accountDiagnosing = false) }
+                return@withLock
+            }
+            mutable.update { it.copy(accountDiagnosing = true, accountDiagnostic = "正在检查 MyTeamSpeak 账号连接…") }
+            val auth = MyTsAccount(http)
+            val report = mutableListOf("本地账号 Session：已保存")
+            fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(0L)
+
+            val sessionStart = System.nanoTime()
+            try {
+                val status = auth.sessionStatus(current)
+                val result = when (status) {
+                    102L -> "有效（服务端状态 102）"
+                    null -> "响应缺少状态字段"
+                    else -> "未确认（服务端状态 $status）"
+                }
+                report += "Session：$result · ${elapsed(sessionStart)}ms"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: CloudFailure) {
+                report += "Session：请求失败（${e.code}） · ${elapsed(sessionStart)}ms"
+            } catch (_: Exception) {
+                report += "Session：请求失败（NETWORK） · ${elapsed(sessionStart)}ms"
+            }
+
+            val contactsStart = System.nanoTime()
+            try {
+                val contacts = auth.contacts(current)
+                report += "好友接口：成功 · ${contacts.size} 位好友 · ${elapsed(contactsStart)}ms"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: CloudFailure) {
+                report += "好友接口：失败（${e.code}） · ${elapsed(contactsStart)}ms"
+            } catch (_: Exception) {
+                report += "好友接口：失败（CONTACTS_INVALID_REPLY） · ${elapsed(contactsStart)}ms"
+            }
+
+            val previousContactError = mutable.value.contactError?.takeIf { it.startsWith("CONTACTS_") }
+            if (previousContactError != null) report += "此前好友刷新：$previousContactError"
+            val previousChatError = mutable.value.cloudError?.takeIf { it.startsWith("MYTS_CHAT_") }
+            report += if (previousChatError != null) {
+                "此前聊天凭据请求：$previousChatError（本次未重复调用）"
+            } else {
+                "聊天凭据请求：本次未调用（诊断不会重复创建聊天账号）"
+            }
+            mutable.update { it.copy(accountDiagnostic = report.joinToString("\\n"), accountDiagnosing = false) }
+        }
     }
 
     fun refreshContacts() { contactsJob?.cancel(); contactsJob = scope.launch { loadContacts() } }
