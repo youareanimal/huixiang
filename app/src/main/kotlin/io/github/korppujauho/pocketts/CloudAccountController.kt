@@ -188,16 +188,14 @@ class CloudAccountController(
         finally { if (currentRequest()) mutable.update { it.copy(contactsLoading = false) } }
     }
 
+    /**
+     * Keep a successfully authenticated Matrix session through transient sync failures.
+     * The UI reports cloudError, and normal polling can recover without another login.
+     * A failed fresh connection is still reported as offline by connectCloudNow().
+     */
     fun refresh() {
-        if (!lock.isLocked && mutable.value.cloudConnected) cloudOperation(showBusy = false) {
-            try { refreshNow() } catch (e: CloudFailure) {
-                // A failed polling request must not leave the UI claiming that cloud chat is online.
-                // Keep cached rooms and drafts; only a user action retries the connection.
-                if (e.code in setOf("NETWORK", "HTTP_502", "HTTP_503", "HTTP_504", "M_UNKNOWN_TOKEN"))
-                    mutable.update { it.copy(cloudConnected = false) }
-                throw e
-            }
-        }
+        if (!lock.isLocked && mutable.value.cloudConnected)
+            cloudOperation(showBusy = false) { refreshNow() }
     }
     fun refreshFriends() {
         mutable.update { it.copy(localServers = Favorites.load(app)) }
