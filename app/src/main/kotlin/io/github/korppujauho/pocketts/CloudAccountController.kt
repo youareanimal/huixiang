@@ -340,7 +340,11 @@ class CloudAccountController(
         refreshProfile()
     }
 
-    fun connectCloud() = cloudOperation { connectCloudNow() }
+    /** Existing authenticated sessions only need a fresh sync; avoid re-logging on slow networks. */
+    fun connectCloud() = cloudOperation {
+        if (mutable.value.cloudConnected && api != null && session != null) refreshNow()
+        else connectCloudNow()
+    }
 
     /** Read-only diagnostics on the official service; never request or print the chat password/token. */
     fun diagnoseChatLogin() = scope.launch {
