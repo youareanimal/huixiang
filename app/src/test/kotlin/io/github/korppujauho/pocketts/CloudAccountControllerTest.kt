@@ -200,6 +200,63 @@ class CloudAccountControllerTest {
         } finally { c.close() }
     }
 
+    @Test fun successfulMatrixLoginIsSavedBeforeSyncAndReconnectRetriesSyncWithoutRelogin() {
+        val saved = store()
+        saved.writeIdentity(MyTsAccount.Session("fixture-token", "Fixture"))
+        var syncFails = true
+        var loginCalls = 0
+        var syncCalls = 0
+        var loginDevice = ""
+        val c = controller(saved, CloudTransport { method, url, headers, body ->
+            when {
+                url.endsWith("/tschat") && body!!.toString(Charsets.UTF_8).contains("createAccount") -> {
+                    val credentials = text(1, "chat-2.tmspk.net") + text(2, "fixture") + text(3, "chat-password")
+                    CloudReply(200, byteArrayOf(10, 2, 8, 1, 18, credentials.size.toByte()) + credentials)
+                }
+                url.endsWith("/tschat") -> friends()
+                url.endsWith("/.well-known/matrix/client") -> CloudReply(404, byteArrayOf())
+                url.endsWith("/_matrix/client/r0/login") -> {
+                    assertEquals("POST", method)
+                    loginCalls++
+                    val request = Json.parse(body!!.toString(Charsets.UTF_8)) as Map<*, *>
+                    loginDevice = request["device_id"] as String
+                    CloudReply(200, Json.write(mapOf(
+                        "user_id" to "@fixture:chat-2.tmspk.net",
+                        "access_token" to "matrix-token",
+                        "device_id" to loginDevice,
+                    )).toByteArray())
+                }
+                url.contains("/_matrix/client/r0/sync") -> {
+                    assertEquals("Bearer matrix-token", headers["Authorization"])
+                    syncCalls++
+                    if (syncFails) CloudReply(503, byteArrayOf()) else CloudReply(200, Json.write(mapOf(
+                        "next_batch" to "cursor-1",
+                        "account_data" to mapOf("events" to emptyList<Any?>()),
+                        "rooms" to mapOf("leave" to emptyMap<String, Any?>(),
+                            "invite" to emptyMap<String, Any?>(), "join" to emptyMap<String, Any?>()),
+                    )).toByteArray())
+                }
+                else -> error("Unexpected fixture request: $method $url")
+            }
+        })
+        try {
+            c.connectCloud()
+            assertEquals("CHAT_SYNC_HTTP_503", c.state.value.cloudError)
+            assertFalse(c.state.value.cloudConnected)
+            assertEquals(1, loginCalls)
+            assertEquals(1, syncCalls)
+            assertNotNull(saved.account())
+            assertEquals("matrix-token", saved.session("@fixture:chat-2.tmspk.net", loginDevice)?.token)
+
+            syncFails = false
+            c.connectCloud()
+            assertTrue(c.state.value.cloudConnected)
+            assertNull(c.state.value.cloudError)
+            assertEquals(1, loginCalls)
+            assertEquals(2, syncCalls)
+        } finally { c.close() }
+    }
+
     @Test fun rejectedLoginPreservesThePreviouslySavedIdentity() {
         val saved = store()
         saved.writeIdentity(MyTsAccount.Session("old-token", "Old account"))
