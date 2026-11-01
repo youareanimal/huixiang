@@ -46,4 +46,23 @@ class CloudReconnectUiTest {
         }
         compose.onNodeWithText("重新连接云消息").assertIsNotEnabled()
     }
+
+    @Test fun login503OffersReadOnlyDiagnosisWithoutTriggeringAnotherLogin() {
+        var loginAttempts = 0
+        var diagnostics = 0
+        compose.setContent {
+            PocketTsTheme {
+                MessagesHub(
+                    CloudAccountController.State(hasAccount = true, cloudError = "CHAT_LOGIN_HTTP_503"),
+                    onLogin = {}, onConnect = { loginAttempts++ }, onRoom = {},
+                    onDiagnose = { diagnostics++ },
+                )
+            }
+        }
+        compose.onNodeWithText("检测官方聊天登录接口（不发送密码）").assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertEquals(1, diagnostics)
+            assertEquals(0, loginAttempts)
+        }
+    }
 }
