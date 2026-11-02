@@ -19,10 +19,19 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          p=/tmp/ts-client/libtschat_client_lib_export.so
-          file "$p"
-          readelf -S "$p" | grep -E 'go|sym|rodata|text' || true
-          go version -m "$p" || true
-          go tool nm "$p" 2>&1 | head -5 || true
-          strings -a "$p" | grep -iE 'MyTSIDVerificationToken|TsChatMyTsIdToken|myts_token' | head -40 | cut -c1-350 || true
-          strings -a /tmp/ts-client/TeamSpeak | grep -iE 'verifyMyTSIDVerificationToken|createMyTSIDVerificationToken|TsChatMyTsIdToken' | head -60 | cut -c1-350 || true
+          go install github.com/mandiant/GoReSym@v3.4.1
+          "$(go env GOPATH)/bin/GoReSym" -t -p /tmp/ts-client/libtschat_client_lib_export.so > /tmp/symbols.json
+          python3 - <<'PY'
+          import json,re
+          data=json.load(open('/tmp/symbols.json'))
+          print('ROOT_KEYS',list(data.keys()))
+          def walk(x):
+              if isinstance(x,dict):
+                  s=str(x.get('FullName',''))+' '+str(x.get('Name',''))
+                  if re.search(r'(myts|identifier|presence|verification)',s,re.I) and ('tschat' in str(x).lower() or 'myts' in str(x).lower()): print('ENTRY',str(x)[:1600])
+                  else:
+                      for v in x.values(): walk(v)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+          walk(data)
+          PY
