@@ -24,7 +24,7 @@ jobs:
           python3 - <<'PY'
           import json,subprocess,re,bisect
           data=json.load(open('/tmp/symbols.json'))
-          funcs=data.get('UserFunctions',[])+data.get('StdFunctions',[])
+          funcs=(data.get('UserFunctions') or [])+(data.get('StdFunctions') or [])
           funcs=[f for f in funcs if isinstance(f,dict) and isinstance(f.get('Start'),int)]
           funcs.sort(key=lambda x:x['Start']); starts=[x['Start'] for x in funcs]
           def sym(addr):
