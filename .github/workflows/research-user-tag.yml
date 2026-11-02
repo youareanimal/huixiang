@@ -107,3 +107,16 @@ jobs:
               for m in list(re.finditer(re.escape(term),data))[:15]:
                   print('OFFSET',m.start(),data[max(0,m.start()-1200):m.start()+1700],flush=True)
           PY
+          python3 - <<'PY'
+          import re, subprocess
+          data=open('/tmp/ts-client/html/client_ui/main.js','rb').read().decode('utf-8','replace')
+          for term in ['primaryIdentifier','identifierMapping','getActiveIdentifierList','getAllowedIdentifierList','setIdentifierOnAllServerConnections']:
+              print('SOURCE_TRACE',term,flush=True)
+              for m in list(re.finditer(re.escape(term),data))[:15]:
+                  print('OFFSET',m.start(),data[max(0,m.start()-600):m.start()+800],flush=True)
+          for f in ['/tmp/ts-client/TeamSpeak']:
+              output=subprocess.check_output(['strings','-a',f],text=True,errors='replace')
+              lines=[x for x in output.splitlines() if re.search(r'identifier|alias|user.?tag',x,re.I) and len(x)<250]
+              print('BINARY_MATCHES',len(lines))
+              for x in lines[:400]: print(x)
+          PY
