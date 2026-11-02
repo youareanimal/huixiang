@@ -24,7 +24,7 @@ class MatrixLoginDiagnosticsTest {
                     url.endsWith("/_matrix/client/r0/login") ->
                         CloudReply(if (userAgent == "Go-http-client/1.1") 200 else 503, byteArrayOf())
                     url.endsWith("/_matrix/client/v3/login") ->
-                        CloudReply(if (userAgent == "Go-http-client/1.1") 404 else 503, byteArrayOf())
+                        CloudReply(if (userAgent == "Go-http-client/1.1") 200 else 503, byteArrayOf())
                     else -> error("Unexpected or unauthorized endpoint: $url")
                 }
             }
@@ -39,7 +39,7 @@ class MatrixLoginDiagnosticsTest {
         assertEquals("HTTP_503", huiXiang.stable.status)
         assertEquals("HTTP_200", go.versions.status)
         assertEquals("HTTP_200", go.legacy.status)
-        assertEquals("HTTP_404", go.stable.status)
+        assertEquals("HTTP_200", go.stable.status)
         assertTrue(result.variants.all { it.versions.millis >= 0 && it.legacy.millis >= 0 && it.stable.millis >= 0 })
         assertEquals(6, seen.size)
     }
