@@ -61,3 +61,25 @@ jobs:
           print('TOTAL_XREFS', hits, 'OBJDUMP_STATUS', rc)
           if rc: raise SystemExit(rc)
           PY
+          python3 - <<'PY'
+          import re, struct, subprocess
+          path = '/tmp/ts-client/TeamSpeak'
+          data = open(path, 'rb').read()
+          phoff = struct.unpack_from('<Q', data, 32)[0]
+          entsize, count = struct.unpack_from('<HH', data, 54)
+          segs = [struct.unpack_from('<IIQQQQQQ', data, phoff + i * entsize) for i in range(count)]
+          def findtext(va):
+              for typ, flags, off, base, pa, filesz, memsz, align in segs:
+                  if typ == 1 and base <= va < base + filesz:
+                      pos = off + va - base
+                      raw = data[pos:pos+120].split(b'\0',1)[0]
+                      if len(raw) >= 3 and all(32 <= x < 127 for x in raw): return raw.decode()
+              return ''
+          for start, stop in [(0x2717090,0x27171d0),(0x27aad70,0x27ab240),(0x45816c0,0x45817f0)]:
+              print('FUNCTION_RANGE',hex(start),hex(stop),flush=True)
+              output = subprocess.check_output(['objdump','-d','-M','intel','--start-address='+hex(start),'--stop-address='+hex(stop),path],text=True,errors='replace')
+              for line in output.splitlines():
+                  m = re.search(r'#\s*([0-9a-f]+)',line)
+                  hint = findtext(int(m.group(1),16)) if m else ''
+                  print(line + ('  STRING='+hint if hint else ''))
+          PY
