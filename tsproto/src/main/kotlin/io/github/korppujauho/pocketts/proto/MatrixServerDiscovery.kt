@@ -4,11 +4,12 @@ import java.net.URI
 
 /** Resolve only an explicit delegation published by the account's own official homeserver. */
 object MatrixServerDiscovery {
-    fun resolve(domain: String, http: CloudTransport): String {
+    fun resolve(domain: String, http: CloudTransport, userAgent: String? = null): String {
         require(CloudAccountTransfer.officialDomain(domain))
         val original = "https://$domain"
         // Discovery is public: never attach the account password or an access token.
-        val reply = try { http.request("GET", "$original/.well-known/matrix/client", emptyMap(), null) }
+        val headers = userAgent?.let { mapOf("User-Agent" to it) } ?: emptyMap()
+        val reply = try { http.request("GET", "$original/.well-known/matrix/client", headers, null) }
             catch (_: CloudFailure) { return original }
         if (reply.status != 200) return original
         val data = try { Json.parse(reply.body.toString(Charsets.UTF_8)) as? Map<*, *> }
