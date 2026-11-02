@@ -52,7 +52,7 @@ class MatrixLoginDiagnosticsTest {
                 assertTrue(headers.isEmpty())
                 CloudReply(404, byteArrayOf())
             } else {
-                assertTrue(headers["User-Agent"] in setOf("HuiXiang/0.3", "Go-http-client/1.1"))
+                assertTrue(headers["User-Agent"] == "HuiXiang/0.3" || headers["User-Agent"] == "Go-http-client/1.1")
                 throw CloudFailure("NETWORK")
             }
         })
