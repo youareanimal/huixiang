@@ -50,7 +50,8 @@ class ChatTagTransportResearchTest {
             a.await("sender query") { a.commands.any { it.name=="error" && it["return_code"]=="research-self" } }
             b.await("observer query") { b.commands.any { it.name=="error" && it["return_code"]=="research-peer" } }
             for ((label,peer) in listOf("self" to a,"peer" to b)) {
-                val rows=peer.commands.filter { it.name=="clientvariables" }.flatMap { it.groups }
+                val rows=peer.commands.flatMap { it.groups }
+                println("RESEARCH " + label + "_commands_with_tag=" + peer.commands.filter { cmd -> cmd.groups.any { it.containsKey("client_user_tag") || it.containsKey("client_meta_data") } }.map { it.name }.distinct())
                 println("RESEARCH " + label + "_query_code=" + peer.commands.first { it.name=="error" && it["return_code"]=="research-"+label }["id"])
                 println("RESEARCH " + label + "_query_user_tag_match=" + rows.any { it["client_user_tag"]==value })
                 println("RESEARCH " + label + "_query_metadata_match=" + rows.any { it["client_meta_data"]==value })
