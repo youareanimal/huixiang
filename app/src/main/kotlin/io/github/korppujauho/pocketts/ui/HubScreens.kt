@@ -229,7 +229,7 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
                     OutlinedButton(onClick = onDiagnose, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Ts.brand)
                         Spacer(Modifier.width(8.dp))
-                        Text("检测官方聊天登录接口（不发送密码）", color = Ts.brand)
+                        Text("对比聊天客户端请求头（不发送密码）", color = Ts.brand)
                     }
                 }
             }
