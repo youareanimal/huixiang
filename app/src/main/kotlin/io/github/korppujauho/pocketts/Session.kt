@@ -844,6 +844,28 @@ object Session : TsClient.Listener {
             it.copy(myTsMetadataReceipt = text) else it.copy(myTsVoiceReceipt = text) }
     }
 
+    /** Publish after either voice or cloud chat connects, with account-switch checks. */
+    fun syncMyTsChatTag() {
+        val connectedClient = client
+        val connectedAccount = voiceAccount
+        if (connectedClient != null && connectedAccount != null) worker.execute {
+            try {
+                val store = CloudAccountStore(cloudSecretPrefs(app))
+                val account = store.account()
+                if (account != null && account.myTsSession == connectedAccount.token) {
+                    val tag = MyTsChatTag().read(connectedAccount, account.userId)
+                    if (tag != null && client === connectedClient && voiceAccount === connectedAccount &&
+                        store.identity()?.token == connectedAccount.token &&
+                        store.account()?.let { it.myTsSession == connectedAccount.token && it.userId == account.userId } == true) {
+                        connectedClient.sendMyTsChatTag(tag)
+                    }
+                }
+            } catch (_: Exception) {
+                AppLog.log("myTeamSpeak chat tag unavailable (MYTS_TAG_UNAVAILABLE)")
+            }
+        }
+    }
+
     override fun onConnected(clientId: Int) {
         AppLog.log("Connected as client $clientId")
         val connectedClient = client
@@ -862,22 +884,7 @@ object Session : TsClient.Listener {
                 AppLog.log("myTeamSpeak metadata unavailable (MYTS_VOICE_DATA_UNAVAILABLE)")
             }
         }
-        if (connectedClient != null && connectedAccount != null) worker.execute {
-            try {
-                val store = CloudAccountStore(cloudSecretPrefs(app))
-                val account = store.account()
-                if (account != null && account.myTsSession == connectedAccount.token) {
-                    val tag = MyTsChatTag().read(connectedAccount, account.userId)
-                    if (tag != null && client === connectedClient && voiceAccount === connectedAccount &&
-                        store.identity()?.token == connectedAccount.token &&
-                        store.account()?.let { it.myTsSession == connectedAccount.token && it.userId == account.userId } == true) {
-                        connectedClient.sendMyTsChatTag(tag)
-                    }
-                }
-            } catch (_: Exception) {
-                AppLog.log("myTeamSpeak chat tag unavailable (MYTS_TAG_UNAVAILABLE)")
-            }
-        }
+        syncMyTsChatTag()
         val s = _state.value
         retries = 0
         oldWaits = 0
