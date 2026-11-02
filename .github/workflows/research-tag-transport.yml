@@ -1,0 +1,31 @@
+name: Research chat tag propagation
+on:
+  push:
+    branches: [research/user-tag-native-inspection]
+    paths: [.github/workflows/research-tag-transport.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build isolated test environment
+        run: docker build -f docker/build.Dockerfile -t huixiang-test --build-arg ACCEPT_ANDROID_SDK_LICENSE=yes docker
+      - name: Test synthetic tag against isolated TeamSpeak server
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name ts-research --network host -e TSSERVER_LICENSE_ACCEPTED=accept teamspeaksystems/teamspeak6-server:6.0.0-beta13.1 >/dev/null
+          trap 'docker rm -f ts-research >/dev/null 2>&1 || true' EXIT
+          sleep 10
+          mkdir -p out .ci-gradle
+          printf '%s\n' 'allprojects { tasks.withType(Test).configureEach { testLogging.showStandardStreams = true } }' > research-init.gradle
+          docker run --rm --network host \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out -e LOCAL_TAG_RESEARCH=1 \
+            huixiang-test ./gradlew --no-daemon --console=plain -I research-init.gradle \
+            :tsproto:test --tests '*ChatTagTransportResearchTest*' --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
