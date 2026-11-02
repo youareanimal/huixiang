@@ -238,6 +238,17 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         }
     }
 
+    /** Publish the public chat tag only while this connection has an account proof. */
+    fun sendMyTsChatTag(tag: String) {
+        val command = MyTsChatTag.updateCommand(tag)
+        onThread {
+            if (state == State.CONNECTED && myTsAuthenticated) {
+                pacer.add(command)
+                drain()
+            }
+        }
+    }
+
     /** One Opus frame; [codec] should be the channel's (4 Opus Voice or 5 Opus Music). */
     fun sendVoice(codec: Int, opus: ByteArray) {
         onThread {
@@ -660,6 +671,8 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
                         else if (!myTsSawServerId) reportMyTsCheck(MyTsVoiceCheck.QUERY_NO_ID)
                         listener.onMyTsVoiceStatus(MyTsVoiceStatus.SERVER_NOT_CONFIRMED)
                     }
+                    "quiet-myts-tag" -> log("myTeamSpeak chat tag update: " +
+                        if (code == 0) "ACCEPTED" else "REJECTED")
                     "quiet-myts-data" -> if (code == 0) {
                         reportMyTsCheck(MyTsVoiceCheck.METADATA_ACCEPTED)
                         // The initial query may precede certificate/avatar registration.

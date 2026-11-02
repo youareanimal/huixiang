@@ -470,6 +470,7 @@ class CloudAccountController(
         account = updated; api = candidate; session = candidateSession; cursor = first.cursor
         mutable.update { it.copy(cloudConnected = true, cloudUserId = candidateSession.userId, cloudError = null,
             rooms = first.rooms, directRooms = first.directRooms) }
+        Session.syncMyTsChatTag()
     }
 
     private inline fun <T> chatStage(stage: String, block: () -> T): T = try { block() } catch (e: CloudFailure) {
