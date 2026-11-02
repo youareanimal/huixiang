@@ -19,8 +19,8 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          for range in '19eba40 19ebd80' '1c55dc0 1c56130' '1c5a300 1c5a650' '1c52ed0 1c53250'; do
-            read -r start end <<< "$range"
-            echo "RESEARCH RANGE $start $end"
-            objdump -d -M intel --start-address="0x$start" --stop-address="0x$end" /tmp/ts-client/TeamSpeak
-          done
+          echo 'RESEARCH VTABLE'
+          objdump -s --start-address=0x4a21e80 --stop-address=0x4a21f90 /tmp/ts-client/TeamSpeak
+          readelf -rW /tmp/ts-client/TeamSpeak | awk 'tolower($1) ~ /^0000000004a21e|^0000000004a21f/'
+          echo 'RESEARCH DYNAMIC SYMBOLS'
+          nm -DC /tmp/ts-client/TeamSpeak | grep -iE 'verifyIdentifier|IdentifierToken|tschat' | head -n 80 || true
