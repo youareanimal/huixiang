@@ -22,16 +22,30 @@ jobs:
           go install github.com/mandiant/GoReSym@722897e0a80da0a06c00c5e40591a253a551f04e
           "$(go env GOPATH)/bin/GoReSym" -t -p /tmp/ts-client/libtschat_client_lib_export.so > /tmp/symbols.json
           python3 - <<'PY'
-          import json,re
+          import json,subprocess,re,bisect
           data=json.load(open('/tmp/symbols.json'))
-          print('ROOT_KEYS',list(data.keys()))
-          def walk(x):
-              if isinstance(x,dict):
-                  s=str(x.get('FullName',''))+' '+str(x.get('Name',''))
-                  if re.search(r'(myts|identifier|presence|verification)',s,re.I) and ('tschat' in str(x).lower() or 'myts' in str(x).lower()): print('ENTRY',str(x)[:1600])
-                  else:
-                      for v in x.values(): walk(v)
-              elif isinstance(x,list):
-                  for v in x: walk(v)
-          walk(data)
+          funcs=data.get('UserFunctions',[])+data.get('StdFunctions',[])
+          funcs=[f for f in funcs if isinstance(f,dict) and isinstance(f.get('Start'),int)]
+          funcs.sort(key=lambda x:x['Start']); starts=[x['Start'] for x in funcs]
+          def sym(addr):
+              i=bisect.bisect_right(starts,addr)-1
+              return funcs[i].get('FullName','') if i>=0 and addr<funcs[i].get('End',0) else ''
+          targets=[f for f in funcs if re.search(r'CreateMyTSIDVerificationToken|VerifyMyTSIDVerificationToken|CreateTsChatMyTsIdToken|VerifyTsChatMyTsIdToken|TsChatMyTsIdTokenStillValid',f.get('FullName','')) and f.get('PackageName')=='tschat_client_lib/myts']
+          names={f['Start']:f['FullName'] for f in targets}
+          print('TARGETS',names,flush=True)
+          p=subprocess.Popen(['objdump','-d','-M','intel','/tmp/ts-client/libtschat_client_lib_export.so'],stdout=subprocess.PIPE,text=True,errors='replace')
+          pat=re.compile(r'^\s*([0-9a-f]+):.*\bcall\s+([0-9a-f]+)')
+          callers={}
+          for line in p.stdout:
+              m=pat.search(line)
+              if not m: continue
+              source,target=int(m.group(1),16),int(m.group(2),16)
+              if target in names:
+                  caller=sym(source); print('CALLER',hex(source),caller,'TARGET',names[target],flush=True)
+                  callers[caller]=True
+          p.wait()
+          for f in funcs:
+              name=f.get('FullName','')
+              if name in callers or (f.get('PackageName','').startswith('tschat_client_lib/') and re.search(r'profile|verification|identifier|presence',name,re.I)):
+                  print('FUNCTION',f,flush=True)
           PY
