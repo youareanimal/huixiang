@@ -59,7 +59,7 @@ class CloudReconnectUiTest {
                 )
             }
         }
-        compose.onNodeWithText("检测官方聊天登录接口（不发送密码）").assertIsEnabled().performClick()
+        compose.onNodeWithText("对比聊天客户端请求头（不发送密码）").assertIsEnabled().performClick()
         compose.runOnIdle {
             assertEquals(1, diagnostics)
             assertEquals(0, loginAttempts)
