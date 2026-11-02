@@ -37,7 +37,7 @@ class ChatTagTransportResearchTest {
             val id=a.client.clientId.toString()
             b.await("observer sees sender") { b.commands.any { it.name == "notifycliententerview" && it.groups.any { g -> g["clid"] == id } } }
             val value=Json.write(mapOf("tag" to "example@myteamspeak.com"))
-            a.client.sendCommand(MyTsChatTag.updateCommand("example@myteamspeak.com"))
+            a.client.sendCommand(Commands.build("clientupdate", "client_user_tag" to value, "client_meta_data" to value, "return_code" to "quiet-myts-tag"))
             a.await("command receipt") { a.commands.any { it.name == "error" && it["return_code"] == "quiet-myts-tag" } }
             val receipt=a.commands.first { it.name == "error" && it["return_code"] == "quiet-myts-tag" }
             println("RESEARCH update_receipt_code=" + receipt["id"])
