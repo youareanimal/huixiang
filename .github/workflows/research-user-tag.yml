@@ -19,7 +19,7 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          go install github.com/mandiant/GoReSym@v3.4.1
+          go install github.com/mandiant/GoReSym@722897e0a80da0a06c00c5e40591a253a551f04e
           "$(go env GOPATH)/bin/GoReSym" -t -p /tmp/ts-client/libtschat_client_lib_export.so > /tmp/symbols.json
           python3 - <<'PY'
           import json,re
