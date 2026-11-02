@@ -1,0 +1,63 @@
+name: Inspect public TS6 user tag protocol
+on:
+  push:
+    branches: [research/user-tag-native-inspection]
+    paths: [.github/workflows/research-user-tag.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Inspect pinned public client
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --location --max-time 180 --retry 2 -o /tmp/ts-client.tar.xz https://files.teamspeak-services.com/pre_releases/client/6.0.0-beta5/teamspeak-client.tar.xz
+          echo '394472a25ee9c2419c44a5e71a401c21bffecf2fdcb27fbe2173d0fffd1875a4  /tmp/ts-client.tar.xz' | sha256sum -c -
+          mkdir /tmp/ts-client
+          tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
+          echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
+          python3 - <<'PY'
+          import collections, re, struct, subprocess
+          path = '/tmp/ts-client/TeamSpeak'
+          data = open(path, 'rb').read()
+          phoff = struct.unpack_from('<Q', data, 32)[0]
+          entsize, count = struct.unpack_from('<HH', data, 54)
+          segs = [struct.unpack_from('<IIQQQQQQ', data, phoff + i * entsize) for i in range(count)]
+          needles = [b'client_user_tag', b'user_tag', b'updatemytsid', b'clientupdate']
+          addresses = {}
+          for term in needles:
+              pos = 0
+              while True:
+                  pos = data.find(term + b'\x00', pos)
+                  if pos < 0: break
+                  if pos == 0 or data[pos-1] == 0:
+                      for typ, flags, off, va, pa, filesz, memsz, align in segs:
+                          if typ == 1 and off <= pos < off + filesz:
+                              addresses[va + pos - off] = term.decode()
+                              print('STRING', term.decode(), hex(va + pos - off), flush=True)
+                  pos += len(term)
+          pattern = re.compile(r'#\s*([0-9a-f]+)')
+          p = subprocess.Popen(['objdump', '-d', '-M', 'intel', path], stdout=subprocess.PIPE, text=True, errors='replace')
+          before = collections.deque(maxlen=8)
+          after = 0
+          hits = 0
+          for line in p.stdout:
+              m = pattern.search(line)
+              addr = int(m.group(1), 16) if m else -1
+              if addr in addresses and hits < 100:
+                  print('\nXREF', addresses[addr], hex(addr))
+                  print(''.join(before), end='')
+                  print(line, end='')
+                  after = 12
+                  hits += 1
+              elif after:
+                  print(line, end='')
+                  after -= 1
+              before.append(line)
+          rc = p.wait()
+          print('TOTAL_XREFS', hits, 'OBJDUMP_STATUS', rc)
+          if rc: raise SystemExit(rc)
+          PY
