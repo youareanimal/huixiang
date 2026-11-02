@@ -12,19 +12,28 @@ class MatrixServerDiscoveryTest {
             paths += url
             if (url.endsWith("/.well-known/matrix/client")) {
                 assertEquals("https://$domain/.well-known/matrix/client", url)
-                assertEquals("GET", method); assertTrue(headers.isEmpty()); assertNull(body)
+                assertEquals("GET", method); assertEquals("Go-http-client/1.1", headers["User-Agent"]); assertNull(body)
                 reply(mapOf("m.homeserver" to mapOf("base_url" to "https://chat-6.tmspk.net/")))
-            } else {
+            } else if (method == "POST") {
+                assertEquals("Go-http-client/1.1", headers["User-Agent"])
                 assertEquals("https://chat-6.tmspk.net/_matrix/client/r0/login", url)
                 val data = Json.parse(body!!.decodeToString()) as Map<*, *>
                 assertEquals("@fixture:$domain", (data["identifier"] as Map<*, *>)["user"])
                 reply(mapOf("user_id" to "@fixture:$domain", "access_token" to "fixture-token", "device_id" to "DEVICE_TEST"))
+            } else {
+                assertEquals("GET", method)
+                assertEquals("Go-http-client/1.1", headers["User-Agent"])
+                assertTrue(url.startsWith("https://chat-6.tmspk.net/_matrix/client/r0/sync?"))
+                assertNull(body)
+                reply(mapOf("next_batch" to "fixture-cursor", "rooms" to emptyMap<String, Any?>()))
             }
         })
         api.discoverServer()
         val session = api.login(CloudAccountTransfer(domain, "@fixture:$domain", "fixture-password", "", "Fixture"), "DEVICE_TEST")
         assertEquals("@fixture:$domain", session.userId)
-        assertEquals(2, paths.size)
+        val snapshot = api.sync(session)
+        assertEquals("fixture-cursor", snapshot.cursor)
+        assertEquals(3, paths.size)
     }
 
     @Test fun discoveryCannotSendCredentialsToAnArbitraryShardOrUntrustedUrl() {
@@ -34,7 +43,7 @@ class MatrixServerDiscoveryTest {
             var calls = 0
             val api = MatrixCloud(domain, CloudTransport { _, url, headers, body ->
                 calls++
-                assertTrue(url.endsWith("/.well-known/matrix/client")); assertTrue(headers.isEmpty()); assertNull(body)
+                assertTrue(url.endsWith("/.well-known/matrix/client")); assertEquals("Go-http-client/1.1", headers["User-Agent"]); assertNull(body)
                 reply(mapOf("m.homeserver" to mapOf("base_url" to bad)))
             })
             assertEquals("CHAT_DISCOVERY_INVALID", assertFailsWith<CloudFailure> { api.discoverServer() }.code)
