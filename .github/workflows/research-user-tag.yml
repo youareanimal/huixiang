@@ -20,38 +20,11 @@ jobs:
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
           python3 - <<'PY'
-          import collections,re,struct,subprocess
-          path='/tmp/ts-client/TeamSpeak'; data=open(path,'rb').read()
-          phoff=struct.unpack_from('<Q',data,32)[0]; entsize,count=struct.unpack_from('<HH',data,54)
-          segs=[struct.unpack_from('<IIQQQQQQ',data,phoff+i*entsize) for i in range(count)]
-          needles=[b'myts_token',b'tschat_verifyIdentifierToken',b'tschat_getIdentifierToken',b'failed to get allowed identifier token - invalid token',b'identifier_token',b'client_user_tag',b'client_meta_data']
-          addr={}
-          for term in needles:
-              pos=0
-              while True:
-                  pos=data.find(term+b'\0',pos)
-                  if pos<0: break
-                  if pos==0 or data[pos-1]==0:
-                      for typ,flags,off,va,pa,filesz,memsz,align in segs:
-                          if typ==1 and off<=pos<off+filesz:
-                              addr[va+pos-off]=term.decode(); print('STRING',term.decode(),hex(va+pos-off),flush=True)
-                  pos+=len(term)
-          def findtext(va):
-              for typ,flags,off,base,pa,filesz,memsz,align in segs:
-                  if typ==1 and base<=va<base+filesz:
-                      raw=data[off+va-base:off+va-base+100].split(b'\0',1)[0]
-                      if len(raw)>=3 and all(32<=x<127 for x in raw): return raw.decode()
-              return ''
-          pat=re.compile(r'#\s*([0-9a-f]+)')
-          p=subprocess.Popen(['objdump','-d','-M','intel',path],stdout=subprocess.PIPE,text=True,errors='replace')
-          prior=collections.deque(maxlen=30); after=0; count=0
-          for line in p.stdout:
-              m=pat.search(line); n=int(m.group(1),16) if m else -1
-              hint=findtext(n) if m else ''
-              if hint: line=line.rstrip()+' STRING='+hint+'\n'
-              if n in addr and count<100:
-                  print('XREF',addr[n],hex(n)); print(''.join(prior),end=''); print(line,end=''); after=45; count+=1
-              elif after: print(line,end=''); after-=1
-              prior.append(line)
-          print('XREF_COUNT',count,'status',p.wait())
+          import re,subprocess
+          p='/tmp/ts-client/TeamSpeak'
+          out=subprocess.check_output(['strings','-a',p],text=True,errors='replace')
+          for term in ['verify_identifier','verifyIdentifier','verify identifier','get_identifier_list_token','allowed identifier token','getIdentifierToken','SignedAllowedIdentifier','tschat_verify']:
+              lines=[x for x in out.splitlines() if term.lower() in x.lower() and len(x)<650]
+              print('TERM',term,'COUNT',len(lines),flush=True)
+              for line in lines[:50]: print('FOUND',line,flush=True)
           PY
