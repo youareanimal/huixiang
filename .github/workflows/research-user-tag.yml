@@ -19,22 +19,8 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          go install github.com/mandiant/GoReSym@722897e0a80da0a06c00c5e40591a253a551f04e
-          "$(go env GOPATH)/bin/GoReSym" -t -p /tmp/ts-client/libtschat_client_lib_export.so > /tmp/symbols.json
-          python3 - <<'PY'
-          import json,subprocess,re,bisect
-          data=json.load(open('/tmp/symbols.json')); fs=(data.get('UserFunctions') or [])+(data.get('StdFunctions') or [])
-          fs=[f for f in fs if isinstance(f,dict) and isinstance(f.get('Start'),int)]; fs.sort(key=lambda x:x['Start']); starts=[x['Start'] for x in fs]
-          def sym(n):
-              i=bisect.bisect_right(starts,n)-1
-              return fs[i].get('FullName','') if i>=0 and n<fs[i].get('End',0) else ''
-          p='/tmp/ts-client/libtschat_client_lib_export.so'
-          for name in ['checkAndUpdateAvatarUrl','UploadKeys','GetDevicesOfMembers','processRoomEvents.func1']:
-              for f in [q for q in fs if name in q.get('FullName','') and q.get('PackageName','').startswith('tschat_client_lib/')]:
-                  print('DISASM',f,flush=True)
-                  out=subprocess.check_output(['objdump','-d','-M','intel','--start-address='+hex(f['Start']),'--stop-address='+hex(f['End']),p],text=True,errors='replace')
-                  for line in out.splitlines():
-                      m=re.search(r'\bcall\s+([0-9a-f]+)',line)
-                      target=sym(int(m.group(1),16)) if m else ''
-                      print(line+(' CALLS='+target if target else ''),flush=True)
-          PY
+          for range in '19eba40 19ebd80' '1c55dc0 1c56130' '1c5a300 1c5a650' '1c52ed0 1c53250'; do
+            read -r start end <<< "$range"
+            echo "RESEARCH RANGE $start $end"
+            objdump -d -M intel --start-address="0x$start" --stop-address="0x$end" /tmp/ts-client/TeamSpeak
+          done
