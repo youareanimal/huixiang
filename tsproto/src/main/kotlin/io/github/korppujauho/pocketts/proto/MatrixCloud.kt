@@ -26,7 +26,7 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
 
     /** Explicit connection setup; the Matrix user ID and account domain are never rewritten. */
     fun discoverServer() {
-        serverUrl = MatrixServerDiscovery.resolve(domain, http)
+        serverUrl = MatrixServerDiscovery.resolve(domain, http, CLIENT_USER_AGENT)
     }
 
     fun login(account: CloudAccountTransfer, deviceId: String): Session {
@@ -237,7 +237,10 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         requestValue(method, path, body, token) as? Map<*, *> ?: throw CloudFailure("MATRIX_INVALID_REPLY")
 
     private fun requestValue(method: String, path: String, body: Map<String, Any?>? = null, token: String? = null): Any {
-        val headers = mutableMapOf("Content-Type" to "application/json")
+        val headers = mutableMapOf(
+            "Content-Type" to "application/json",
+            "User-Agent" to CLIENT_USER_AGENT,
+        )
         if (token != null) headers["Authorization"] = "Bearer $token"
         val r = http.request(method, "$serverUrl/_matrix/client/r0$path", headers, body?.let { Json.write(it).toByteArray() })
         val data = try { Json.parse(r.body.toString(Charsets.UTF_8)) } catch (_: Exception) { null }
@@ -261,6 +264,8 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
 
     companion object {
         const val MESSAGE_LIMIT = 500
+        /** Match the User-Agent accepted by the TeamSpeak Go chat client. */
+        const val CLIENT_USER_AGENT = "Go-http-client/1.1"
         private fun validPeer(id: String) = id.length in 4..512 && id.startsWith('@') && id.indexOf(':') > 1 &&
             id.none { it.isWhitespace() || it.isISOControl() || it in "/?#\\" } && CloudAccountTransfer.officialDomain(id.substringAfter(':'))
         private fun validRoom(id: String) = id.length in 4..1024 && id.startsWith('!') && ':' in id &&
