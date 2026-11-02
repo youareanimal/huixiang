@@ -415,10 +415,15 @@ class CloudAccountController(
             try {
                 val domain = lastChatDomain ?: throw CloudFailure("CHAT_DIAG_NO_DOMAIN")
                 val result = MatrixLoginDiagnostics.inspect(domain, http)
+                val variants = result.variants.joinToString("\\n") { variant ->
+                    "${variant.label}（${variant.userAgent}）：" +
+                        "versions ${variant.versions.status} · ${variant.versions.millis}ms；" +
+                        "r0/login ${variant.legacy.status} · ${variant.legacy.millis}ms；" +
+                        "v3/login ${variant.stable.status} · ${variant.stable.millis}ms"
+                }
                 mutable.update { it.copy(chatProbe =
-                    "官方服务：${result.host}\n旧版 r0/login：${result.legacy.status} · ${result.legacy.millis}ms" +
-                    "\n新版 v3/login：${result.stable.status} · ${result.stable.millis}ms" +
-                    "\n仅测试公开 GET；结果不代表携带凭据的 POST 登录一定成功。") }
+                    "官方服务：${result.host}\\n" + variants +
+                    "\\n仅测试公开 GET，不发送密码、Token 或登录 POST。") }
             } catch (e: CancellationException) { throw e }
             catch (e: CloudFailure) { mutable.update { it.copy(chatProbe = "公开接口检测失败：${e.code}") } }
             catch (_: Exception) { mutable.update { it.copy(chatProbe = "公开接口检测失败：NETWORK") } }
