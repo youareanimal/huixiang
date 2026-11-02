@@ -19,8 +19,39 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          echo 'RESEARCH VTABLE'
-          objdump -s --start-address=0x4a21e80 --stop-address=0x4a21f90 /tmp/ts-client/TeamSpeak
-          readelf -rW /tmp/ts-client/TeamSpeak | awk 'tolower($1) ~ /^0000000004a21e|^0000000004a21f/'
-          echo 'RESEARCH DYNAMIC SYMBOLS'
-          nm -DC /tmp/ts-client/TeamSpeak | grep -iE 'verifyIdentifier|IdentifierToken|tschat' | head -n 80 || true
+          python3 -m pip install --quiet pyelftools
+          python3 - <<'PY'
+          from elftools.elf.elffile import ELFFile
+          import subprocess
+          p='/tmp/ts-client/TeamSpeak'
+          with open(p,'rb') as fh:
+              elf=ELFFile(fh)
+              relocs={}
+              for section in elf.iter_sections():
+                  if section.name.startswith('.rela'):
+                      for rel in section.iter_relocations():
+                          if rel['r_info_type']==8:
+                              relocs[rel['r_offset']]=rel['r_addend']
+              reverse={}
+              for k,v in relocs.items(): reverse.setdefault(v,[]).append(k)
+              sections=[s for s in elf.iter_sections() if s['sh_type']=='SHT_PROGBITS' and s['sh_flags'] & 2]
+              for sec in sections:
+                  data=sec.data()
+                  marker=b'N3com9teamspeak6client2ui22TSBindingBrowserTSChatE'
+                  at=0
+                  while True:
+                      pos=data.find(marker,at)
+                      if pos<0: break
+                      at=pos+1
+                      address=sec['sh_addr']+pos
+                      print('TYPE',hex(address),flush=True)
+                      for ptr in reverse.get(address,[]):
+                          rtti=ptr-8
+                          print('TYPEINFO',hex(rtti),flush=True)
+                          for vtref in reverse.get(rtti,[]):
+                              vt=vtref+8
+                              print('VTABLE',hex(vt),'METHOD_218',hex(relocs.get(vt+0x218,0)),flush=True)
+                              target=relocs.get(vt+0x218,0)
+                              if target:
+                                  print(subprocess.check_output(['objdump','-d','-M','intel','--start-address='+hex(target),'--stop-address='+hex(target+0x900),p],text=True,errors='replace'),flush=True)
+          PY
