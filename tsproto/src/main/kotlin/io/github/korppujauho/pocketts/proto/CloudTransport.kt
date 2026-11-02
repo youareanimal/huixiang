@@ -41,7 +41,7 @@ object HttpsCloudTransport : CloudTransport {
                 out.toByteArray()
             } ?: byteArrayOf()
             val retryAfterMs = c.getHeaderField("Retry-After")?.trim()?.toLongOrNull()
-                ?.let { seconds -> (seconds * 1_000L).coerceIn(1_000L, 900_000L) }
+                ?.let { seconds -> seconds.coerceIn(1L, 900L) * 1_000L }
             return CloudReply(code, data, retryAfterMs)
         } catch (e: CloudFailure) {
             throw e
