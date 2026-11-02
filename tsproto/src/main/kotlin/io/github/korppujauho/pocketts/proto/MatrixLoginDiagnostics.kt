@@ -38,7 +38,7 @@ object MatrixLoginDiagnostics {
         }
 
         val agents = listOf(
-            "回响当前请求头" to "HuiXiang/0.3",
+            "回响修复前请求头" to "HuiXiang/0.3",
             "TeamSpeak Go 客户端默认请求头" to "Go-http-client/1.1",
         )
         val variants = agents.map { (label, userAgent) ->
