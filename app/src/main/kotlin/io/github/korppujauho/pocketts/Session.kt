@@ -13,6 +13,7 @@ import io.github.korppujauho.pocketts.proto.MyTsVoiceCheck
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
 import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import io.github.korppujauho.pocketts.proto.MyTsAccount
+import io.github.korppujauho.pocketts.proto.MyTsChatTag
 import io.github.korppujauho.pocketts.proto.ServerAddress
 import io.github.korppujauho.pocketts.proto.ServerModel
 import io.github.korppujauho.pocketts.proto.TsClient
@@ -859,6 +860,22 @@ object Session : TsClient.Listener {
                 if (client === connectedClient && voiceAccount === connectedAccount)
                     onMyTsVoiceCheck(MyTsVoiceCheck.METADATA_FETCH_FAILED, null)
                 AppLog.log("myTeamSpeak metadata unavailable (MYTS_VOICE_DATA_UNAVAILABLE)")
+            }
+        }
+        if (connectedClient != null && connectedAccount != null) worker.execute {
+            try {
+                val store = CloudAccountStore(cloudSecretPrefs(app))
+                val account = store.account()
+                if (account != null && account.myTsSession == connectedAccount.token) {
+                    val tag = MyTsChatTag().read(connectedAccount, account.userId)
+                    if (tag != null && client === connectedClient && voiceAccount === connectedAccount &&
+                        store.identity()?.token == connectedAccount.token &&
+                        store.account()?.let { it.myTsSession == connectedAccount.token && it.userId == account.userId } == true) {
+                        connectedClient.sendMyTsChatTag(tag)
+                    }
+                }
+            } catch (_: Exception) {
+                AppLog.log("myTeamSpeak chat tag unavailable (MYTS_TAG_UNAVAILABLE)")
             }
         }
         val s = _state.value
