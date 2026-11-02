@@ -52,7 +52,7 @@ object HttpsCloudTransport : CloudTransport {
     }
 }
 
-class CloudFailure(val code: String) : Exception(code)
+class CloudFailure(val code: String, val retryAfterMs: Long? = null) : Exception(code)
 
 /** A bounded protobuf subset for the account RPC. No generated proprietary sources are included. */
 internal object CloudProto {
