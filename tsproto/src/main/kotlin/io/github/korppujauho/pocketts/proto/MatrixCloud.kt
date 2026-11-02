@@ -23,6 +23,8 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
     private val createdRooms = mutableMapOf<String, String>()
     private val uncertainCreations = mutableSetOf<String>()
     private var serverUrl = "https://$domain"
+    private var rateLimitedUntilMs = 0L
+    private var fallbackRateLimitMs = 15_000L
 
     /** Explicit connection setup; the Matrix user ID and account domain are never rewritten. */
     fun discoverServer() {
@@ -46,7 +48,7 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
 
     fun sync(session: Session, since: String = ""): Snapshot {
         val filter = Json.write(mapOf("room" to mapOf("timeline" to mapOf("limit" to 30), "state" to mapOf("lazy_load_members" to true))))
-        val path = "/sync?timeout=0&set_presence=offline&filter=${quote(filter)}" + if (since.isEmpty()) "" else "&since=${quote(since)}"
+        val path = "/sync?timeout=30000&set_presence=offline&filter=${quote(filter)}" + if (since.isEmpty()) "" else "&since=${quote(since)}"
         val data = request("GET", path, token = session.token)
         for (event in data["account_data"].obj()["events"].list()) {
             val e = event.obj()
@@ -237,6 +239,9 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         requestValue(method, path, body, token) as? Map<*, *> ?: throw CloudFailure("MATRIX_INVALID_REPLY")
 
     private fun requestValue(method: String, path: String, body: Map<String, Any?>? = null, token: String? = null): Any {
+        val now = System.nanoTime() / 1_000_000L
+        val remaining = rateLimitedUntilMs - now
+        if (remaining > 0) throw CloudFailure("M_LIMIT_EXCEEDED", remaining)
         val headers = mutableMapOf(
             "Content-Type" to "application/json",
             "User-Agent" to CLIENT_USER_AGENT,
@@ -246,8 +251,17 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         val data = try { Json.parse(r.body.toString(Charsets.UTF_8)) } catch (_: Exception) { null }
         if (r.status !in 200..299) {
             val error = data.obj()["errcode"] as? String
-            throw CloudFailure(if (error in listOf("M_UNKNOWN_TOKEN", "M_FORBIDDEN", "M_LIMIT_EXCEEDED", "M_NOT_FOUND", "M_BAD_JSON", "M_INVALID_PARAM")) error!! else "HTTP_${r.status}")
+            if (error == "M_LIMIT_EXCEEDED" || r.status == 429) {
+                val serverDelay = (data.obj()["retry_after_ms"] as? Number)?.toLong()
+                val delayMs = (serverDelay ?: r.retryAfterMs ?: fallbackRateLimitMs).coerceIn(1_000L, 900_000L)
+                rateLimitedUntilMs = System.nanoTime() / 1_000_000L + delayMs
+                fallbackRateLimitMs = (delayMs * 2).coerceAtMost(300_000L)
+                throw CloudFailure("M_LIMIT_EXCEEDED", delayMs)
+            }
+            throw CloudFailure(if (error in listOf("M_UNKNOWN_TOKEN", "M_FORBIDDEN", "M_NOT_FOUND", "M_BAD_JSON", "M_INVALID_PARAM")) error!! else "HTTP_${r.status}")
         }
+        rateLimitedUntilMs = 0L
+        fallbackRateLimitMs = 15_000L
         return data ?: throw CloudFailure("MATRIX_INVALID_REPLY")
     }
 

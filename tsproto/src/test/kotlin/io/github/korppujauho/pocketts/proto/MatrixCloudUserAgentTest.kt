@@ -24,6 +24,7 @@ class MatrixCloudUserAgentTest {
                 }
                 url.contains("/_matrix/client/r0/sync?") -> {
                     assertEquals("GET", method); assertNull(body)
+                    assertTrue(url.contains("timeout=30000"))
                     CloudReply(200, Json.write(mapOf(
                         "next_batch" to "cursor",
                         "rooms" to emptyMap<String, Any?>(),

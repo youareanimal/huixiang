@@ -8,7 +8,7 @@ fun interface CloudTransport {
     fun request(method: String, url: String, headers: Map<String, String>, body: ByteArray?): CloudReply
 }
 
-class CloudReply(val status: Int, val body: ByteArray)
+class CloudReply(val status: Int, val body: ByteArray, val retryAfterMs: Long? = null)
 
 object HttpsCloudTransport : CloudTransport {
     override fun request(method: String, url: String, headers: Map<String, String>, body: ByteArray?): CloudReply {
@@ -40,7 +40,9 @@ object HttpsCloudTransport : CloudTransport {
                 }
                 out.toByteArray()
             } ?: byteArrayOf()
-            return CloudReply(code, data)
+            val retryAfterMs = c.getHeaderField("Retry-After")?.trim()?.toLongOrNull()
+                ?.let { seconds -> seconds.coerceIn(1L, 900L) * 1_000L }
+            return CloudReply(code, data, retryAfterMs)
         } catch (e: CloudFailure) {
             throw e
         } catch (_: Exception) {
@@ -50,7 +52,7 @@ object HttpsCloudTransport : CloudTransport {
     }
 }
 
-class CloudFailure(val code: String) : Exception(code)
+class CloudFailure(val code: String, val retryAfterMs: Long? = null) : Exception(code)
 
 /** A bounded protobuf subset for the account RPC. No generated proprietary sources are included. */
 internal object CloudProto {
