@@ -20,11 +20,11 @@ jobs:
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
           python3 - <<'PY'
-          import re,subprocess
-          p='/tmp/ts-client/TeamSpeak'
-          out=subprocess.check_output(['strings','-a',p],text=True,errors='replace')
-          for term in ['verify_identifier','verifyIdentifier','verify identifier','get_identifier_list_token','allowed identifier token','getIdentifierToken','SignedAllowedIdentifier','tschat_verify']:
-              lines=[x for x in out.splitlines() if term.lower() in x.lower() and len(x)<650]
-              print('TERM',term,'COUNT',len(lines),flush=True)
-              for line in lines[:50]: print('FOUND',line,flush=True)
+          import subprocess,re
+          p='/tmp/ts-client/libtschat_client_lib_export.so'
+          for cmd in [['nm','-D','-C',p],['readelf','-Ws',p]]:
+              out=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,errors='replace').stdout
+              print('TOOL',cmd[0])
+              lines=[l for l in out.splitlines() if re.search('ident|verify|token|profile|presence',l,re.I)]
+              for l in lines[:120]: print(l)
           PY
