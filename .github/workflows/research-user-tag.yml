@@ -20,20 +20,14 @@ jobs:
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
           python3 - <<'PY'
-          import os,re,subprocess
-          p='/tmp/ts-client/html/client_ui/main.js'
-          data=open(p,'rb').read().decode('utf8','replace')
-          for term in ['userHomeServerData','verifiedGlobalChatAlias','getIdentifierToken','tschat_verifyIdentifierToken','SetClientSelfProperties','setIdentifierOnAllServerConnections','myts_token']:
-              print('TRACE',term,flush=True)
-              for m in list(re.finditer(re.escape(term),data))[:12]:
-                  print('OFFSET',m.start(),data[max(0,m.start()-550):m.start()+950],flush=True)
-          for root, dirs, files in os.walk('/tmp/ts-client'):
-              for name in files:
-                  if 'tschat' in name.lower() or ('chat' in name.lower() and name.endswith('.so')):
-                      p=os.path.join(root,name)
-                      print('CHAT_FILE',p,os.path.getsize(p),flush=True)
-                      if os.path.isfile(p) and os.path.getsize(p)<350000000:
-                          out=subprocess.run(['strings','-a',p],stdout=subprocess.PIPE,text=True,errors='replace').stdout
-                          matches=[x for x in out.splitlines() if re.search('verifyIdentifier|IdentifierToken|getIdentifier|identifier.*token|token.*identifier',x,re.I) and len(x)<500]
-                          for x in matches[:120]: print('CHAT_STRING',x,flush=True)
+          import os,subprocess,re
+          for p in ['/tmp/ts-client/TeamSpeak','/tmp/ts-client/libtschat_client_lib_export.so']:
+              print('BINARY',p,flush=True)
+              for cmd in [['nm','-D','-C',p],['go','tool','nm',p],['strings','-a',p]]:
+                  try:
+                      result=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,errors='replace',timeout=90)
+                      matches=[x for x in result.stdout.splitlines() if re.search(r'verify.?identifier|identifier.?token|token.?identifier|myts_token|signedallowedidentifier',x,re.I)]
+                      print('TOOL',cmd[:3],'matches',len(matches),flush=True)
+                      for x in matches[:100]: print('FOUND',x[:1200],flush=True)
+                  except Exception as e: print('TOOL_FAIL',type(e).__name__,flush=True)
           PY
