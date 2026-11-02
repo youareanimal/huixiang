@@ -19,5 +19,8 @@ jobs:
           mkdir /tmp/ts-client
           tar -xJf /tmp/ts-client.tar.xz -C /tmp/ts-client
           echo '1189672c2c290997a419100b0f29f4da95d0df9d1e744b07a764eba1e8a0944f  /tmp/ts-client/TeamSpeak' | sha256sum -c -
-          echo 'RESEARCH VERIFY'
-          objdump -d -M intel --start-address=0x255ad30 --stop-address=0x255b450 /tmp/ts-client/TeamSpeak
+          for range in '2504a30 2504a90' '25018c0 2501a90'; do
+            read -r start end <<< "$range"
+            echo "RESEARCH $range"
+            objdump -d -M intel --start-address="0x$start" --stop-address="0x$end" /tmp/ts-client/TeamSpeak
+          done
