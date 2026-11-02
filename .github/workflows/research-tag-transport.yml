@@ -29,3 +29,5 @@ jobs:
             :tsproto:test --tests '*ChatTagTransportResearchTest*' --max-workers=2 \
             -Pkotlin.compiler.execution.strategy=in-process \
             '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+
+# Re-run response inspection on synthetic accounts.
