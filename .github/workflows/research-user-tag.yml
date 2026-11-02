@@ -83,3 +83,19 @@ jobs:
                   hint = findtext(int(m.group(1),16)) if m else ''
                   print(line + ('  STRING='+hint if hint else ''))
           PY
+          python3 - <<'PY'
+          import os,re
+          terms = [b'client_user_tag', b'user_tag', b'UserTag', b'userTag', b'@myteamspeak.com']
+          for root, _, files in os.walk('/tmp/ts-client'):
+              for name in files:
+                  if not name.endswith(('.js','.html','.json')): continue
+                  p=os.path.join(root,name)
+                  if os.path.getsize(p)>50000000: continue
+                  data=open(p,'rb').read()
+                  for term in terms:
+                      positions=[m.start() for m in re.finditer(re.escape(term),data)]
+                      if positions:
+                          print('TEXT_MATCH',p,term.decode(),'count',len(positions))
+                          for pos in positions[:12]:
+                              print(repr(data[max(0,pos-170):pos+len(term)+170].decode('utf-8','replace')))
+          PY
