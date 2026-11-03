@@ -58,6 +58,18 @@ class CloudAccountTest {
         assertEquals(2, calls)
     }
 
+    @Test fun authenticationSessionDistinguishesValidFromInvalidStatuses() {
+        var status = MyTsAccount.SESSION_VALID
+        val api = MyTsAccount(CloudTransport { _, _, _, _ -> CloudReply(200, CloudProto.integer(1, status)) })
+        val session = MyTsAccount.Session("fixture-session", "Fixture")
+        assertTrue(api.valid(session))
+        status = MyTsAccount.SESSION_INVALID
+        assertFalse(api.valid(session))
+        // Synchronization and tschat intentionally use their own namespaces for an expired session.
+        assertEquals(102L, MyTsAccount.SYNC_SESSION_EXPIRED)
+        assertEquals(3L, MyTsAccount.TSCHAT_SESSION_EXPIRED)
+    }
+
     @Test fun contactsAreReadUsingTheSessionWithoutCloudCredentialDependency() {
         val api = MyTsAccount(CloudTransport { _, url, _, body ->
             assertEquals("https://clientapi.myteamspeak.com/tschat", url)

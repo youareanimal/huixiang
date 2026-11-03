@@ -252,6 +252,61 @@ class CloudAccountControllerTest {
         } finally { c.close() }
     }
 
+    @Test fun expiredSessionIsDetectedFromBookmarkAndContactStatusesAndClearedAfterRecovery() {
+        val saved = store()
+        val identity = MyTsAccount.Session("fixture-token", "Fixture", ByteArray(32))
+        saved.writeIdentity(identity)
+        saved.writeBookmarks(identity, listOf(MyTsBookmarks.Bookmark(
+            "bookmark-1", "Cached", "voice.example.com", "Alice", "")))
+        var expired = true
+        val c = controller(saved, CloudTransport { _, url, _, _ ->
+            when {
+                url.endsWith("/synchronization") -> if (expired)
+                    CloudReply(200, byteArrayOf(8, MyTsAccount.SYNC_SESSION_EXPIRED.toByte()))
+                else CloudReply(200, byteArrayOf(8, 0xad.toByte(), 2))
+                url.endsWith("/tschat") -> if (expired)
+                    CloudReply(200, byteArrayOf(18, 2, 8, MyTsAccount.TSCHAT_SESSION_EXPIRED.toByte()))
+                else friends()
+                else -> CloudReply(503, byteArrayOf())
+            }
+        })
+        try {
+            assertTrue(c.state.value.sessionExpired)
+            assertEquals("BOOKMARK_SYNC_102", c.state.value.bookmarkError)
+            assertEquals("CONTACTS_3", c.state.value.contactError)
+            assertEquals(1, c.state.value.bookmarks.size)
+            expired = false
+            c.refreshBookmarks()
+            c.refreshContacts()
+            assertFalse(c.state.value.sessionExpired)
+            assertNull(c.state.value.bookmarkError)
+            assertNull(c.state.value.contactError)
+        } finally { c.close() }
+    }
+
+    @Test fun diagnosticsReportAuthenticationAndTschatExpiryCodes() {
+        val saved = store()
+        saved.writeIdentity(MyTsAccount.Session("fixture-token", "Fixture"))
+        val c = controller(saved, CloudTransport { _, url, _, body ->
+            when {
+                url.endsWith("/authentication") -> {
+                    assertTrue(body!!.toString(Charsets.UTF_8).contains("session"))
+                    CloudReply(200, byteArrayOf(8, MyTsAccount.SESSION_INVALID.toByte()))
+                }
+                url.endsWith("/tschat") -> CloudReply(200,
+                    byteArrayOf(18, 2, 8, MyTsAccount.TSCHAT_SESSION_EXPIRED.toByte()))
+                else -> CloudReply(503, byteArrayOf())
+            }
+        })
+        try {
+            c.diagnoseAccountConnection()
+            val report = c.state.value.accountDiagnostic.orEmpty()
+            assertTrue(report.contains("已失效（认证接口状态 103）"))
+            assertTrue(report.contains("好友接口：失败（CONTACTS_3） · 会话已失效"))
+            assertTrue(c.state.value.sessionExpired)
+        } finally { c.close() }
+    }
+
     @Test fun slowFriendRequestsDoNotHoldTheAuthenticationAndChatOperationLock() {
         val saved = store()
         val started = java.util.concurrent.CountDownLatch(1)
