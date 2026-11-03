@@ -13,6 +13,22 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.UUID
 
+/**
+ * Errors that mean the saved myTeamSpeak session must be replaced by a fresh password login.
+ * The authentication/session endpoint reports 103, while synchronization uses 102 and tschat uses 3.
+ */
+internal fun myTsSessionExpired(code: String?): Boolean = code != null && code in setOf(
+    "MYTS_103", "BOOKMARK_SYNC_${MyTsAccount.SYNC_SESSION_EXPIRED}",
+    "CONTACTS_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "CONTACTS_102",
+    "MYTS_CHAT_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "MYTS_CHAT_102",
+    "MYTS_TAG_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "MYTS_TAG_102",
+)
+
+/** Expiry is sticky while any account endpoint still reports it, even if another cache refresh just succeeded. */
+internal val CloudAccountController.State.hasExpiredSession: Boolean
+    get() = sessionExpired || listOf(bookmarkError, contactError, profileError, error, cloudError)
+        .any { myTsSessionExpired(it) }
+
 /** Cloud account state is separate from the voice identity. Raw passwords are never persisted. */
 class CloudAccountController(
     context: Context,
@@ -23,7 +39,7 @@ class CloudAccountController(
     data class State(
         val restored: Boolean = true,
         val hasAccount: Boolean = false, val username: String = "", val busy: Boolean = false,
-        val error: String? = null, val contactError: String? = null,
+        val error: String? = null, val contactError: String? = null, val sessionExpired: Boolean = false,
         val contacts: List<MyTsAccount.Contact> = emptyList(), val rooms: List<MatrixCloud.Room> = emptyList(),
         val contactsLoaded: Boolean = false, val contactsLoading: Boolean = false,
         val directRooms: Map<String, List<String>> = emptyMap(), val sent: Int = 0, val authRevision: Int = 0,
@@ -79,6 +95,7 @@ class CloudAccountController(
             hasAccount = identity != null || account != null,
             username = identity?.username ?: account?.username.orEmpty(),
             email = identity?.email.orEmpty(),
+            sessionExpired = identity == null && account != null,
             localServers = Favorites.load(app),
         )
         if (mutable.value.hasAccount) {
@@ -172,7 +189,7 @@ class CloudAccountController(
                 contact.copy(profileName = cached[contact.matrixId]?.profileName.orEmpty())
             }
             if (!currentRequest()) return
-            mutable.update { it.copy(contacts = contacts, contactsLoaded = true, contactError = null) }
+            mutable.update { it.copy(contacts = contacts, contactsLoaded = true, contactError = null, sessionExpired = false) }
             val slots = Semaphore(4)
             coroutineScope {
                 for (contact in contacts) if (contact.needsProfileName) launch {
@@ -184,7 +201,9 @@ class CloudAccountController(
             }
             if (currentRequest()) try { store.writeContacts(current, mutable.value.contacts) } catch (_: Exception) { }
         } catch (e: CancellationException) { throw e }
-        catch (e: CloudFailure) { if (currentRequest()) mutable.update { it.copy(contactError = e.code) } }
+        catch (e: CloudFailure) { if (currentRequest()) mutable.update {
+            it.copy(contactError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(contactError = "CONTACTS_INVALID_REPLY") } }
         finally { if (currentRequest()) mutable.update { it.copy(contactsLoading = false) } }
     }
@@ -212,7 +231,8 @@ class CloudAccountController(
         lock.withLock {
             val current = identity
             if (current == null) {
-                mutable.update { it.copy(accountDiagnostic = "本地账号 Session：不存在", accountDiagnosing = false) }
+                mutable.update { it.copy(accountDiagnostic = "本地账号 Session：不存在，需要重新登录",
+                    accountDiagnosing = false, sessionExpired = true) }
                 return@withLock
             }
             mutable.update { it.copy(accountDiagnosing = true, accountDiagnostic = "正在检查 MyTeamSpeak 账号连接…") }
@@ -220,14 +240,17 @@ class CloudAccountController(
                 val auth = MyTsAccount(http)
                 val report = mutableListOf("本地账号 Session：已保存")
                 fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(0L)
+                var expired = false
 
                 val sessionStart = System.nanoTime()
                 try {
                     val status = auth.sessionStatus(current)
+                    expired = status == MyTsAccount.SESSION_INVALID
                     val result = when (status) {
-                        102L -> "有效（服务端状态 102）"
+                        MyTsAccount.SESSION_VALID -> "有效（认证接口状态 102）"
+                        MyTsAccount.SESSION_INVALID -> "已失效（认证接口状态 103），需要重新登录"
                         null -> "响应缺少状态字段"
-                        else -> "未确认（服务端状态 $status）"
+                        else -> "未确认（认证接口状态 $status）"
                     }
                     report += "Session：$result · ${elapsed(sessionStart)}ms"
                 } catch (e: CancellationException) {
@@ -245,20 +268,28 @@ class CloudAccountController(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: CloudFailure) {
-                    report += "好友接口：失败（${e.code}） · ${elapsed(contactsStart)}ms"
+                    expired = expired || myTsSessionExpired(e.code)
+                    report += "好友接口：失败（${e.code}）" +
+                        (if (myTsSessionExpired(e.code)) " · 会话已失效" else "") +
+                        " · ${elapsed(contactsStart)}ms"
                 } catch (_: Exception) {
                     report += "好友接口：失败（CONTACTS_INVALID_REPLY） · ${elapsed(contactsStart)}ms"
                 }
 
+                val previousBookmarkError = mutable.value.bookmarkError
+                if (previousBookmarkError != null) report += "此前书签同步：$previousBookmarkError" +
+                    (if (myTsSessionExpired(previousBookmarkError)) "（同步接口的 102 表示会话失效）" else "")
                 val previousContactError = mutable.value.contactError?.takeIf { it.startsWith("CONTACTS_") }
-                if (previousContactError != null) report += "此前好友刷新：$previousContactError"
+                if (previousContactError != null) report += "此前好友刷新：$previousContactError" +
+                    (if (myTsSessionExpired(previousContactError)) "（好友接口的 3 表示会话失效）" else "")
                 val previousChatError = mutable.value.cloudError?.takeIf { it.startsWith("MYTS_CHAT_") }
                 report += if (previousChatError != null) {
-                    "此前聊天凭据请求：$previousChatError（本次未重复调用）"
+                    "此前聊天凭据请求：$previousChatError（本次未重复调用）" +
+                        (if (myTsSessionExpired(previousChatError)) "（会话已失效）" else "")
                 } else {
                     "聊天凭据请求：本次未调用（诊断不会重复创建聊天账号）"
                 }
-                mutable.update { it.copy(accountDiagnostic = report.joinToString("\n")) }
+                mutable.update { it.copy(accountDiagnostic = report.joinToString("\n"), sessionExpired = expired) }
             } finally {
                 mutable.update { it.copy(accountDiagnosing = false) }
             }
@@ -278,8 +309,10 @@ class CloudAccountController(
             if (!currentRequest()) return
             store.writeProfile(current, profile)
             mutable.update { if (!currentRequest()) it else it.copy(email = profile.email.ifBlank { it.email }, avatarUrl = profile.avatarUrl,
-                username = profile.username.ifBlank { it.username }, profileError = null) }
-        } catch (e: CloudFailure) { if (currentRequest()) mutable.update { it.copy(profileError = e.code) } }
+                username = profile.username.ifBlank { it.username }, profileError = null, sessionExpired = false) }
+        } catch (e: CloudFailure) { if (currentRequest()) mutable.update {
+            it.copy(profileError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(profileError = "PROFILE_UNAVAILABLE") } }
         finally { if (currentRequest()) mutable.update { it.copy(profileLoading = false) } }
     }
@@ -314,8 +347,10 @@ class CloudAccountController(
             val items = MyTsBookmarks(http).read(current)
             if (!currentRequest()) return
             store.writeBookmarks(current, items)
-            mutable.update { it.copy(bookmarks = items, bookmarksLoaded = true, bookmarkError = null) }
-        } catch (e: CloudFailure) { if (currentRequest()) mutable.update { it.copy(bookmarkError = e.code) } }
+            mutable.update { it.copy(bookmarks = items, bookmarksLoaded = true, bookmarkError = null, sessionExpired = false) }
+        } catch (e: CloudFailure) { if (currentRequest()) mutable.update {
+            it.copy(bookmarkError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(bookmarkError = "LOCAL_STORE") } }
         finally { if (currentRequest()) mutable.update { it.copy(bookmarksLoading = false) } }
     }
@@ -500,7 +535,11 @@ class CloudAccountController(
             if (showBusy) mutable.update { if (cloud) it.copy(busy = true, cloudError = null) else it.copy(busy = true, error = null) }
             try { block() }
             catch (e: CancellationException) { throw e }
-            catch (e: CloudFailure) { mutable.update { if (cloud) it.copy(cloudError = e.code) else it.copy(error = e.code) } }
+            catch (e: CloudFailure) { mutable.update {
+                val expired = it.sessionExpired || myTsSessionExpired(e.code)
+                if (cloud) it.copy(cloudError = e.code, sessionExpired = expired)
+                else it.copy(error = e.code, sessionExpired = expired)
+            } }
             catch (_: Exception) { mutable.update { if (cloud) it.copy(cloudError = "LOCAL_STORE") else it.copy(error = "LOCAL_STORE") } }
             finally { mutable.update { it.copy(busy = false, restored = true) } }
         } }

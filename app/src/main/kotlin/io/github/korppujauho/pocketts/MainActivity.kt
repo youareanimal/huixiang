@@ -369,9 +369,8 @@ private fun App() {
                     else HubEmpty("会话暂不可用", "返回消息列表刷新后再试。", "返回", ::home)
                 }
                 else -> Column(Modifier.fillMaxSize()) {
-                    if (state.error != null && state.phase == Session.Phase.IDLE) HubError("语音连接未完成，账号状态不受影响。", state.error!!) {
-                        seed = Favorite(state.address, nickname = names.first); route = "CONNECT"; Session.clearError()
-                    }
+                    if (state.error != null && state.phase == Session.Phase.IDLE) HubError("语音连接未完成，账号状态不受影响。", state.error!!,
+                        retry = { seed = Favorite(state.address, nickname = names.first); route = "CONNECT"; Session.clearError() })
                     Box(Modifier.weight(1f)) {
                         when (tab) {
                             HubTab.SERVERS -> ServerHub(account, favs, recent,

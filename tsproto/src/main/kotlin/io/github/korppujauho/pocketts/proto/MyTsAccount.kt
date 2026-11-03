@@ -91,7 +91,9 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
     fun sessionStatus(session: Session): Long? =
         rpc("authentication", "session", CloudProto.text(1, session.token)).number(1)
 
-    fun valid(session: Session): Boolean = sessionStatus(session) == 102L
+    /** The authentication/session endpoint uses 102 for a valid session and 103 for an invalid one.
+     * The synchronization and tschat endpoints use different status namespaces, where 102/3 mean expired. */
+    fun valid(session: Session): Boolean = sessionStatus(session) == SESSION_VALID
 
     /** Optional public metadata fetch; a badge service failure cannot interrupt voice or discard the avatar. */
     fun voiceData(session: Session): MyTsVoiceData? {
@@ -173,6 +175,15 @@ class MyTsAccount(private val http: CloudTransport = HttpsCloudTransport) {
     }
 
     companion object {
+        /** authentication/session: the saved session is still accepted. */
+        const val SESSION_VALID = 102L
+        /** authentication/session: the saved session is unknown or has expired. */
+        const val SESSION_INVALID = 103L
+
+        /** Version codes returned by the synchronization and tschat endpoints for an expired session. */
+        const val SYNC_SESSION_EXPIRED = 102L
+        const val TSCHAT_SESSION_EXPIRED = 3L
+
         /** Matches the algorithm in the official myTeamSpeak website's public password helper. */
         fun passwordDigest(email: String, password: String): String {
             val salt = (email.lowercase(Locale.ROOT) + "ts3Login" + password).toByteArray(Charsets.UTF_8)

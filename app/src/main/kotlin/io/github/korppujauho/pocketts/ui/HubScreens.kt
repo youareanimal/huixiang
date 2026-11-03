@@ -116,13 +116,13 @@ fun HubEmpty(title: String, text: String, action: String? = null, onAction: () -
 
 /** User-readable failure first; technical codes are opt-in and never contain response bodies or secrets. */
 @Composable
-fun HubError(message: String, code: String, retry: (() -> Unit)? = null) {
+fun HubError(message: String, code: String, retry: (() -> Unit)? = null, retryLabel: String = "重试") {
     var details by rememberSaveable(code) { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Ts.amber.copy(alpha = .10f)).padding(14.dp)) {
         Text(message, color = Ts.amber, fontSize = 13.sp)
         Row {
-            if (retry != null) TextButton(onClick = retry) { Text("重试", color = Ts.brand) }
+            if (retry != null) TextButton(onClick = retry) { Text(retryLabel, color = Ts.brand) }
             TextButton(onClick = { details = !details }) { Text(if (details) "收起详情" else "查看详情", color = Ts.muted) }
             if (details) TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }) { Text("复制错误码", color = Ts.muted) }
         }
@@ -147,7 +147,13 @@ fun ServerHub(account: CloudAccountController.State, favorites: List<Favorite>, 
                 HubRow("访客模式也能畅聊", "登录后同步服务器书签和好友", Icons.Rounded.Login, onLogin)
             }
             if (account.bookmarksLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Ts.brand, trackColor = Ts.panel) }
-            account.bookmarkError?.let { code -> item {
+            if (account.hasExpiredSession) item {
+                val expiredCode = listOf(account.bookmarkError, account.contactError, account.profileError,
+                    account.error, account.cloudError).firstOrNull { myTsSessionExpired(it) }
+                    ?: account.bookmarkError ?: account.contactError ?: "MYTS_103"
+                HubError("myTeamSpeak 会话已过期，账号书签和好友需要重新登录后刷新；已有服务器仍可使用。",
+                    expiredCode, onLogin, "重新登录")
+            } else account.bookmarkError?.let { code -> item {
                 HubError(if (code.startsWith("BOOKMARK_KEY")) "账号已登录，书签暂未解锁。可到“我的”重新验证账号。" else "书签暂时没同步成功，已有服务器仍可使用。", code, onRefresh)
             } }
             if (recent.isNotEmpty()) {
@@ -202,7 +208,20 @@ fun FriendsHub(state: CloudAccountController.State, onLogin: () -> Unit, onRefre
                 }
             } }
             if (state.contactsLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth(), color = Ts.brand, trackColor = Ts.panel) }
-            state.contactError?.let { code -> item { HubError("好友暂时没加载成功，已缓存的好友仍会保留。", code, onRefresh) } }
+            val contactCode = state.contactError
+            if (state.hasExpiredSession || contactCode != null) item {
+                val expired = state.hasExpiredSession
+                val expiredCode = listOf(contactCode, state.bookmarkError, state.profileError,
+                    state.error, state.cloudError).firstOrNull { myTsSessionExpired(it) }
+                    ?: contactCode ?: "MYTS_103"
+                HubError(
+                    if (expired) "myTeamSpeak 会话已过期，好友列表需要重新登录后刷新。"
+                    else "好友暂时没加载成功，已缓存的好友仍会保留。",
+                    if (expired) expiredCode else contactCode ?: "MYTS_103",
+                    if (expired) onLogin else onRefresh,
+                    if (expired) "重新登录" else "重试",
+                )
+            }
             val shown = state.contacts.filter { it.displayName.contains(query, ignoreCase = true) || it.subtitle.contains(query, ignoreCase = true) }
             items(shown) { contact -> HubRow(contact.displayName, contact.subtitle.ifBlank { "TeamSpeak 好友" }, Icons.Rounded.PersonOutline, { onContact(contact) }) }
             if (shown.isEmpty() && !state.contactsLoading) item { HubEmpty(if (query.isBlank()) "好友会在这里相遇" else "没有找到这位好友", if (query.isBlank()) "添加的好友会自动出现在这里。" else "换个名字试试。") }
@@ -223,7 +242,11 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
                 item { Text("可在好友页点击好友发消息，或在这里查看会话。暂时不连接，不影响登录、书签和语音服务器。", color = Ts.muted, fontSize = 14.sp) }
                 item { PrimaryButton(if (state.busy) "正在连接…" else "连接云消息", !state.busy, Modifier.fillMaxWidth(), onConnect) }
             }
-            state.cloudError?.let { code -> item { HubError(chatErrorMessage(code), code, onConnect) } }
+            state.cloudError?.let { code -> item {
+                val expired = myTsSessionExpired(code)
+                HubError(chatErrorMessage(code), code, if (expired) onLogin else onConnect,
+                    if (expired) "重新登录" else "重试")
+            } }
             if (state.cloudError?.startsWith("CHAT_LOGIN_") == true) {
                 item {
                     OutlinedButton(onClick = onDiagnose, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
@@ -299,9 +322,11 @@ private fun AccountProfileCard(state: CloudAccountController.State, onAvatar: ()
                 Text("MY TEAMSPEAK", color = Ts.brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Text(state.username.ifBlank { "TeamSpeak 用户" }, color = Ts.bright, fontSize = 23.sp, fontWeight = FontWeight.Bold,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text("账号已登录", color = Ts.green, fontSize = 12.sp)
+                Text(if (state.hasExpiredSession) "登录已过期，请重新验证" else "账号已登录",
+                    color = if (state.hasExpiredSession) Ts.amber else Ts.green, fontSize = 12.sp)
             }
         }
+        if (state.hasExpiredSession) Text("书签、好友和账号资料需要重新登录后刷新。", color = Ts.amber, fontSize = 12.sp)
         HorizontalDivider(color = Ts.muted.copy(alpha = .15f))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
