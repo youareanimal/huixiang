@@ -20,16 +20,16 @@ class PublisherSafeguards(unittest.TestCase):
         self.root=Path(self.temp.name)
         self.dest=self.root/'public';self.dest.mkdir()
         self.state=self.root/'state';self.state.mkdir()
-        baseline=self.stage(14,'0.5.1','original')
+        baseline=self.stage(14,'0.5.1','original',abis=('arm64-v8a','armeabi-v7a','universal'))
         self.baseline=json.loads((baseline/'latest.json').read_text())
         for item in baseline.iterdir():
             if item.name!='deployment.json':(self.dest/item.name).write_bytes(item.read_bytes())
         self.original={p.name:p.read_bytes() for p in self.dest.iterdir()}
 
-    def stage(self, code, version, suffix):
+    def stage(self, code, version, suffix, abis=('arm64-v8a',)):
         stage=self.root/('stage-'+str(code)+'-'+suffix);stage.mkdir()
         hashes={};artifacts={}
-        for abi in ['arm64-v8a','armeabi-v7a','universal']:
+        for abi in abis:
             name='HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'
             data=(abi+suffix).encode();(stage/name).write_bytes(data)
             digest=hashlib.sha256(data).hexdigest();hashes[name]=digest
@@ -51,11 +51,19 @@ class PublisherSafeguards(unittest.TestCase):
     def test_new_release_keeps_old_assets_and_history(self):
         stage=self.stage(15,'0.5.2','new')
         self.run_publish(stage)
-        self.assertEqual(json.loads((self.dest/'latest.json').read_text())['versionCode'],15)
+        published=json.loads((self.dest/'latest.json').read_text())
+        self.assertEqual(published['versionCode'],15)
+        self.assertEqual(set(published['artifacts']),{'arm64-v8a'})
         for name,data in self.original.items():
             if name!='latest.json':self.assertEqual((self.dest/name).read_bytes(),data)
         self.assertEqual(len(list((self.state/'history').glob('*.json'))),2)
         self.run_publish(stage)  # Identical retry is idempotent.
+
+    def test_non_arm64_release_is_rejected(self):
+        stage=self.stage(15,'0.5.2','wrong-abis',abis=('arm64-v8a','armeabi-v7a','universal'))
+        with self.assertRaisesRegex(ValueError,'Only the arm64-v8a'):
+            self.run_publish(stage)
+        self.assert_original_intact()
 
     def test_rollback_is_rejected_without_writes(self):
         with self.assertRaisesRegex(ValueError,'rollback'):self.run_publish(self.stage(13,'0.5.0','older'))
