@@ -136,7 +136,7 @@ jobs:
             docs/screenshots/huixiang-051-connect.png
           if-no-files-found: warn
           retention-days: 30
-publish-release:
+  publish-release:
     if: github.repository == 'youareanimal/huixiang' && startsWith(github.ref, 'refs/tags/v')
     needs: build
     permissions:
@@ -177,12 +177,12 @@ publish-release:
           start = changelog.find(heading)
           if start < 0:
               raise SystemExit(f"Missing changelog section for {version}")
-          body_start = changelog.find("\\n", start)
-          next_section = changelog.find("\\n## ", body_start + 1)
+          body_start = changelog.find("\n", start)
+          next_section = changelog.find("\n## ", body_start + 1)
           notes = changelog[body_start + 1: next_section if next_section >= 0 else None].strip()
           if not notes:
               raise SystemExit("Release notes are empty")
-          notes += "\\n\\n## 安装\\n\\n下载下方与你的设备架构对应的 HuiXiang APK，直接覆盖安装即可。安装包使用原发行证书签名。\\n"
+          notes += "\n\n## 安装\n\n下载下方与你的设备架构对应的 HuiXiang APK，直接覆盖安装即可。安装包使用原发行证书签名。\n"
           Path(os.environ["RUNNER_TEMP"], "release-notes.md").write_text(notes, encoding="utf-8")
           PY
           gh release create "$GITHUB_REF_NAME" "${APKS[@]}" \
