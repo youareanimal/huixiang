@@ -34,7 +34,7 @@ class PublisherSafeguards(unittest.TestCase):
             data=(abi+suffix).encode();(stage/name).write_bytes(data)
             digest=hashlib.sha256(data).hexdigest();hashes[name]=digest
             artifacts[abi]={'url':publisher.BASE+'/'+name,'bytes':len(data),'sha256':digest}
-            checksum_rows.append(f"{digest}  {name}\\n")
+            checksum_rows.append(f"{digest}  {name}\n")
         source='HuiXiang-'+version+'-source.zip';(stage/source).write_bytes(b'verified-source-fixture')
         hashes[source]=publisher.sha(stage/source)
         checksum='HuiXiang-'+version+'-SHA256SUMS.txt'
