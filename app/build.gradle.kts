@@ -98,16 +98,7 @@ android {
         generateLocaleConfig = true
     }
 
-    // APKs distributed outside Google Play are published as a single ARM64 package.
-    // This avoids building and distributing legacy 32-bit and universal variants.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a")
-            isUniversalApk = false
-        }
-    }
+    // No ABI splits: ndk abiFilters above packages only ARM64 native libraries in one APK.
 
     // Every language in every install from Google Play: the app's language can be chosen in its settings
     bundle {
