@@ -198,6 +198,16 @@ WantedBy=multi-user.target
 | `LOG_LEVEL` | `INFO` | `DEBUG` 会打印每条服务器命令 |
 | `ACCESS_TOKEN` | 空 | 访问口令。设了就必须先认证才能用，见下一节 |
 | `ALLOWED_ORIGINS` | 空 | 允许的页面来源，逗号分隔，如 `https://ts.example.com`。空表示只接受同源页面 |
+| `CHAT_HISTORY_DIR` | `chat-history` | 频道聊天历史的落盘目录。每台服务器一个 JSONL，90 天 / 每频道 300 条。设成空串则只放内存，网关重启就清空 |
+
+### 频道聊天历史
+
+TeamSpeak 服务器不保存频道消息，所以「历史」只能由收消息的一方记下来。网页版是两份：
+
+- **浏览器本地**（默认，IndexedDB，库名 `huixiang-chat`）：谁在看谁记，换浏览器就没了；
+- **网关闭环**（可选）：网关连着的服务器上所有频道的消息都会记一份，同一网关下的浏览器/设备都能问到，也能补上本地没攒到的部分。
+
+进频道时前端先读本地最近一屏（30 条），再向网关要同一页；两边的行按「时间 + 发送者 + 文本」去重合并。滚到顶时带上一页最早一条的时间继续翻，直到两边都没有更早的。只记频道消息，私聊不存——网关不区分身份地存私聊，谁连上都能读到别人的话。
 
 ## 接入控制
 
@@ -264,6 +274,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"ping"}` | `v` 探针序号；网关原样回 `pong`，用来量浏览器 ↔ 网关的往返 |
 | `{"t":"join"}` | `cid` 频道 id，`password` 可选 |
 | `{"t":"say"}` | `text`，`channel` 频道 id（频道消息）或 `client` 成员 id（私聊） |
+| `{"t":"history"}` | `channel` 频道 id，`before` 上一页最早一条的时间（0 = 从最新往回取），`limit` 条数 |
 | `{"t":"rename"}` | `name` |
 | `{"t":"mute"}` | `input` `output` 布尔 |
 | `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
@@ -282,6 +293,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"identity","v":"…"}` | 网关生成的身份，存起来 |
 | `{"t":"state", …}` | 全量状态快照，变化时最多每 120ms 一次 |
 | `{"t":"chat", …}` | 收到文字消息：`from` `name` `channel` `mode` `text` `time` |
+| `{"t":"history", …}` | 一页频道历史：`channel` `lines[]`（每行 `time` `from` `name` `uid` `text`）`more`（还有更早的） |
 | `{"t":"files", …}` | 一层目录的文件列表：`cid` `path` `entries[]` `error`，见「文件」 |
 | `{"t":"account", …}` | 账号状态：`phase` 是 `guest` / `busy` / `signedIn`，`username` `email` `avatarUrl` `error`，以及头像上传用的 `fileToken` |
 | `{"t":"bookmarks", …}` | 云书签：`items[]`（`id` `name` `address` `nickname` `password`）`error` `loading` |

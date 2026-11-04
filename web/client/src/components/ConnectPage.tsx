@@ -3,6 +3,8 @@ import { Input, Toast } from '@douyinfe/semi-ui';
 import { IconClose, IconGlobe, IconKey, IconServer, IconUserGroup } from '@douyinfe/semi-icons';
 import { accountErrorText } from '../account';
 import {
+  accountNickname,
+  effectiveNickname,
   store,
   type AccountState,
   type Bookmark,
@@ -78,8 +80,11 @@ export default function ConnectPage({
   const lastAutoNick = useRef('');
   const recent = useMemo(() => store.recent(), []);
   const parsed = parseAddress(address);
-  const canConnect = !!parsed && nickname.trim().length > 0 && (!tokenNeeded || token.trim().length > 0);
   const signedIn = account.phase === 'signedIn';
+  // 已登录时昵称固定是账号名，输入框只做展示；游客才用自己填的昵称
+  const accountNick = accountNickname(account);
+  const nick = effectiveNickname(account, nickname);
+  const canConnect = !!parsed && nick.trim().length > 0 && (!tokenNeeded || token.trim().length > 0);
   const accountBusy = account.phase === 'busy';
   const canLogin =
     !!accountEmail.trim() && !!accountPassword && (!tokenNeeded || token.trim().length > 0) && !accountBusy;
@@ -129,7 +134,7 @@ export default function ConnectPage({
     onConnect({
       host: parsed.host,
       port: parsed.port,
-      nickname: nickname.trim(),
+      nickname: nick.trim(),
       password,
       identity: store.identity(),
     });
@@ -437,18 +442,22 @@ export default function ConnectPage({
             style={inputStyle}
             prefix={
               <UserAvatar
-                name={nickname || 'W'}
+                name={nick || 'W'}
                 sources={signedIn && account.avatarUrl ? [account.avatarUrl] : []}
                 colorKey={signedIn ? account.username || 'me' : 'me'}
                 style={{ width: 24, height: 24 }}
               />
             }
             placeholder="别人看到的名字"
-            value={nickname}
+            value={nick}
             onChange={setNickname}
             onEnterPress={submit}
             maxLength={30}
+            disabled={!!accountNick}
           />
+          {!!accountNick && (
+            <span className="field-help">已登录 myTeamSpeak，将以账号名进入；要自定义昵称请先退出账号</span>
+          )}
         </div>
 
         {passwordOpen ? (
@@ -513,7 +522,7 @@ export default function ConnectPage({
           disabled={!canConnect || connecting}
           onClick={submit}
         >
-          {connecting ? '正在连接…' : signedIn ? `以 ${nickname || account.username} 进入服务器` : '以游客身份进入'}
+          {connecting ? '正在连接…' : signedIn ? `以 ${nick} 进入服务器` : '以游客身份进入'}
         </button>
 
         {signedIn && (

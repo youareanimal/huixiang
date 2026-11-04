@@ -1110,6 +1110,16 @@ body {
   color: var(--text-1);
 }
 
+.chat-more {
+  flex: 0 0 auto;
+  padding: 2px 28px 0;
+  text-align: center;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-4);
+  user-select: none;
+}
+
 .chat-list {
   flex: 1 1 auto;
   min-height: 0;

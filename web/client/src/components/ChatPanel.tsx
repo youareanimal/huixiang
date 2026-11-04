@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { IconChevronDown, IconChevronUp, IconSend } from '@douyinfe/semi-icons';
 import type { ChatLine } from '../protocol';
 import { avatarSources } from '../ui';
@@ -6,6 +6,11 @@ import UserAvatar from './UserAvatar';
 
 interface Props {
   lines: ChatLine[];
+  /** 本地/网关里还有更早的消息，滚到顶能往上翻。 */
+  hasMore: boolean;
+  /** 正在取更早的一页。 */
+  loading: boolean;
+  onLoadMore: () => void;
   ownId: number;
   title: string;
   hint: string;
@@ -28,6 +33,9 @@ const hhmm = (ms: number) =>
  */
 export default function ChatPanel({
   lines,
+  hasMore,
+  loading,
+  onLoadMore,
   ownId,
   title,
   hint,
@@ -46,6 +54,16 @@ export default function ChatPanel({
     const el = listRef.current;
     if (el && stick.current && !collapsed) el.scrollTop = el.scrollHeight;
   }, [lines, collapsed]);
+
+  // 补进列表顶部的内容会把视口顶走，先记下高度差，等 React 提交完再补回来。
+  const anchor = useRef<{ height: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    const a = anchor.current;
+    if (!el || !a) return;
+    anchor.current = null;
+    el.scrollTop = el.scrollHeight - a.height + a.top;
+  }, [lines]);
 
   // 换频道时回到最底部，草稿清掉
   useEffect(() => {
@@ -84,12 +102,21 @@ export default function ChatPanel({
 
       {!collapsed && (
         <>
+          {lines.length > 0 && (hasMore || loading) && (
+            <div className="chat-more" role="status">
+              {loading ? '正在加载更早的消息…' : '向上滚动看更早的消息'}
+            </div>
+          )}
           <div
             className="chat-list"
             ref={listRef}
             onScroll={(e) => {
               const el = e.currentTarget;
               stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+              if (hasMore && !loading && el.scrollTop < 24) {
+                anchor.current = { height: el.scrollHeight, top: el.scrollTop };
+                onLoadMore();
+              }
             }}
           >
             {lines.length === 0 && (
