@@ -17,12 +17,15 @@ concurrency:
 jobs:
   build:
     if: github.repository == 'youareanimal/huixiang'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
 
       - name: Check version
+        id: version
         shell: bash
         run: |
           VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -1)
@@ -31,6 +34,7 @@ jobs:
             exit 1
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Verify publisher safeguards
         run: python3 scripts/pi-mirror/test-publisher.py
@@ -117,6 +121,7 @@ jobs:
           path: |
             dist/signed/
             dist/HuiXiang-${{ env.VERSION }}-source.zip
+            dist/HuiXiang-${{ env.VERSION }}-SHA256SUMS.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -131,3 +136,76 @@ jobs:
             docs/screenshots/huixiang-051-connect.png
           if-no-files-found: warn
           retention-days: 30
+  publish-release:
+    if: github.repository == 'youareanimal/huixiang' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download signed release assets
+        uses: actions/download-artifact@v7
+        with:
+          name: HuiXiang-${{ needs.build.outputs.version }}-signed
+          path: release-assets
+
+      - name: Verify release assets
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t APKS < <(find release-assets/signed -maxdepth 1 -type f -name '*.apk' -print | sort)
+          test "${#APKS[@]}" -eq 3
+          test -s "release-assets/HuiXiang-$VERSION-SHA256SUMS.txt"
+          test -s "release-assets/HuiXiang-$VERSION-source.zip"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t APKS < <(find release-assets/signed -maxdepth 1 -type f -name '*.apk' -print | sort)
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          version = os.environ["VERSION"]
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          heading = f"## 回响 {version} ("
+          start = changelog.find(heading)
+          if start < 0:
+              raise SystemExit(f"Missing changelog section for {version}")
+          body_start = changelog.find("\n", start)
+          next_section = changelog.find("\n## ", body_start + 1)
+          notes = changelog[body_start + 1: next_section if next_section >= 0 else None].strip()
+          if not notes:
+              raise SystemExit("Release notes are empty")
+          notes += "\n\n## 安装\n\n下载下方与你的设备架构对应的 HuiXiang APK，直接覆盖安装即可。安装包使用原发行证书签名。\n"
+          Path(os.environ["RUNNER_TEMP"], "release-notes.md").write_text(notes, encoding="utf-8")
+          PY
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to publish."
+            exit 0
+          fi
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            gh release create "$TAG" "${APKS[@]}" \
+              "release-assets/HuiXiang-$VERSION-SHA256SUMS.txt" \
+              "release-assets/HuiXiang-$VERSION-source.zip" \
+              --verify-tag --title "回响 $VERSION" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+              echo "::error::Tag $TAG already exists without a release; refusing to attach assets to an old commit."
+              exit 1
+            fi
+            gh release create "$TAG" "${APKS[@]}" \
+              "release-assets/HuiXiang-$VERSION-SHA256SUMS.txt" \
+              "release-assets/HuiXiang-$VERSION-source.zip" \
+              --target "$GITHUB_SHA" --title "回响 $VERSION" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+

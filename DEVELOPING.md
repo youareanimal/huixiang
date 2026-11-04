@@ -2,7 +2,7 @@
 
 ## 回响发布约定
 
-本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。GitHub Actions 构建未签名 APK 后，使用本机 Agent 写入 GitHub Secrets 的原发行密钥进行 zipalign 对齐与 apksigner 签名，产物名为 `HuiXiang-<版本号>-signed`。密钥只在签名步骤写入 runner 临时目录并在退出时删除，不进入源码、缓存或产物。证书 SHA-256 固定校验为原发行证书，包名沿用 `app.shengqiao.ts.debug`。Secret 包括 HUIXIANG_KEYSTORE_BASE64、HUIXIANG_STORE_PASSWORD、HUIXIANG_KEY_PASSWORD、HUIXIANG_KEY_ALIAS；不得显示其值。此约定取代此前仅本机签名的约定。工作流不自动发布 Release 或同步更新源。
+本项目仓库为 [youareanimal/huixiang](https://github.com/youareanimal/huixiang)。GitHub Actions 在云端执行协议与 Android 单元测试、构建未签名 APK，再使用 GitHub Secrets 中的原发行密钥进行 zipalign 对齐与 apksigner 签名；产物名为 `HuiXiang-<版本号>-signed`。密钥只在签名步骤写入 runner 临时目录并在退出时删除，不进入源码、缓存或产物。证书 SHA-256 固定校验为原发行证书，包名沿用 `app.shengqiao.ts.debug`。Secret 包括 HUIXIANG_KEYSTORE_BASE64、HUIXIANG_STORE_PASSWORD、HUIXIANG_KEY_PASSWORD、HUIXIANG_KEY_ALIAS；不得显示其值。合并版本更新到 `main` 后，构建工作流会在测试、签名及校验成功后自动创建匹配的 `v*` 标签并发布 GitHub Release，附带三种架构 APK、SHA-256 校验文件和对应源码 ZIP；手动推送匹配版本号的 `v*` 标签也走同一发布流程。同时生成在线更新包 Artifact。更新服务器镜像仍由 `deploy-pi.yml` 的手动部署流程管理，不会因合并或打标签而自动覆盖线上文件。
 
 0.5.1 客户端内置 更新服务器 与 Cloudflare 两个 HTTPS 源，每个源的清单与安装包必须保持同主机、同端口、同路径前缀。更新服务器 默认优先，也允许在关于页选择 Cloudflare；失败时尝试备用源，下载切源前必须匹配版本、架构、长度及 SHA-256，继续验证包名和原签名。GitHub Release 的下载会跨域跳转，因此仍将 GitHub 构建并在本机签名的同一 APK 同步到两个源，保留旧版不可变文件。旧客户端继续使用 Cloudflare 清单，不直接替换其中的下载域名。更新服务器 运维说明见 `scripts/pi-mirror/README.md`。
 
