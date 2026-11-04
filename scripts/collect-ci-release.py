@@ -13,7 +13,7 @@ target = root / 'dist/unsigned'
 target.mkdir(parents=True, exist_ok=True)
 outputs = []
 for abi in ['arm64-v8a']:
-    matches = list(source.glob(f'app-{abi}-compact-unsigned.apk'))
+    matches = list(source.glob('app-compact-unsigned.apk'))
     if len(matches) != 1:
         raise RuntimeError(f'Expected one unsigned {abi} APK, got {len(matches)}')
     data = matches[0].read_bytes()
