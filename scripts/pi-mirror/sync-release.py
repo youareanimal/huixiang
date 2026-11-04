@@ -86,7 +86,7 @@ def prepare(stage):
     apk_names = set()
     for abi, row in feed['artifacts'].items():
         name = Path(urlsplit(row.get('url', '')).path).name
-        require(name in names and name.endswith('.apk') and name not in apk_names, 'Invalid APK filename')
+        require(name in names and name.endswith('-arm64-v8a.apk') and name not in apk_names, 'Only ARM64 APK filenames are accepted')
         require(type(row.get('bytes')) is int and row['bytes'] == (stage / name).stat().st_size, 'APK size mismatch')
         require(row.get('sha256') == expected[name], 'APK feed hash mismatch')
         apk_names.add(name)
