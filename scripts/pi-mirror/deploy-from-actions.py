@@ -157,9 +157,9 @@ def prepare(run, root):
     require(feed.get('schemaVersion') == 1 and feed.get('packageName') == 'app.shengqiao.ts.debug', 'Unexpected package')
     require(type(feed.get('versionCode')) is int and feed['versionCode'] > 0, 'Invalid version code')
     require(feed.get('versionName') == version + '-preview', 'Feed version does not match signed build')
-    require(set(feed.get('artifacts', {})) == {'arm64-v8a', 'armeabi-v7a', 'universal'}, 'Incomplete architectures')
+    require(set(feed.get('artifacts', {})) == {'arm64-v8a'}, 'Only the arm64-v8a APK is supported')
     records = info.get('artifacts', [])
-    require(len(records) == 3 and {a['abi'] for a in records} == set(feed['artifacts']), 'Invalid signed APK records')
+    require(len(records) == 1 and {a['abi'] for a in records} == {'arm64-v8a'}, 'Exactly one signed arm64-v8a APK is required')
     stage = root / 'stage'
     stage.mkdir()
     hashes = {}
