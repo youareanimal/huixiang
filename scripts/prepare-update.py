@@ -28,11 +28,11 @@ stage.mkdir(parents=True)
 artifacts = {}
 abi = 'arm64-v8a'
 name = f'HuiXiang-{version}-preview-{abi}.apk'
-    apk = root / 'dist' / name
-    size = apk.stat().st_size
-    assert 0 < size < 25 * 1024 * 1024, 'Asset exceeds hosting size limit'
-    artifacts[abi] = {'url': base + '/' + name, 'bytes': size, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest()}
-    shutil.copy2(apk, stage / name)
+apk = root / 'dist' / name
+size = apk.stat().st_size
+assert 0 < size < 25 * 1024 * 1024, 'Asset exceeds hosting size limit'
+artifacts[abi] = {'url': base + '/' + name, 'bytes': size, 'sha256': hashlib.sha256(apk.read_bytes()).hexdigest()}
+shutil.copy2(apk, stage / name)
 source = root / f'dist/HuiXiang-{version}-source.zip'
 assert source.is_file()
 shutil.copy2(source, stage / source.name)
