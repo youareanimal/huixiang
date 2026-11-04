@@ -12,7 +12,7 @@ source = root / 'out/app/outputs/apk/compact'
 target = root / 'dist/unsigned'
 target.mkdir(parents=True, exist_ok=True)
 outputs = []
-for abi in ['arm64-v8a', 'armeabi-v7a', 'universal']:
+for abi in ['arm64-v8a']:
     matches = list(source.glob(f'app-{abi}-compact-unsigned.apk'))
     if len(matches) != 1:
         raise RuntimeError(f'Expected one unsigned {abi} APK, got {len(matches)}')
@@ -20,7 +20,7 @@ for abi in ['arm64-v8a', 'armeabi-v7a', 'universal']:
     with zipfile.ZipFile(matches[0]) as archive:
         assert archive.testzip() is None
         assert not any(name.upper().endswith(('.RSA', '.DSA', '.EC')) and name.startswith('META-INF/') for name in archive.namelist())
-    name = f'HuiXiang-{version}-preview' + ('' if abi == 'universal' else f'-{abi}') + '-unsigned.apk'
+    name = f'HuiXiang-{version}-preview-{abi}-unsigned.apk'
     (target / name).write_bytes(data)
     outputs.append({'abi': abi, 'file': name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
 (target / 'build-info.json').write_text(json.dumps({'version': version, 'commit': os.environ['GITHUB_SHA'],
