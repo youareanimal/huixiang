@@ -28,21 +28,17 @@ class PublisherSafeguards(unittest.TestCase):
 
     def stage(self, code, version, suffix, abis=('arm64-v8a',)):
         stage=self.root/('stage-'+str(code)+'-'+suffix);stage.mkdir()
-        hashes={};artifacts={}
+        hashes={};artifacts={};checksum_rows=[]
         for abi in abis:
             name='HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'
             data=(abi+suffix).encode();(stage/name).write_bytes(data)
             digest=hashlib.sha256(data).hexdigest();hashes[name]=digest
             artifacts[abi]={'url':publisher.BASE+'/'+name,'bytes':len(data),'sha256':digest}
+            checksum_rows.append(f"{digest}  {name}\\n")
         source='HuiXiang-'+version+'-source.zip';(stage/source).write_bytes(b'verified-source-fixture')
         hashes[source]=publisher.sha(stage/source)
         checksum='HuiXiang-'+version+'-SHA256SUMS.txt'
-        checksum_text=''.join(f"{row['sha256']}  {row['file']}\n" for row in [
-            {'sha256':publisher.sha(stage/'HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'),
-             'file':'HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'}
-            for abi in abis
-        ])
-        (stage/checksum).write_text(checksum_text)
+        (stage/checksum).write_text(''.join(checksum_rows))
         hashes[checksum]=publisher.sha(stage/checksum)
         feed={'schemaVersion':1,'packageName':'app.shengqiao.ts.debug','versionCode':code,'versionName':version+'-preview','artifacts':artifacts,'sourceUrl':publisher.BASE+'/'+source,'minSdk':29,'notes':'fixture'}
         (stage/'latest.json').write_text(json.dumps(feed))
