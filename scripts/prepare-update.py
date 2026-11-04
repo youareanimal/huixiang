@@ -19,14 +19,15 @@ gradle = (root / 'app/build.gradle.kts').read_text(encoding='utf-8')
 version = re.search(r'versionName = "([^"]+)"', gradle).group(1)
 code = int(re.search(r'versionCode = (\d+)', gradle).group(1))
 stage = root / 'dist/update-site'
-stage.mkdir(parents=True, exist_ok=True)
-# Keep versioned packages so a download started immediately before a new deployment still works.
-for item in stage.iterdir():
-    if item.is_file() and item.suffix not in ['.apk', '.zip']:
-        item.unlink()
+# This directory is only the upload bundle. The remote mirrors retain old immutable releases.
+if stage.is_symlink():
+    raise RuntimeError('Refusing to replace a symlinked update staging directory')
+if stage.exists():
+    shutil.rmtree(stage)
+stage.mkdir(parents=True)
 artifacts = {}
-for abi in ['arm64-v8a', 'armeabi-v7a', 'universal']:
-    name = f'HuiXiang-{version}-preview' + ('' if abi == 'universal' else f'-{abi}') + '.apk'
+abi = 'arm64-v8a'
+name = f'HuiXiang-{version}-preview-{abi}.apk'
     apk = root / 'dist' / name
     size = apk.stat().st_size
     assert 0 < size < 25 * 1024 * 1024, 'Asset exceeds hosting size limit'
