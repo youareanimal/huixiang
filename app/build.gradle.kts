@@ -30,8 +30,8 @@ android {
         versionName = "0.5.7"
         buildConfigField("String", "UPDATE_FEED_URL", "\"https://${updateHost}:8443/huixiang/latest.json\"")
         buildConfigField("String", "UPDATE_FALLBACK_FEED_URL", "\"https://huixiang-updates.pages.dev/latest.json\"")
-        // Phones (WebRTC's native code is large; these two cover practically every phone)
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        // Release builds target ARM64 phones only.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
 
     // The release key: its file and passwords come from scripts/dev.sh release (asked each time), never from git
@@ -98,17 +98,7 @@ android {
         generateLocaleConfig = true
     }
 
-    // APKs distributed outside Google Play can't use the store's ABI delivery.
-    // Keep a universal package and add two smaller APKs so a phone downloads
-    // only the WebRTC native code its CPU needs.
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "armeabi-v7a")
-            isUniversalApk = true
-        }
-    }
+    // No ABI splits: ndk abiFilters above packages only ARM64 native libraries in one APK.
 
     // Every language in every install from Google Play: the app's language can be chosen in its settings
     bundle {

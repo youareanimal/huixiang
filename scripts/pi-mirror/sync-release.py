@@ -20,7 +20,7 @@ DEST = Path('/opt/1panel/apps/openresty/openresty/www/sites/huixiang-mirror/publ
 STATE = Path('/var/lib/huixiang-deploy/state')
 PATTERN = re.compile(r'HuiXiang-[A-Za-z0-9._-]+\.(?:apk|zip|txt)\Z')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
-ABIS = {'arm64-v8a', 'armeabi-v7a', 'universal'}
+ABIS = {'arm64-v8a'}
 
 
 def require(ok, message):
@@ -65,13 +65,13 @@ def prepare(stage):
     require(type(feed.get('versionCode')) is int and feed['versionCode'] > 0, 'Invalid versionCode')
     version = feed.get('versionName', '')
     require(isinstance(version, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,79}', version), 'Invalid versionName')
-    require(set(feed.get('artifacts', {})) == ABIS, 'Exactly three APK architectures required')
+    require(set(feed.get('artifacts', {})) == ABIS, 'Only the arm64-v8a APK architecture is accepted')
     require((stage / 'deployment.json').is_file(), 'Verified build provenance required')
     proof = json.loads((stage / 'deployment.json').read_text())
     require(proof.get('repository') == 'youareanimal/huixiang' and proof.get('workflow') == '.github/workflows/huixiang-build.yml', 'Wrong build provenance')
     require(re.fullmatch(r'[0-9a-f]{40}', proof.get('commit', '')) and type(proof.get('runId')) is int, 'Invalid provenance identifiers')
     expected = proof.get('assetHashes', {})
-    require(isinstance(expected, dict) and 4 <= len(expected) <= 6, 'Invalid verified asset list')
+    require(isinstance(expected, dict) and len(expected) == 3, 'Expected exactly one APK, one source ZIP, and one checksum file')
     names = set()
     for name, digest in expected.items():
         require(PATTERN.fullmatch(name) and isinstance(digest, str) and DIGEST.fullmatch(digest), 'Invalid asset hash')
@@ -79,11 +79,14 @@ def prepare(stage):
         require(item.is_file() and not item.is_symlink(), 'Missing asset or symlink')
         require(0 < item.stat().st_size <= 150 * 1024**2 and sha(item) == digest, 'Asset digest mismatch')
         names.add(name)
+    require(sum(name.endswith('.apk') for name in names) == 1, 'Exactly one ARM64 APK is required')
+    require(sum(name.endswith('-source.zip') for name in names) == 1, 'Exactly one source ZIP is required')
+    require(sum(name.endswith('-SHA256SUMS.txt') for name in names) == 1, 'Exactly one checksum file is required')
     require(sha(stage / 'latest.json') == proof.get('manifestSha256'), 'Manifest digest mismatch')
     apk_names = set()
     for abi, row in feed['artifacts'].items():
         name = Path(urlsplit(row.get('url', '')).path).name
-        require(name in names and name.endswith('.apk') and name not in apk_names, 'Invalid APK filename')
+        require(name in names and name.endswith('-arm64-v8a.apk') and name not in apk_names, 'Only ARM64 APK filenames are accepted')
         require(type(row.get('bytes')) is int and row['bytes'] == (stage / name).stat().st_size, 'APK size mismatch')
         require(row.get('sha256') == expected[name], 'APK feed hash mismatch')
         apk_names.add(name)
