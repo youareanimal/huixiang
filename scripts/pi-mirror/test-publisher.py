@@ -37,7 +37,7 @@ class PublisherSafeguards(unittest.TestCase):
         source='HuiXiang-'+version+'-source.zip';(stage/source).write_bytes(b'verified-source-fixture')
         hashes[source]=publisher.sha(stage/source)
         checksum='HuiXiang-'+version+'-SHA256SUMS.txt'
-        checksum_text=''.join(f"{row['sha256']}  {row['file']}\\n" for row in [
+        checksum_text=''.join(f"{row['sha256']}  {row['file']}\n" for row in [
             {'sha256':publisher.sha(stage/'HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'),
              'file':'HuiXiang-'+version+'-preview'+('' if abi=='universal' else '-'+abi)+'.apk'}
             for abi in abis
