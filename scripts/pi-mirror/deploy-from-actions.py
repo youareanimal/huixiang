@@ -165,7 +165,7 @@ def prepare(run, root):
     hashes = {}
     for item in records:
         name = item['file']
-        require(name == Path(name).name and re.fullmatch(r'HuiXiang-[A-Za-z0-9._-]+\.apk', name), 'Unsafe APK filename')
+        require(name == Path(name).name and name.endswith('-arm64-v8a.apk'), 'Unsafe or non-ARM64 APK filename')
         source = signed_dir / name
         expected = item['sha256']
         require(re.fullmatch(r'[0-9a-f]{64}', expected) and sha(source) == expected, 'Signed APK hash mismatch')
