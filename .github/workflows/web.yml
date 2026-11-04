@@ -1,0 +1,59 @@
+# 只改网页版时不值得为它跑八分钟的 Android 构建：这里只做网页版的检查——
+# web/client 的类型检查与打包、web/gateway 的单元测试。两者都不需要 Android SDK。
+# Android 那一套仍在 huixiang-build.yml；它在 pull_request 上已按路径跳过 web-only 的改动。
+#
+# 注意：这里不产出 APK，也不签名，只回答「网页版这次改动还能编过吗」。
+name: Web
+
+on:
+  push:
+    branches: [main, "codex/**"]
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - ".github/workflows/web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.repository == 'youareanimal/huixiang'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: web/client
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check and build client
+        working-directory: web/client
+        run: npm run build
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Test gateway
+        run: ./gradlew --no-daemon --console=plain -p web/gateway test

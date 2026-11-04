@@ -4,7 +4,15 @@ on:
   push:
     branches: [main, "codex/**"]
     tags: ["v*"]
+    # 只动了网页版就不必跑 Android 构建：交给 .github/workflows/web.yml。
+    # 打 tag 发版不受影响——发版提交一定带 app/build.gradle.kts 的版本号变更，
+    # 而且 GitHub 对 tag push 不评估路径过滤。
+    paths-ignore:
+      - "web/**"
   pull_request:
+    # 只改 web 的 PR 由 Web 工作流检查，不必等八分钟的打包与签名。
+    paths-ignore:
+      - "web/**"
   workflow_dispatch:
 
 permissions:
