@@ -5,6 +5,7 @@ import type {
   ConnectOptions,
   ContactsMessage,
   FilesMessage,
+  HistoryMessage,
   State,
 } from './protocol';
 import type { StreamEvent } from './stream';
@@ -16,6 +17,8 @@ export interface GatewayHandlers {
   onIdentity?: (identity: string) => void;
   onState?: (state: State) => void;
   onChat?: (line: ChatLine) => void;
+  /** 一页频道历史：进频道时带出最近一屏，往上翻时更早的一页。 */
+  onHistory?: (msg: HistoryMessage) => void;
   /** 一层目录的文件列表（或者一次失败的列表）。 */
   onFiles?: (msg: FilesMessage) => void;
   /** myTeamSpeak 账号状态：游客、登录中、已登录或失败。 */
@@ -139,6 +142,9 @@ export class Gateway {
           case 'chat':
             this.handlers.onChat?.(m as unknown as ChatLine);
             break;
+          case 'history':
+            this.handlers.onHistory?.(m as unknown as HistoryMessage);
+            break;
           case 'files':
             this.handlers.onFiles?.(m as unknown as FilesMessage);
             break;
@@ -237,6 +243,11 @@ export class Gateway {
 
   say(text: string, channel: number, client = 0) {
     this.send({ t: 'say', text, channel, client });
+  }
+
+  /** 要一页频道历史；before 传 0 就是从最新往回取。答案从 `onHistory` 回来。 */
+  history(channel: number, before = 0, limit = 30) {
+    this.send({ t: 'history', channel, before, limit });
   }
 
   rename(name: string) {

@@ -5,6 +5,7 @@ import {
   eachMember,
   emptyBookmarks,
   emptyContacts,
+  effectiveNickname,
   findChannel,
   guestAccount,
   memberKey,
@@ -19,6 +20,7 @@ import {
   type State,
 } from './protocol';
 import { removeAccountAvatar, uploadAccountAvatar } from './account';
+import { appendLine, loadPage, mergeLines, serverKey } from './chatHistory';
 import { clampGain, DEFAULT_GAIN } from './audio/gain';
 import { TalkingTracker } from './talking';
 import { StreamClient, initialStreamState, type StreamState } from './stream';
@@ -28,6 +30,9 @@ import ConnectPage from './components/ConnectPage';
 import ServerPage from './components/ServerPage';
 
 const MAX_CHAT = 300;
+
+/** 一次从历史里取多少条：进频道带出最近一屏，往上翻一次加这么多。 */
+const HISTORY_PAGE = 30;
 
 /** 解码/采集电平超过这条线才算「在说话」，两侧用同一个门槛。 */
 const TALK_LEVEL = 0.045;
@@ -42,6 +47,13 @@ export default function App() {
   const [token, setToken] = useState(() => store.token());
   const [state, setState] = useState<State | null>(null);
   const [chat, setChat] = useState<ChatLine[]>([]);
+  // 当前频道的旧消息：进频道、重连时从本地库（必要时再问网关）取出来的一屏，往上翻继续加。
+  // 实时消息仍在 chat 里，两者渲染前合并去重。
+  const [historyLines, setHistoryLines] = useState<ChatLine[]>([]);
+  const [historyMore, setHistoryMore] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  // 更早的消息本地库一份、网关一份，任一方还有就先允许继续往上翻
+  const moreRef = useRef({ local: false, gateway: false });
   // 文件区最近一次的目录列表。只留一份：面板关着的时候没人看，多留是浪费
   const [files, setFiles] = useState<FilesMessage | null>(null);
   // 账号独立于语音连接：离开服务器后这条 WebSocket 还留着，账号、书签和好友继续可用
@@ -169,7 +181,40 @@ export default function App() {
         },
         onRoundTrip: (ms) => setPing((p) => (p.gateway === ms ? p : { ...p, gateway: ms })),
         onServerPing: (ms) => setPing((p) => (p.server === ms ? p : { ...p, server: ms })),
-        onChat: (line) => setChat((prev) => [...prev, line].slice(-MAX_CHAT)),
+        onChat: (line) => {
+          setChat((prev) => [...prev, line].slice(-MAX_CHAT));
+          // 频道消息顺手落进本地库：以后进这个频道还能翻回来，哪怕当时不在这个频道
+          if (line.mode === 2 && line.channel > 0) {
+            const server = serverKey(stateRef.current?.address ?? '');
+            if (server) {
+              appendLine(server, line.channel, {
+                time: line.time,
+                from: line.from,
+                name: line.name,
+                text: line.text,
+              });
+            }
+          }
+        },
+        // 网关补回来的历史：只认当前频道，合并进历史那份（本地已经有的会去重）
+        onHistory: (msg) => {
+          const s = stateRef.current;
+          if (!s || msg.channel !== s.ownChannel) return;
+          const server = serverKey(s.address);
+          const lines: ChatLine[] = msg.lines.map((l) => ({
+            t: 'chat',
+            channel: msg.channel,
+            mode: 2,
+            time: l.time,
+            from: l.from,
+            name: l.name,
+            text: l.text,
+          }));
+          if (lines.length) setHistoryLines((prev) => mergeLines(prev, lines));
+          moreRef.current.gateway = msg.more;
+          setHistoryMore(moreRef.current.local || msg.more);
+          if (server) for (const l of msg.lines) appendLine(server, msg.channel, l);
+        },
         onFiles: setFiles,
         onAccount: setAccount,
         onBookmarks: setBookmarks,
@@ -234,7 +279,9 @@ export default function App() {
       setConnecting(true);
       talking.reset();
       setPing({ gateway: null, server: null });
-      lastAddress.current = { address: opts.host, nickname: opts.nickname };
+      // 记住的是「用户自己的昵称」：登录时连进来用的是账号名，退出登录后重连还要回到自定义昵称
+      const remembered = opts.nickname === store.nickname() ? opts.nickname : store.nickname() || opts.nickname;
+      lastAddress.current = { address: opts.host, nickname: remembered };
       setChat([]);
       try {
         ensurePlayer();
@@ -257,20 +304,29 @@ export default function App() {
   const connect = useCallback(
     (opts: ConnectOptions) => {
       if (tokenNeeded) store.setToken(token);
-      store.setNickname(opts.nickname);
-      void doConnect({ ...opts, identity: store.identity() }, tokenNeeded ? token : '');
+      // 登录状态下昵称强制用账号名；只有真的用了用户自己的昵称才写回本地，
+      // 免得账号名覆盖掉 huixiang.nickname，退出登录后自定义昵称就没了
+      const nickname = effectiveNickname(account, opts.nickname);
+      if (nickname === opts.nickname) store.setNickname(opts.nickname);
+      void doConnect({ ...opts, nickname, identity: store.identity() }, tokenNeeded ? token : '');
     },
-    [doConnect, token, tokenNeeded],
+    [account, doConnect, token, tokenNeeded],
   );
 
   const reconnectSame = useCallback(() => {
     const last = lastAddress.current;
     if (!last) return;
     void doConnect(
-      { host: last.address, port: 9987, nickname: last.nickname, password: '', identity: store.identity() },
+      {
+        host: last.address,
+        port: 9987,
+        nickname: effectiveNickname(account, last.nickname),
+        password: '',
+        identity: store.identity(),
+      },
       tokenNeeded ? token : '',
     );
-  }, [doConnect, token, tokenNeeded]);
+  }, [account, doConnect, token, tokenNeeded]);
 
   const accountLogin = useCallback(
     async (email: string, password: string, otp: string) => {
@@ -371,6 +427,65 @@ export default function App() {
     if (!s || !text.trim()) return;
     gatewayRef.current?.say(text, s.ownChannel, 0);
   }, []);
+
+  /**
+   * 取一页频道历史：先本地库（快、离线也有），再让网关补一份（换设备、或者本地还没攒到的部分）。
+   * before 传 0 表示最近一屏；往上翻时传当前最早一条的时间。
+   */
+  const loadHistory = useCallback(async (cid: number, before: number) => {
+    const s = stateRef.current;
+    if (!s || cid <= 0) return;
+    const server = serverKey(s.address);
+    if (!server) return;
+    setHistoryBusy(true);
+    try {
+      const page = await loadPage(server, cid, before, HISTORY_PAGE);
+      const local: ChatLine[] = page.lines.map((l) => ({
+        t: 'chat',
+        channel: cid,
+        mode: 2,
+        time: l.time,
+        from: l.from,
+        name: l.name,
+        text: l.text,
+      }));
+      if (local.length) setHistoryLines((prev) => mergeLines(prev, local));
+      moreRef.current.local = page.more;
+      setHistoryMore(moreRef.current.local || moreRef.current.gateway);
+      // 网关那份可能还有本地没有的；它到得晚一点，由 onHistory 合并
+      gatewayRef.current?.history(cid, before, HISTORY_PAGE);
+    } finally {
+      setHistoryBusy(false);
+    }
+  }, []);
+
+  // 进频道、重连或换服务器：上一个频道的历史作废，带出这个频道的最近一屏
+  const connectedChannel = state?.phase === 'connected' ? state.ownChannel : 0;
+  const connectedAddress = state?.phase === 'connected' ? state.address : '';
+  useEffect(() => {
+    setHistoryLines([]);
+    setHistoryMore(false);
+    moreRef.current = { local: false, gateway: false };
+    if (connectedChannel > 0) void loadHistory(connectedChannel, 0);
+  }, [connectedChannel, connectedAddress, loadHistory]);
+
+  /** 滚到顶时往上翻一页。 */
+  const loadMoreHistory = useCallback(() => {
+    if (historyBusy || !historyMore) return;
+    const s = stateRef.current;
+    if (!s || s.ownChannel <= 0) return;
+    const oldest = historyLines[0];
+    void loadHistory(s.ownChannel, oldest ? oldest.time : 0);
+  }, [historyBusy, historyMore, historyLines, loadHistory]);
+
+  /** 屏幕上要显示的消息：当前频道的（历史 + 实时），私聊照旧混排。 */
+  const visibleChat = useMemo(() => {
+    // 没有频道 id 的行（解析不出来、或服务器只给了点名不认频道）一律留着，别悄悄吞消息
+    const live = chat.filter(
+      (l) => l.mode !== 2 || !(l.channel > 0) || l.channel === connectedChannel,
+    );
+    return mergeLines(historyLines, live);
+  }, [chat, historyLines, connectedChannel]);
 
   /** 要一层目录的文件列表；答案从 onFiles 回来。 */
   const listFiles = useCallback((cid: number, path: string) => {
@@ -492,7 +607,10 @@ export default function App() {
     return (
       <ServerPage
         state={state}
-        chat={chat}
+        chat={visibleChat}
+        chatMore={historyMore}
+        chatBusy={historyBusy}
+        onLoadMoreChat={loadMoreHistory}
         files={files}
         fileToken={state.fileToken ?? ''}
         avatarToken={state.avatarToken ?? ''}
@@ -534,7 +652,9 @@ export default function App() {
     );
   }, [
     state,
-    chat,
+    visibleChat,
+    historyMore,
+    historyBusy,
     files,
     account,
     bookmarks,
@@ -556,6 +676,7 @@ export default function App() {
     streamState,
     connect,
     joinChannel,
+    loadMoreHistory,
     say,
     listFiles,
     rename,

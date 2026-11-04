@@ -139,10 +139,14 @@ fun main() {
     }
     if (access.origins.isEmpty()) log.warn("ALLOWED_ORIGINS is not set: only same-origin pages are accepted")
     else log.info("Origins accepted: ${access.origins.joinToString(", ")}")
-    embeddedServer(Netty, port = port, host = host) { gateway(dist, access) }.start(wait = true)
+    // 频道聊天历史：要跨重启，所以落盘。默认在工作目录下的 chat-history，可用 CHAT_HISTORY_DIR 挪走。
+    val history = ChannelHistory(File(System.getenv("CHAT_HISTORY_DIR")?.takeIf { it.isNotBlank() } ?: "chat-history")) {
+        log.info("chat history: $it")
+    }
+    embeddedServer(Netty, port = port, host = host) { gateway(dist, access, history) }.start(wait = true)
 }
 
-fun Application.gateway(dist: File, access: Access) {
+fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
     install(WebSockets) {
         pingPeriodMillis = 20_000
         timeoutMillis = 60_000
@@ -339,6 +343,7 @@ fun Application.gateway(dist: File, access: Access) {
                 },
                 // info 而不是 debug：连接、出错、每次串流的开合都在这里，出问题时这是唯一的现场
                 log = { log.info("[$ip] $it") },
+                history = history,
             )
             try {
                 // The password travels in a message, not in the URL, so it stays out of proxy and server logs.
@@ -496,6 +501,12 @@ private fun onText(session: WebSession, text: String, ip: String) {
             (m["text"] as? String).orEmpty(),
             (m["channel"] as? Number)?.toInt() ?: 0,
             (m["client"] as? Number)?.toInt() ?: 0,
+        )
+        // 频道历史：只读。before 是上一页最早一条的时间，往上翻时带上；不给就是最近一屏。
+        "history" -> session.requestHistory(
+            channel = (m["channel"] as? Number)?.toInt() ?: return,
+            before = (m["before"] as? Number)?.toLong() ?: 0L,
+            limit = (m["limit"] as? Number)?.toInt() ?: 0,
         )
         "rename" -> session.rename((m["name"] as? String).orEmpty())
         "mute" -> {

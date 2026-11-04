@@ -2,6 +2,7 @@ package site.huixiang.web
 
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.Commands
+import io.github.korppujauho.pocketts.proto.ChatHistory
 import io.github.korppujauho.pocketts.proto.Crypto
 import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.Identity
@@ -30,7 +31,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Threading: [TsClient] calls its listener on its own thread and [ServerModel] is not thread-safe, so every read
  * of the model happens there too (see [push]).
  */
-class WebSession(private val sink: Sink, private val log: (String) -> Unit = {}) : TsClient.Listener {
+class WebSession(
+    private val sink: Sink,
+    /** 频道聊天的历史；网关里的同一份，按服务器地址分档（见 [ChannelHistory]）。 */
+    private val history: ChannelHistory,
+    private val log: (String) -> Unit = {},
+) : TsClient.Listener {
 
     /** Where the tab is written to: a WebSocket in practice, a list in tests. */
     interface Sink {
@@ -173,6 +179,8 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     @Volatile private var phase = Phase.IDLE
     @Volatile private var error: String? = null
     @Volatile private var address = ""
+    /** 服务器地址的规范形式：历史按它分档，换大小写或补默认端口都还是同一个服务器（见 [ChatHistory.serverKey]）。 */
+    @Volatile private var serverKey = ""
     @Volatile private var nickname = ""
     @Volatile private var inputMuted = false
     @Volatile private var outputMuted = false
@@ -199,6 +207,7 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         }
         this.nickname = nickname
         address = if (port == 9987) host else "$host:$port"
+        serverKey = ChatHistory.serverKey(address) ?: address.lowercase()
         error = null
         phase = Phase.CONNECTING
         model.clear()
@@ -244,12 +253,16 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
     fun accountRemoveAvatar(): String? = account.removeAvatar()
 
     fun leave() {
-        val c = client ?: return
+        val c = client ?: run {
+            serverKey = ""
+            return
+        }
         client = null
         streams.reset()
         c.close()
         ft?.onDisconnected()
         ft = null
+        serverKey = ""
         phase = Phase.IDLE
         error = null
         dirty.set(true)
@@ -273,6 +286,37 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
         val targetMode = if (clientId > 0) 1 else 2
         val target = if (clientId > 0) clientId else channelId
         c.sendCommand(Commands.build("sendtextmessage", "targetmode" to targetMode, "target" to target, "msg" to text))
+    }
+
+    /**
+     * 一个频道更早的消息。
+     *
+     * 历史只在网关连着这个服务器的时候才收得到，所以网关重启、或这个频道从来没人连过，这里就是空的。
+     * [before] 传 0 表示从最新往回取；返回的 [ChannelHistory.Page.more] 告诉页面还能不能继续往上翻。
+     * 只给频道消息：私聊按对方身份分档，不放在这里。
+     */
+    fun requestHistory(channel: Int, before: Long, limit: Int) {
+        val server = serverKey
+        if (channel <= 0 || server.isEmpty()) return
+        val page = history.page(server, channel, before, limit)
+        sink.text(
+            Json.write(
+                mapOf(
+                    "t" to "history",
+                    "channel" to channel,
+                    "lines" to page.lines.map {
+                        mapOf(
+                            "time" to it.time,
+                            "from" to it.from,
+                            "name" to it.name,
+                            "uid" to it.uid,
+                            "text" to it.text,
+                        )
+                    },
+                    "more" to page.more,
+                )
+            )
+        )
     }
 
     fun rename(name: String) {
@@ -528,16 +572,34 @@ class WebSession(private val sink: Sink, private val log: (String) -> Unit = {})
             "notifytextmessage" -> {
                 val from = cmd["invokerid"]?.toIntOrNull() ?: 0
                 val person = model.clients[from]
+                val mode = cmd["targetmode"]?.toIntOrNull() ?: 2
+                // 频道消息（targetmode 2）的回显里没有 target：频道就是「己方当前频道」。
+                // 协议层也是这么认定的（proto/Chat.kt 的 here = model.ownClient?.channel）。
+                val channel = if (mode == 2) {
+                    model.ownClient?.channel ?: (cmd["target"]?.toIntOrNull() ?: 0)
+                } else {
+                    cmd["target"]?.toIntOrNull() ?: 0
+                }
+                val text = cmd["msg"].orEmpty()
+                val time = System.currentTimeMillis()
+                // 频道消息进历史：网关订阅了所有频道，离线期间别人说的话这里收不到，所以它只是「网关看到过的那一段」
+                if (mode == 2 && channel > 0 && serverKey.isNotEmpty()) {
+                    history.append(
+                        serverKey,
+                        channel,
+                        ChannelHistory.Line(time, from, cmd["invokername"].orEmpty(), cmd["invokeruid"].orEmpty(), text),
+                    )
+                }
                 sink.text(
                     Json.write(
                         mapOf(
                             "t" to "chat",
                             "from" to from,
                             "name" to cmd["invokername"].orEmpty(),
-                            "channel" to (cmd["target"]?.toIntOrNull() ?: 0),
-                            "mode" to (cmd["targetmode"]?.toIntOrNull() ?: 2),
-                            "text" to cmd["msg"].orEmpty(),
-                            "time" to System.currentTimeMillis(),
+                            "channel" to channel,
+                            "mode" to mode,
+                            "text" to text,
+                            "time" to time,
                             "avatar" to (person?.avatar ?: ""),
                             "avatarName" to (person?.avatarName ?: ""),
                             "myTeamSpeakAvatar" to (person?.myTeamSpeakAvatar ?: ""),

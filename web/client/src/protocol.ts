@@ -96,6 +96,15 @@ export interface ChatLine {
   myTeamSpeakAvatar?: string;
 }
 
+/** 网关回来的那一页频道历史；只有网关连着这个服务器时收过消息才有。 */
+export interface HistoryMessage {
+  t: 'history';
+  channel: number;
+  lines: Array<{ time: number; from: number; name: string; uid?: string; text: string }>;
+  /** 还能继续往上翻。 */
+  more: boolean;
+}
+
 // ====== myTeamSpeak 账号 ======
 
 /**
@@ -153,6 +162,22 @@ export const guestAccount = (): AccountState => ({
   avatarUrl: '',
   error: null,
 });
+
+/**
+ * 登录状态下必须用的账号名：没登录、或者网关还没把名字推下来时是空串。
+ * 空串就说明「这次不该强制用账号名」，昵称仍由用户自己填。
+ */
+export function accountNickname(account: AccountState | null): string {
+  return account?.phase === 'signedIn' ? account.username.trim() : '';
+}
+
+/**
+ * 连接时实际用的昵称：登录了 myTeamSpeak 就一定用账号名（服务器会按账号认人），
+ * 游客才用本地保存的自定义昵称。判断只写这一处，App 和连接页用同一套规则。
+ */
+export function effectiveNickname(account: AccountState | null, fallback: string): string {
+  return accountNickname(account) || fallback;
+}
 
 export const emptyBookmarks = (): BookmarksMessage => ({
   t: 'bookmarks',

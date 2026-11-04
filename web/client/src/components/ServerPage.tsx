@@ -24,6 +24,11 @@ import UserAvatar from './UserAvatar';
 interface Props {
   state: State;
   chat: ChatLine[];
+  /** 聊天记录里还有更早的可以往上翻。 */
+  chatMore: boolean;
+  /** 正在取更早的一页。 */
+  chatBusy: boolean;
+  onLoadMoreChat: () => void;
   /** 文件区最近一次的目录列表；面板关着时也可能有旧值。 */
   files: FilesMessage | null;
   /** 文件传输的会话令牌，HTTP 端点认它。 */
@@ -84,6 +89,9 @@ function typingInField(target: EventTarget | null): boolean {
 export default function ServerPage({
   state,
   chat,
+  chatMore,
+  chatBusy,
+  onLoadMoreChat,
   files,
   fileToken,
   avatarToken,
@@ -389,6 +397,9 @@ export default function ServerPage({
 
             <ChatPanel
               lines={chat}
+              hasMore={chatMore}
+              loading={chatBusy}
+              onLoadMore={onLoadMoreChat}
               ownId={state.ownId}
               title={channelTitle}
               hint="频道消息，服务器上所有人都能看到"
