@@ -157,7 +157,8 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t APKS < <(find release-assets/signed -maxdepth 1 -type f -name '*.apk' -print | sort)
-          test "${#APKS[@]}" -eq 3
+          test "${#APKS[@]}" -eq 1
+          [[ "${APKS[0]}" == *-arm64-v8a.apk ]]
           test -s "release-assets/HuiXiang-$VERSION-SHA256SUMS.txt"
           test -s "release-assets/HuiXiang-$VERSION-source.zip"
 
@@ -183,7 +184,7 @@ jobs:
           notes = changelog[body_start + 1: next_section if next_section >= 0 else None].strip()
           if not notes:
               raise SystemExit("Release notes are empty")
-          notes += "\n\n## 安装\n\n下载下方与你的设备架构对应的 HuiXiang APK，直接覆盖安装即可。安装包使用原发行证书签名。\n"
+          notes += "\n\n## 安装\n\n下载 arm64-v8a 版本 APK，适用于 ARM64 设备，可直接覆盖安装。安装包使用原发行证书签名。\n"
           Path(os.environ["RUNNER_TEMP"], "release-notes.md").write_text(notes, encoding="utf-8")
           PY
           TAG="v$VERSION"
