@@ -143,6 +143,7 @@ jobs:
       contents: write
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v7
       - name: Download signed release assets
         uses: actions/download-artifact@v7
         with:
