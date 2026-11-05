@@ -68,7 +68,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 匿名进入 | 游客身份，网关按需生成 Ed25519 身份并下发；前端存下来复用，才能在服务器上保留权限 |
 | myTeamSpeak 登录 | 连接页可登录，也可直接以游客进入；登录状态在网关内存保留、浏览器拿 HttpOnly cookie 认领，默认 30 天不用重输密码 |
 | 云书签 | 登录后读取账号的服务器书签；点一条就填入地址、昵称和服务器密码（密码不显示，也不写 localStorage） |
-| 好友列表 | 登录后显示 myTeamSpeak 好友的昵称/备注；不接 Matrix 云聊天，也没有在线状态 |
+| 好友列表 | 登录后显示 myTeamSpeak 好友的昵称/备注；可打开好友云聊天（Matrix），对方有 Matrix 头像则显示、否则首字母；没有在线状态 |
 | 头像 | 自己的 myTeamSpeak 头像可上传/更换/删除；频道成员显示服务器头像或公开的 myTS 头像，失败退回首字母 |
 | 连接 | 地址 + 端口（默认 9987）、昵称、服务器密码、直接进指定频道（含频道密码）；信息栏显示延迟（浏览器↔网关 + 网关↔服务器） |
 | 频道树 | 名称、密码标记、话题、人数上限、编解码器、权限等级、分隔符频道 |
@@ -86,7 +86,6 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 
 | 能力 | 难度 | 说明 |
 |---|---|---|
-| 好友云聊天 | 中 | `MyTsAccount.chatCredentials()` + `MatrixCloud`，需要连 Matrix；加密房间仍只读 |
 | 文件上传与管理（传 / 删 / 改名 / 建文件夹） | 低 | `FileTransfer` 现成，缺的是一个带确认的交互：传上去、删错了，同频道的人都跟着变 |
 | 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
 
@@ -97,7 +96,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 - **密码只换会话，不落盘。** 邮箱和密码经这条已认证的 WebSocket 交给网关，换成 myTeamSpeak 会话；会话只存在网关内存里。浏览器不保存密码或令牌，只拿到一枚 `HttpOnly` cookie 里的随机 id，JS 读不到——登录成功后网关用它把这台浏览器「记住」30 天（`ACCOUNT_REMEMBER_DAYS` 可调，0 关闭），刷新或重新打开页面会自动恢复登录；网关重启、会话过期或在别处被撤销后仍需重新登录。退出登录会立即作废这份记忆。公开部署仍然必须走 TLS，并尽量配 `ACCESS_TOKEN`。
 - **登录后连接带账号身份。** 网关把 `MyTsVoiceIdentity` 放进 `TsClient.Options`，服务器就能显示账号徽章和签名头像；连接后再登录不会追溯，重新连接一次才生效。
 - **云书签在服务端加密。** 网关用登录密码派生的密钥解锁，再把地址、昵称和服务器密码发给这一个标签页。密码只用来填隐藏的输入框，不显示、不写 localStorage；解锁后的书签密钥只留在网关内存，随「记住登录」的会话一起保留，所以恢复登录后云书签照常可读。
-- **好友只做列表。** 显示昵称/备注；myTeamSpeak 联系人接口没有在线状态，这一版也不接 Matrix 云聊天。
+- **好友可云聊天。** 显示昵称/备注（myTeamSpeak 联系人接口没有在线状态）；登录后可打开好友云聊天，走 Matrix 云端聊天（`MatrixCloud`），加密房间只读。详见下文「好友云聊天」一节。
 - **头像。** 自己的 myTeamSpeak 在线头像可上传、更换、删除；浏览器先裁成 320×320、压到 512 KB 以内的 PNG，再走 `POST /account/avatar`。频道成员优先显示服务器头像，其次对方公开的 myTS 头像，都失败就退回首字母。
 - **匿名入口保留。** 登录状态下连接会携带账号身份；要完全匿名，先在账号卡片里退出再连。
 - **退出会撤销会话。** 点「退出」时网关调用 `deleteSession` 撤销它创建的会话；直接关页只丢弃内存里的会话，不等同于在服务端退出。
@@ -210,6 +209,22 @@ TeamSpeak 服务器不保存频道消息，所以「历史」只能由收消息�
 
 进频道时前端先读本地最近一屏（30 条），再向网关要同一页；两边的行按「时间 + 发送者 + 文本」去重合并。滚到顶时带上一页最早一条的时间继续翻，直到两边都没有更早的。只记频道消息，私聊不存——网关不区分身份地存私聊，谁连上都能读到别人的话。
 
+## 好友云聊天
+
+登录 myTeamSpeak 账号后，服务器页右上角（「通知」开关旁）会出现「好友」按钮：
+
+- 点开从右侧滑出好友抽屉，列出账号的好友（昵称 / 备注）；
+- 点某个好友就开始和他一对一聊天，消息经 **Matrix 云端聊天**（`MatrixCloud`，官方 `chat*.tmspk.net` / `teamspeak.com` 域名）收发，双方都要登录账号才连得上；
+- **只对已登录用户开放**：游客进来看不到好友按钮，网关收到 `cloud` 命令也会直接忽略。
+
+实现要点：
+
+- 网关用登录会话换 `MyTsAccount.chatCredentials()`，再据此登录 Matrix；`open(friend)` 按好友的 Matrix id 复用或新建直聊房，`send` 带幂等 `transactionId` 防重复，后台每 4 秒 `sync` 长轮询（`timeout=0` 立即返回）增量拉消息。
+- **加密房间只读**：对方开了端到端加密的会话只能看到「[加密消息]」，既不能解密也不能发送。
+- **token 过期自动重登**：Matrix access token 在轮询中被判 401 / `M_UNKNOWN_TOKEN` 时，网关会用同一账号、同一设备在后台自动重新登录一次并重定游标（不重放旧消息），用户无感；只有重登也失败才提示「会话已失效」。
+- **好友头像**：`GET /cloud-avatar/<matrixId>` 由网关代取对方 Matrix 资料里的头像缩略图（96×96）并缓存；没有头像或加载失败就回退成首字母。它和 TeamSpeak 主头像是两套数据——只显示对方在 Matrix 侧设的头像；域名只信任官方 `chat*.tmspk.net` / `teamspeak.com`，其余一律 404。
+- 私聊消息**不落盘**：网关只在内存里转发并推给当前打开的标签页，不像频道历史那样存 JSONL。
+
 ## 接入控制
 
 网关是个 UDP 代理，谁能让它连，谁就能借这台机器访问外面的 TS 服务器。所以有两道门，挡的是不同的人。
@@ -281,6 +296,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
 | `{"t":"file"}` | `act`（只有 `list`）`cid` `path`，见下面的「文件」一节 |
 | `{"t":"account"}` | `act`：`login`（`email` `password` `otp`）、`logout`、`refresh`；与语音连接无关 |
+| `{"t":"cloud"}` | 好友云聊天，`act`：`connect`（连 Matrix）、`disconnect`、`open`（`friend` 好友标识）、`send`（`room` `text`）、`history`（`room`）、`read`（`room` `event`）、`refresh`；仅登录后可用 |
 
 `identity` 是身份导出串（`Identity.export()` 的字符串）。**第一次连接前传空，网关会生成一个并通过 `identity` 消息下发**，前端存到 localStorage，之后每次带上——不带的话每次都是新身份，服务器上的权限不会继承。
 
@@ -299,7 +315,11 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"account", …}` | 账号状态：`phase` 是 `guest` / `busy` / `signedIn`，`username` `email` `avatarUrl` `error`，以及头像上传用的 `fileToken` |
 | `{"t":"remember","resume":"…"}` | 这次登录可以记住：前端把 `resume` POST 到 `/account/resume`，换成 `HttpOnly` cookie（30 天），以后打开页面自动恢复。只在密码登录成功、且还没有同 id 快照时发一次 |
 | `{"t":"bookmarks", …}` | 云书签：`items[]`（`id` `name` `address` `nickname` `password`）`error` `loading` |
-| `{"t":"contacts", …}` | 好友：`items[]`（`id` `name` `subtitle`）`error` `loading` |
+| `{"t":"contacts", …}` | 好友：`items[]`（`id` `name` `subtitle` `matrixId`）`error` `loading` |
+| `{"t":"cloud", …}` | 云端聊天连接状态：`phase`（`idle`/`connecting`/`connected`/`error`）`connected` `userId` `error` `errorText` |
+| `{"t":"cloudChat", …}` | 打开/刷新一个会话：`roomId` `peer` `name` `encrypted` `messages[]`（每项 `id` `sender` `body` `time` `encrypted`）`more` `friendId` `error` `errorText` |
+| `{"t":"cloudMessage", …}` | 收到新消息：`roomId` `message`（结构同 `cloudChat.messages[]`） |
+| `{"t":"cloudSend", …}` | 本条发送结果：`roomId` `ok` `error` `errorText` |
 | `{"t":"pong","v":…}` | 上行 `ping` 的原样回应 |
 | `{"t":"serverPing","v":18}` | 网关 ↔ TeamSpeak 服务器的 UDP 往返毫秒数，跟着每秒的 keepalive 更新 |
 | `{"t":"stream", …}` | 串流事件：`event` 是 `started` / `stopped` / `viewer` / `viewerLeft` / `offer` / `answer` / `candidate` / `ended` / `refused` / `failed` |

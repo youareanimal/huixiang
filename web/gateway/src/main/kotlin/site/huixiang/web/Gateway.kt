@@ -53,6 +53,53 @@ import java.util.concurrent.atomic.AtomicInteger
  *   · binary frames for voice, `[1][codec][opus…]` up and `[2][codec][clientId:2][opus…]` down, so an Opus
  *     frame never gets parsed, copied through JSON or transcoded on the way.
  */
+private val matrixAvatarCache = ConcurrentHashMap<String, Pair<ByteArray, String>>()
+
+/** Sniff a thumbnail's real type from magic bytes; Matrix media replies carry no header through CloudTransport. */
+private fun imageTypeOf(bytes: ByteArray): String = when {
+    bytes.size >= 4 && bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte() && bytes[2] == 0x4E.toByte() && bytes[3] == 0x47.toByte() -> "image/png"
+    bytes.size >= 3 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte() && bytes[2] == 0xFF.toByte() -> "image/jpeg"
+    bytes.size >= 6 && bytes[0] == 0x47.toByte() && bytes[1] == 0x49.toByte() && bytes[2] == 0x46.toByte() -> "image/gif"
+    bytes.size >= 12 && bytes[0] == 0x52.toByte() && bytes[8] == 0x57.toByte() && bytes[9] == 0x45.toByte() -> "image/webp"
+    else -> "application/octet-stream"
+}
+
+/**
+ * Best-effort fetch of a friend's Matrix avatar thumbnail. Matrix profiles and the legacy media endpoint are
+ * anonymously readable, so no chat token is needed — but not everyone set a Matrix avatar, so this often
+ * returns null and the client falls back to the name's initial.
+ */
+private fun fetchMatrixAvatar(matrixId: String): Pair<ByteArray, String>? {
+    if (matrixId.length !in 4..512 || !matrixId.startsWith('@') || matrixId.indexOf(':') < 2 ||
+        matrixId.any { it.isWhitespace() || it.isISOControl() }) return null
+    val domain = matrixId.substringAfter(':')
+    if (!io.github.korppujauho.pocketts.proto.CloudAccountTransfer.officialDomain(domain)) return null
+    matrixAvatarCache[matrixId]?.let { return it }
+    return try {
+        val http = io.github.korppujauho.pocketts.proto.HttpsCloudTransport
+        val enc = java.net.URLEncoder.encode(matrixId, "UTF-8").replace("+", "%20")
+        val profile = http.request("GET", "https://$domain/_matrix/client/r0/profile/$enc/avatar_url", emptyMap(), null)
+        if (profile.status != 200) return null
+        val data = Json.parse(profile.body.toString(Charsets.UTF_8)) as? Map<*, *> ?: return null
+        val mxc = data["avatar_url"] as? String ?: return null
+        if (!mxc.startsWith("mxc://")) return null
+        val rest = mxc.removePrefix("mxc://")
+        val slash = rest.indexOf('/')
+        if (slash <= 0 || slash >= rest.length - 1) return null
+        val serverName = rest.substring(0, slash).take(255)
+        val mediaId = rest.substring(slash + 1).take(512)
+        val path = "https://$domain/_matrix/media/r0/thumbnail/" +
+            java.net.URLEncoder.encode(serverName, "UTF-8").replace("+", "%20") + "/" +
+            java.net.URLEncoder.encode(mediaId, "UTF-8").replace("+", "%20") + "?width=96&height=96&method=crop"
+        val media = http.request("GET", path, emptyMap(), null)
+        if (media.status != 200 || media.body.isEmpty() || media.body.size > 2 * 1024 * 1024) return null
+        val pair = media.body to imageTypeOf(media.body)
+        if (matrixAvatarCache.size > 512) matrixAvatarCache.clear()
+        matrixAvatarCache[matrixId] = pair
+        pair
+    } catch (_: Exception) { null }
+}
+
 object Limits {
     /** Nobody needs more than a handful of tabs, and each one is a UDP socket plus a thread. */
     const val PER_IP = 4
@@ -230,6 +277,20 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
             }
             // The address includes the avatar flag, so a changed picture is a different address.
             call.response.header("Cache-Control", "public, max-age=86400, immutable")
+            call.respondBytes(avatar.first, io.ktor.http.ContentType.parse(avatar.second))
+        }
+
+        /**
+         * Best-effort friend avatar: the browser passes the friend's Matrix id and gets a small thumbnail, or
+         * 404 when that friend never set a Matrix avatar (the panel then shows the name's initial).
+         */
+        get("/cloud-avatar/{userId}") {
+            val avatar = withContext(Dispatchers.IO) { fetchMatrixAvatar(call.parameters["userId"].orEmpty()) }
+            if (avatar == null) {
+                call.respond(HttpStatusCode.NotFound, "no avatar")
+                return@get
+            }
+            call.response.header("Cache-Control", "public, max-age=86400")
             call.respondBytes(avatar.first, io.ktor.http.ContentType.parse(avatar.second))
         }
 
@@ -584,6 +645,7 @@ private fun onText(session: WebSession, text: String, ip: String) {
         "stream" -> onStream(session, m)
         "file" -> onFile(session, m)
         "account" -> onAccount(session, m)
+        "cloud" -> onCloud(session, m)
     }
 }
 
@@ -600,6 +662,29 @@ private fun onAccount(session: WebSession, m: Map<*, *>) {
         )
         "logout" -> session.accountLogout()
         "refresh" -> session.accountRefresh()
+    }
+}
+
+/**
+ * Cloud chat over Matrix, signed-in accounts only: a friend list and one-to-one messages. The Matrix session is
+ * minted from the same myTeamSpeak login as [onAccount]; the browser opens it lazily the first time the friends
+ * panel is shown, so no chat traffic touches this socket until then.
+ */
+private fun onCloud(session: WebSession, m: Map<*, *>) {
+    when (m["act"]) {
+        "connect" -> session.cloudConnect()
+        "disconnect" -> session.cloudDisconnect()
+        "open" -> session.cloudOpen((m["friendId"] as? String).orEmpty())
+        "send" -> session.cloudSend(
+            roomId = (m["roomId"] as? String).orEmpty(),
+            text = (m["text"] as? String).orEmpty(),
+        )
+        "history" -> session.cloudHistory((m["roomId"] as? String).orEmpty())
+        "read" -> session.cloudMarkRead(
+            roomId = (m["roomId"] as? String).orEmpty(),
+            eventId = (m["eventId"] as? String).orEmpty(),
+        )
+        "refresh" -> session.cloudRefresh()
     }
 }
 

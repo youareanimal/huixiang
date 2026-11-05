@@ -46,9 +46,13 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         return Session(user, token, device)
     }
 
-    fun sync(session: Session, since: String = ""): Snapshot {
+    /**
+     * @param timeoutMs how long the server may hold the request open (long polling). The web gateway passes 0 so a
+     *   background poller returns immediately instead of parking a worker thread for half a minute.
+     */
+    fun sync(session: Session, since: String = "", timeoutMs: Int = 30000): Snapshot {
         val filter = Json.write(mapOf("room" to mapOf("timeline" to mapOf("limit" to 30), "state" to mapOf("lazy_load_members" to true))))
-        val path = "/sync?timeout=30000&set_presence=offline&filter=${quote(filter)}" + if (since.isEmpty()) "" else "&since=${quote(since)}"
+        val path = "/sync?timeout=${timeoutMs.coerceIn(0, 300_000)}&set_presence=offline&filter=${quote(filter)}" + if (since.isEmpty()) "" else "&since=${quote(since)}"
         val data = request("GET", path, token = session.token)
         for (event in data["account_data"].obj()["events"].list()) {
             val e = event.obj()

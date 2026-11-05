@@ -140,11 +140,12 @@ export interface BookmarksMessage {
   loading: boolean;
 }
 
-/** 好友只做展示：myTeamSpeak 的联系人列表没有在线状态，网页版也不接 Matrix 聊天。 */
+/** myTeamSpeak 的联系人：网页版用它的 matrixId 打开好友云聊天（在线状态仍没有，点开才建/开房间）。 */
 export interface Friend {
   id: string;
   name: string;
   subtitle: string;
+  matrixId?: string;
 }
 
 export interface ContactsMessage {
@@ -153,6 +154,73 @@ export interface ContactsMessage {
   error: string | null;
   loading: boolean;
 }
+
+// ====== 好友云聊天（Matrix） ======
+
+/** 云端聊天连接的阶段：连上 Matrix 之前是 idle/connecting，失败进 error。 */
+export type CloudPhase = 'idle' | 'connecting' | 'connected' | 'error';
+
+/** 云聊天连接本身的状态。和账号分开：账号登录了才可能连上云聊天。 */
+export interface CloudState {
+  t: 'cloud';
+  phase: CloudPhase;
+  connected: boolean;
+  /** 自己的 Matrix 用户 id（@user:domain），用来判断一条消息是不是自己发的。 */
+  userId: string;
+  error: string | null;
+  /** error 的中文说法。 */
+  errorText: string | null;
+}
+
+/** 一条云端聊天消息。sender 是 Matrix 用户 id。 */
+export interface CloudMessage {
+  id: string;
+  sender: string;
+  body: string;
+  /** 毫秒。 */
+  time: number;
+  /** 端到端加密的消息网页版读不了，body 只是一句占位文本。 */
+  encrypted: boolean;
+}
+
+/** 打开一个好友会话的回包：房间信息 + 最近一屏。roomId 为 null 表示没打开（看 error）。 */
+export interface CloudChat {
+  t: 'cloudChat';
+  roomId: string | null;
+  peer: string | null;
+  name: string | null;
+  encrypted?: boolean;
+  messages: CloudMessage[];
+  more: boolean;
+  friendId: string;
+  error: string | null;
+  errorText: string | null;
+}
+
+/** 一条新到的云端聊天消息（带房间）。 */
+export interface CloudMessageEvent {
+  t: 'cloudMessage';
+  roomId: string;
+  message: CloudMessage;
+}
+
+/** 一次发送的结果；成功时消息本身会另走 cloudMessage 回来。 */
+export interface CloudSend {
+  t: 'cloudSend';
+  roomId: string;
+  ok: boolean;
+  error: string | null;
+  errorText: string | null;
+}
+
+export const emptyCloud = (): CloudState => ({
+  t: 'cloud',
+  phase: 'idle',
+  connected: false,
+  userId: '',
+  error: null,
+  errorText: null,
+});
 
 export const guestAccount = (): AccountState => ({
   t: 'account',
