@@ -238,13 +238,18 @@ class TsClient(private val listener: Listener, private val log: (String) -> Unit
         }
     }
 
-    /** Publish the public chat tag only while this connection has an account proof. */
-    fun sendMyTsChatTag(tag: String) {
-        val command = MyTsChatTag.updateCommand(tag)
+    /** Publish the complete signed chat tag only while this connection has a MyTS account proof. */
+    fun sendMyTsChatTag(payload: MyTsChatTag.Payload) {
+        val command = MyTsChatTag.updateCommand(payload)
         onThread {
-            if (state == State.CONNECTED && myTsAuthenticated) {
-                pacer.add(command)
-                drain()
+            when {
+                state != State.CONNECTED -> log("myTeamSpeak chat tag update: NOT_CONNECTED")
+                !myTsAuthenticated -> log("myTeamSpeak chat tag update: NOT_AUTHENTICATED")
+                else -> {
+                    pacer.add(command)
+                    drain()
+                    log("myTeamSpeak chat tag update: SENT")
+                }
             }
         }
     }

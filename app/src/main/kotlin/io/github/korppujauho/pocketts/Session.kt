@@ -3,6 +3,7 @@ package io.github.korppujauho.pocketts
 import android.content.Context
 import io.github.korppujauho.pocketts.proto.Chat
 import io.github.korppujauho.pocketts.proto.ChatOutbox
+import io.github.korppujauho.pocketts.proto.CloudFailure
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.ChannelEdits
 import io.github.korppujauho.pocketts.proto.Commands
@@ -844,24 +845,66 @@ object Session : TsClient.Listener {
             it.copy(myTsMetadataReceipt = text) else it.copy(myTsVoiceReceipt = text) }
     }
 
-    /** Publish after either voice or cloud chat connects, with account-switch checks. */
+    /** Publish the complete, signed public chat tag after voice or cloud-chat connection. */
     fun syncMyTsChatTag() {
         val connectedClient = client
         val connectedAccount = voiceAccount
-        if (connectedClient != null && connectedAccount != null) worker.execute {
+        if (connectedClient == null) {
+            AppLog.log("myTeamSpeak chat tag sync: SKIPPED_NOT_CONNECTED")
+            return
+        }
+        if (connectedAccount == null) {
+            AppLog.log("myTeamSpeak chat tag sync: SKIPPED_NO_VOICE_IDENTITY")
+            return
+        }
+        worker.execute {
             try {
                 val store = CloudAccountStore(cloudSecretPrefs(app))
-                val account = store.account()
-                if (account != null && account.myTsSession == connectedAccount.token) {
-                    val tag = MyTsChatTag().read(connectedAccount, account.userId)
-                    if (tag != null && client === connectedClient && voiceAccount === connectedAccount &&
-                        store.identity()?.token == connectedAccount.token &&
-                        store.account()?.let { it.myTsSession == connectedAccount.token && it.userId == account.userId } == true) {
-                        connectedClient.sendMyTsChatTag(tag)
+                if (store.identity()?.token != connectedAccount.token) {
+                    AppLog.log("myTeamSpeak chat tag sync: SKIPPED_IDENTITY_CHANGED")
+                    return@execute
+                }
+
+                val savedAccount = store.account()
+                val matrixId = when {
+                    savedAccount == null -> {
+                        // Login to MyTS clears the separately stored Matrix session. createAccount returns
+                        // the existing account's credentials for existing users; only its userId is used here.
+                        MyTsAccount().chatCredentials(connectedAccount).userId
+                    }
+                    savedAccount.myTsSession == connectedAccount.token -> savedAccount.userId
+                    else -> {
+                        AppLog.log("myTeamSpeak chat tag sync: SKIPPED_CLOUD_ACCOUNT_MISMATCH")
+                        return@execute
                     }
                 }
+
+                val payload = MyTsChatTag().readPayload(connectedAccount, matrixId)
+                if (payload == null) {
+                    AppLog.log("myTeamSpeak chat tag sync: SKIPPED_NO_PRIMARY_IDENTIFIER")
+                    return@execute
+                }
+
+                val latestAccount = store.account()
+                val accountStillMatches = when {
+                    savedAccount == null && latestAccount == null -> true
+                    latestAccount != null -> latestAccount.myTsSession == connectedAccount.token &&
+                        latestAccount.userId == matrixId
+                    else -> false
+                }
+                if (client !== connectedClient || voiceAccount !== connectedAccount ||
+                    store.identity()?.token != connectedAccount.token || !accountStillMatches) {
+                    AppLog.log("myTeamSpeak chat tag sync: SKIPPED_ACCOUNT_CHANGED")
+                    return@execute
+                }
+
+                connectedClient.sendMyTsChatTag(payload)
+                AppLog.log("myTeamSpeak chat tag sync: QUEUED")
+            } catch (e: CloudFailure) {
+                val code = e.code.takeIf { it.matches(Regex("[A-Z0-9_]{1,64}")) } ?: "UNEXPECTED"
+                AppLog.log("myTeamSpeak chat tag unavailable (" + code + ")")
             } catch (_: Exception) {
-                AppLog.log("myTeamSpeak chat tag unavailable (MYTS_TAG_UNAVAILABLE)")
+                AppLog.log("myTeamSpeak chat tag unavailable (UNEXPECTED)")
             }
         }
     }
