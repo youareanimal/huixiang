@@ -1045,6 +1045,7 @@ body {
 }
 
 .monkey-tail {
+  transform-box: view-box;
   transform-origin: 80px 48px;
 }
 
@@ -1181,6 +1182,7 @@ body {
 .monkey-mouth-open {
   opacity: 0;
   transform: scaleY(0.35);
+  transform-box: view-box;
   transform-origin: 80px 183px;
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
