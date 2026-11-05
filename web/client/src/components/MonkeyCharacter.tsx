@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react';
-
 type ArmPose = 'down' | 'mouth' | 'ear';
 
 interface ArmProps {
