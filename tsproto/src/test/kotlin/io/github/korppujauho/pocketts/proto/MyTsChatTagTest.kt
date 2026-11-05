@@ -1,6 +1,5 @@
 package io.github.korppujauho.pocketts.proto
 
-import io.github.korppujauho.pocketts.proto.CloudProto.number
 import io.github.korppujauho.pocketts.proto.CloudProto.string
 import java.util.Base64
 import org.junit.jupiter.api.Assertions.*
@@ -54,7 +53,7 @@ class MyTsChatTagTest {
         onMethod?.invoke(methodName, fields) ?: when (methodName) {
             "getActiveIdentifierList" -> CloudReply(200, activeIdentifiers())
             "requestSignedAllowedIdentifierList" -> CloudReply(200, signedResponse(token))
-            else -> fail("Unexpected RPC method: " + methodName)
+            else -> throw AssertionError("Unexpected RPC method: " + methodName)
         }
     })
 
@@ -73,7 +72,7 @@ class MyTsChatTagTest {
         assertEquals(listOf("getActiveIdentifierList", "requestSignedAllowedIdentifierList"), seen)
         assertEquals(primaryTag, payload.tag)
         assertEquals(Base64.getEncoder().encodeToString(token), payload.myTsToken)
-        assertContentEquals(token, Base64.getDecoder().decode(payload.myTsToken))
+        assertArrayEquals(token, Base64.getDecoder().decode(payload.myTsToken))
         assertEquals(1_793_880_777_317L, payload.updated)
         assertFalse(payload.toString().contains(payload.myTsToken))
     }
@@ -93,6 +92,16 @@ class MyTsChatTagTest {
         assertNull(command["client_meta_data"])
         assertEquals("quiet-myts-tag", command["return_code"])
         assertTrue(command["client_user_tag"]!!.length > 100)
+    }
+
+    @Test
+    fun acceptsSignedTokenResponseWithoutOptionalErrorField() {
+        val token = signedToken()
+        val api = api(token, onMethod = { method, _ ->
+            if (method == "getActiveIdentifierList") CloudReply(200, activeIdentifiers())
+            else CloudReply(200, CloudProto.bytes(1, token))
+        })
+        assertEquals(primaryTag, api.readPayload(account, matrixId)?.tag)
     }
 
     @Test

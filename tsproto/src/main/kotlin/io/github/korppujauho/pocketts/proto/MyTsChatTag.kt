@@ -82,12 +82,16 @@ class MyTsChatTag(private val http: CloudTransport = HttpsCloudTransport) {
         )
 
         val errorFields = fields.filter { it.number == 2 }
-        val status = errorFields.singleOrNull()?.bytes?.let {
-            try { CloudProto.read(it).number(1) } catch (_: Exception) { null }
+        if (errorFields.size > 1) throw CloudFailure("MYTS_SIGNED_IDENTIFIER_INVALID")
+        if (errorFields.isNotEmpty()) {
+            val status = errorFields.single().bytes?.let {
+                try { CloudProto.read(it).number(1) } catch (_: Exception) { null }
+            }
+            if (status != SUCCESS)
+                throw CloudFailure("MYTS_SIGNED_IDENTIFIER_" + (status ?: 0L))
         }
-        if (status != SUCCESS)
-            throw CloudFailure("MYTS_SIGNED_IDENTIFIER_" + (status ?: 0L))
 
+        // ErrorHandling is optional in the response; a token without an error field is also valid.
         val tokenBytes = fields.singleOrNull { it.number == 1 }?.bytes
             ?: throw CloudFailure("MYTS_SIGNED_IDENTIFIER_NO_TOKEN")
         validateSignedIdentifierToken(tokenBytes, primaryTag)
@@ -113,7 +117,7 @@ class MyTsChatTag(private val http: CloudTransport = HttpsCloudTransport) {
         val timestamp = fields.singleOrNull { it.number == 3 }?.integer
         val tagList = fields.singleOrNull { it.number == 4 }?.bytes
         if (signature?.size != SIGNATURE_LENGTH ||
-            certificate.isNullOrEmpty() || certificate.size > MAX_CERTIFICATE_BYTES ||
+            certificate == null || certificate.isEmpty() || certificate.size > MAX_CERTIFICATE_BYTES ||
             timestamp == null || timestamp <= 0L || tagList == null) {
             throw CloudFailure("MYTS_SIGNED_IDENTIFIER_INVALID")
         }
