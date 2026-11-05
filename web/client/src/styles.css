@@ -1218,6 +1218,14 @@ body {
   transform-origin: 80px 130px;
 }
 
+.monkey-figure.is-speaking {
+  animation: monkey-bob 0.34s ease-in-out infinite alternate;
+}
+
+.monkey-svg.is-speaking .monkey-tail {
+  animation: monkey-tail-sway 1.2s ease-in-out infinite;
+}
+
 .monkey-member .tile-name-row {
   max-width: 100%;
   min-width: 0;
@@ -1335,6 +1343,11 @@ body {
   50% {
     transform: scaleY(1);
   }
+}
+
+@keyframes monkey-tail-sway {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1.5deg); }
 }
 
 @keyframes monkey-mouth-talk {
