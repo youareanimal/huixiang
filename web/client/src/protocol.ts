@@ -308,6 +308,9 @@ export interface ConnectOptions {
 /** 说话方式。auto = 本地做人声检测（VAD），安静时不发送。 */
 export type MicMode = 'auto' | 'open' | 'ptt';
 
+/** 「记住上次麦克风/扬声器开关」的时效：14 天。超过就回到默认（闭麦、扬声器开）。 */
+const MUTE_PREF_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
 const KEY = {
   identity: 'huixiang.identity',
   token: 'huixiang.token',
@@ -317,6 +320,7 @@ const KEY = {
   micMode: 'huixiang.micMode',
   volumes: 'huixiang.volumes',
   notify: 'huixiang.notify',
+  mutePref: 'huixiang.mutePref',
 };
 
 export const store = {
@@ -395,6 +399,31 @@ export const store = {
   },
   setNotify(v: boolean) {
     localStorage.setItem(KEY.notify, v ? '1' : '0');
+  },
+  /**
+   * 上次离开时麦克风/扬声器的开关，用于「短暂退出再进入」时恢复（14 天内有效）。
+   * inputMuted=true 表示上次是闭麦；outputMuted=true 表示上次扬声器静音。
+   * 超过时效或数据损坏就返回 null，调用方按默认处理。
+   */
+  mutePref(): { inputMuted: boolean; outputMuted: boolean } | null {
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY.mutePref) ?? 'null');
+      if (!raw || typeof raw !== 'object') return null;
+      const at = Number((raw as { at?: unknown }).at);
+      if (!Number.isFinite(at) || at > Date.now() || Date.now() - at > MUTE_PREF_TTL_MS) return null;
+      return {
+        inputMuted: Boolean((raw as { inputMuted?: unknown }).inputMuted),
+        outputMuted: Boolean((raw as { outputMuted?: unknown }).outputMuted),
+      };
+    } catch {
+      return null;
+    }
+  },
+  setMutePref(inputMuted: boolean, outputMuted: boolean) {
+    localStorage.setItem(KEY.mutePref, JSON.stringify({ inputMuted, outputMuted, at: Date.now() }));
+  },
+  clearMutePref() {
+    localStorage.removeItem(KEY.mutePref);
   },
 };
 
