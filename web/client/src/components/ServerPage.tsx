@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Modal, Spin } from '@douyinfe/semi-ui';
-import { IconClose, IconEdit, IconFolder, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
+import { IconBell, IconBellStroked, IconClose, IconEdit, IconFolder, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
 import type {
   AccountState,
   ChannelNode,
@@ -54,6 +54,11 @@ interface Props {
   pttHeld: boolean;
   audioReady: boolean;
   stream: StreamState;
+  /** 桌面消息通知开关。 */
+  notifyOn: boolean;
+  /** 这个浏览器/环境是否支持通知（http 非 localhost 就不支持）。 */
+  notifySupported: boolean;
+  onToggleNotify: () => void;
   onTogglePttMode: () => void;
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
@@ -108,6 +113,9 @@ export default function ServerPage({
   pttHeld,
   audioReady,
   stream,
+  notifyOn,
+  notifySupported,
+  onToggleNotify,
   onTogglePttMode,
   onPttHold,
   onJoinChannel,
@@ -239,6 +247,23 @@ export default function ServerPage({
         </div>
 
         <div className="head-right">
+          <button
+            type="button"
+            className={`notice-btn${notifyOn ? ' is-on' : ''}`}
+            onClick={onToggleNotify}
+            disabled={!notifySupported}
+            aria-pressed={notifyOn}
+            title={
+              notifySupported
+                ? notifyOn
+                  ? '消息通知已开启：收到新消息时弹系统通知（点此关闭）'
+                  : '收到新消息时弹系统通知（点此开启）'
+                : '当前环境不支持通知，需要用 HTTPS 或 localhost 打开'
+            }
+          >
+            {notifyOn ? <IconBell size="small" /> : <IconBellStroked size="small" />}
+            <span>通知</span>
+          </button>
           <span className="pill" title="服务器总在线人数">
             <IconUserGroup size="small" />
             全服 {state.clientCount} 人

@@ -24,6 +24,8 @@ import { appendLine, loadPage, mergeLines, serverKey } from './chatHistory';
 import { clampGain, DEFAULT_GAIN } from './audio/gain';
 import { TalkingTracker } from './talking';
 import { StreamClient, initialStreamState, type StreamState } from './stream';
+import { notifyPermission, notifySupported, requestNotifyPermission, showMessageNotice } from './notify';
+import { avatarSources } from './ui';
 import { VoicePlayer, webCodecsAvailable } from './audio/player';
 import { MicSender, micCodecAvailable } from './audio/mic';
 import ConnectPage from './components/ConnectPage';
@@ -80,6 +82,15 @@ export default function App() {
   // 按住说话：默认关（常开麦），打开后按才出声
   const [pttMode, setPttMode] = useState(false);
   const [pttHeld, setPttHeld] = useState(false);
+
+  // 桌面通知：有新消息时弹系统通知。开关存本地，但真正的权限在浏览器手里——
+  // 存了「开」而权限被撤销时按关处理，免得开关看着是开的却弹不出来。
+  const [notifyOn, setNotifyOn] = useState(
+    () => store.notify() && notifyPermission() === 'granted',
+  );
+  // 网关回调是长生命周期闭包，读不到最新的 notifyOn，用 ref 兜住
+  const notifyOnRef = useRef(notifyOn);
+  notifyOnRef.current = notifyOn;
 
   // 谁在说话：从下行语音帧判出来（服务器那套 talk status 不是每个服务器都发）
   const [voiceTalking, setVoiceTalking] = useState<ReadonlySet<number>>(() => new Set<number>());
@@ -154,6 +165,47 @@ export default function App() {
   }, [talking]);
 
   /**
+   * 收到别人的消息时弹桌面通知。
+   * 规则：私聊一定提醒；频道消息在两种情况下提醒——页面不在前台，或者消息不是
+   * 你当前所在频道（你看不到那条聊天）。只有「正盯着当前频道的聊天」才不打扰。
+   * 自己的消息、没开开关都不提醒。
+   */
+  const notifyMessage = useCallback((line: ChatLine) => {
+    if (!notifyOnRef.current) return;
+    const s = stateRef.current;
+    if (!s || line.from === s.ownId) return;
+    const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
+    const otherChannel = line.mode === 2 && line.channel !== s.ownChannel;
+    if (line.mode !== 1 && !hidden && !otherChannel) return;
+
+    const channel = line.channel > 0 ? findChannel(s.tree, line.channel) : null;
+    const src = avatarSources(
+      { id: line.from, avatar: line.avatar, myTeamSpeakAvatar: line.myTeamSpeakAvatar },
+      s.ownId,
+      '',
+      s.avatarToken ?? '',
+    )[0];
+    let icon: string | undefined;
+    if (src) {
+      try {
+        icon = new URL(src, location.href).href;
+      } catch {
+        icon = undefined;
+      }
+    }
+    const text = line.text.length > 120 ? `${line.text.slice(0, 120)}…` : line.text;
+    showMessageNotice({
+      title:
+        line.mode === 1
+          ? `${line.name} 发来私聊`
+          : `${line.name}${channel ? ` · #${channel.display || channel.name}` : ''}`,
+      body: text,
+      icon,
+      tag: line.mode === 1 ? `dm:${line.from}` : `ch:${line.channel}`,
+    });
+  }, []);
+
+  /**
    * 一条 WebSocket 同时承载账号和语音连接。离开服务器时只断开 TeamSpeak，不关它——账号会话就活在这条连接
    * 里，关掉等于退出登录。刷新或关页才由浏览器收掉。
    */
@@ -199,6 +251,7 @@ export default function App() {
               });
             }
           }
+          notifyMessage(line);
         },
         // 网关补回来的历史：只认当前频道，合并进历史那份（本地已经有的会去重）
         onHistory: (msg) => {
@@ -259,7 +312,7 @@ export default function App() {
         throw e;
       }
     },
-    [talking],
+    [talking, notifyMessage],
   );
 
   // 页面一打开就把网关连上：浏览器若还带着「记住我」cookie，网关会在这条连接上恢复账号登录，
@@ -450,6 +503,26 @@ export default function App() {
     if (!s || !text.trim()) return;
     gatewayRef.current?.say(text, s.ownChannel, 0);
   }, []);
+
+  // 开关通知。打开时要走浏览器的权限申请（必须在点击里），拒绝/不支持都给出明确说法。
+  const toggleNotify = useCallback(async () => {
+    if (notifyOn) {
+      store.setNotify(false);
+      setNotifyOn(false);
+      return;
+    }
+    const p = await requestNotifyPermission();
+    if (p === 'granted') {
+      store.setNotify(true);
+      setNotifyOn(true);
+    } else if (p === 'denied') {
+      Toast.error('浏览器拒绝了通知权限，请在地址栏的站点设置里允许通知后再试');
+    } else if (p === 'unsupported') {
+      Toast.error('这个浏览器不支持通知（需要 HTTPS 或 localhost 打开）');
+    } else {
+      Toast.warning('没有拿到通知权限');
+    }
+  }, [notifyOn]);
 
   /**
    * 取一页频道历史：先本地库（快、离线也有），再让网关补一份（换设备、或者本地还没攒到的部分）。
@@ -651,6 +724,9 @@ export default function App() {
         pttHeld={pttHeld}
         audioReady={audioReady}
         stream={streamState}
+        notifyOn={notifyOn}
+        notifySupported={notifySupported()}
+        onToggleNotify={toggleNotify}
         onTogglePttMode={() => setPttMode((v) => !v)}
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
@@ -694,6 +770,8 @@ export default function App() {
     pttHeld,
     audioReady,
     streamState,
+    notifyOn,
+    toggleNotify,
     connect,
     joinChannel,
     loadMoreHistory,
