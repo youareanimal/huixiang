@@ -2746,3 +2746,344 @@ button.files-name:hover {
     display: none;
   }
 }
+
+/* ====== 好友云聊天侧边抽屉 ====== */
+.friends-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 16, 40, 0.28);
+  z-index: 55;
+  animation: friends-fade 0.15s ease;
+}
+
+.friends-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(360px, 88vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--line);
+  box-shadow: -12px 0 40px rgba(20, 16, 40, 0.16);
+  z-index: 60;
+  animation: friends-slide 0.18s ease;
+}
+
+@keyframes friends-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes friends-slide {
+  from { transform: translateX(16px); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
+.friends-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: var(--head-h);
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.friends-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.friends-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.friends-back {
+  border: none;
+  background: transparent;
+  color: var(--brand-deep);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.friends-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.friends-empty {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.friends-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.friends-status-error {
+  flex-direction: column;
+  align-items: flex-start;
+  color: var(--danger);
+}
+
+.friends-retry {
+  border: 1px solid var(--line);
+  background: var(--bg-app);
+  color: var(--text-2);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.friends-retry:hover {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.friend-row:hover {
+  background: var(--bg-fill);
+}
+
+.friend-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.friend-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.friend-name {
+  font-size: 13.5px;
+  color: var(--text-1);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friend-sub {
+  font-size: 11.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friends-disconnect {
+  margin: 12px 8px 4px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.friends-disconnect:hover {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+}
+
+.friends-chat-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.friends-chat-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.friends-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friends-more {
+  align-self: center;
+  border: none;
+  background: var(--bg-fill);
+  color: var(--text-3);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.friends-chat-empty {
+  color: var(--text-4);
+  font-size: 12.5px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.friends-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 82%;
+}
+
+.friends-msg.is-mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.friends-bubble {
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: var(--bg-fill);
+  color: var(--text-1);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.friends-msg.is-mine .friends-bubble {
+  background: var(--brand);
+  color: #fff;
+}
+
+.friends-time {
+  font-size: 10px;
+  color: var(--text-4);
+  margin: 2px 4px 0;
+}
+
+.friends-notice {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 12px 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: #a3242b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.friends-notice-x {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  padding: 2px;
+}
+
+.friends-locked {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.friends-compose {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.friends-compose .semi-input-wrapper {
+  flex: 1 1 auto;
+}
+
+.friends-send {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.friends-send:hover:not(:disabled) {
+  background: var(--brand-deep);
+}
+
+.friends-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

@@ -4,6 +4,7 @@ import { Gateway, tokenRequired } from './gateway';
 import {
   eachMember,
   emptyBookmarks,
+  emptyCloud,
   emptyContacts,
   effectiveNickname,
   findChannel,
@@ -13,9 +14,12 @@ import {
   type AccountState,
   type BookmarksMessage,
   type ChatLine,
+  type CloudChat,
+  type CloudState,
   type ConnectOptions,
   type ContactsMessage,
   type FilesMessage,
+  type Friend,
   type Member,
   type MicMode,
   type State,
@@ -65,6 +69,10 @@ export default function App() {
   const [account, setAccount] = useState<AccountState>(() => guestAccount());
   const [bookmarks, setBookmarks] = useState<BookmarksMessage>(() => emptyBookmarks());
   const [friends, setFriends] = useState<ContactsMessage>(() => emptyContacts());
+  // 好友云聊天：登录后才连得上；连上后和好友一对一聊
+  const [cloud, setCloud] = useState<CloudState>(() => emptyCloud());
+  const [cloudChat, setCloudChat] = useState<CloudChat | null>(null);
+  const [cloudNotice, setCloudNotice] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 延迟拆成两段：浏览器↔网关、网关↔服务器（TeamSpeak 的 UDP ping）
@@ -288,6 +296,19 @@ export default function App() {
         onRemember: (resume) => void rememberAccount(resume),
         onBookmarks: setBookmarks,
         onContacts: setFriends,
+        onCloud: setCloud,
+        onCloudChat: (msg) => {
+          setCloudChat(msg);
+          setCloudNotice(msg.errorText ?? null);
+        },
+        onCloudMessage: (e) => {
+          setCloudChat((prev) =>
+            prev && prev.roomId === e.roomId
+              ? { ...prev, messages: [...prev.messages, e.message] }
+              : prev,
+          );
+        },
+        onCloudSend: (s) => setCloudNotice(s.ok ? null : s.errorText ?? '发送失败'),
         onVoice: (codec, clientId, opus) => {
           // 空帧是「说完了」：立刻熄灯，不用等超时。非空帧交给播放器按实际音量判断
           if (opus.length === 0) talking.quiet(clientId);
@@ -307,6 +328,9 @@ export default function App() {
           setAccount(guestAccount());
           setBookmarks(emptyBookmarks());
           setFriends(emptyContacts());
+          setCloud(emptyCloud());
+          setCloudChat(null);
+          setCloudNotice(null);
           if (code === 1008) setError(reason || '网关拒绝了这次连接');
         },
       });
@@ -686,6 +710,16 @@ export default function App() {
 
   const stopWatch = useCallback(() => streamRef.current?.stopWatch(), []);
 
+  // 好友云聊天的动作都通过网关连接发出去，用 ref 拿最新那条
+  const cloudConnect = useCallback(() => gatewayRef.current?.cloudConnect(), []);
+  const cloudDisconnect = useCallback(() => gatewayRef.current?.cloudDisconnect(), []);
+  const cloudOpen = useCallback((friend: Friend) => gatewayRef.current?.cloudOpen(friend.id), []);
+  const cloudSendTo = useCallback(
+    (roomId: string, text: string) => gatewayRef.current?.cloudSend(roomId, text),
+    [],
+  );
+  const cloudLoadHistory = useCallback((roomId: string) => gatewayRef.current?.cloudHistory(roomId), []);
+
   const content = useMemo(() => {
     if (!state) {
       return (
@@ -716,6 +750,16 @@ export default function App() {
         fileToken={state.fileToken ?? ''}
         avatarToken={state.avatarToken ?? ''}
         account={account}
+        friends={friends}
+        cloud={cloud}
+        cloudChat={cloudChat}
+        cloudNotice={cloudNotice}
+        onCloudConnect={cloudConnect}
+        onCloudDisconnect={cloudDisconnect}
+        onCloudOpen={cloudOpen}
+        onCloudSend={cloudSendTo}
+        onCloudHistory={cloudLoadHistory}
+        onDismissCloudNotice={() => setCloudNotice(null)}
         onAccountLogout={accountLogout}
         onAccountRefresh={accountRefresh}
         onAvatarChange={changeAccountAvatar}
@@ -763,6 +807,9 @@ export default function App() {
     account,
     bookmarks,
     friends,
+    cloud,
+    cloudChat,
+    cloudNotice,
     ping,
     tokenNeeded,
     token,
@@ -797,6 +844,11 @@ export default function App() {
     stopShare,
     watchStream,
     stopWatch,
+    cloudConnect,
+    cloudDisconnect,
+    cloudOpen,
+    cloudSendTo,
+    cloudLoadHistory,
     accountLogin,
     accountLogout,
     accountRefresh,

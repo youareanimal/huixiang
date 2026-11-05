@@ -2,6 +2,10 @@ import type {
   AccountState,
   BookmarksMessage,
   ChatLine,
+  CloudChat,
+  CloudMessageEvent,
+  CloudSend,
+  CloudState,
   ConnectOptions,
   ContactsMessage,
   FilesMessage,
@@ -29,6 +33,14 @@ export interface GatewayHandlers {
   onBookmarks?: (msg: BookmarksMessage) => void;
   /** 好友列表。 */
   onContacts?: (msg: ContactsMessage) => void;
+  /** 云聊天连接状态（登录后才连得上）。 */
+  onCloud?: (state: CloudState) => void;
+  /** 打开好友会话的回包。 */
+  onCloudChat?: (chat: CloudChat) => void;
+  /** 一条新到的云端聊天消息。 */
+  onCloudMessage?: (event: CloudMessageEvent) => void;
+  /** 一次发送的结果。 */
+  onCloudSend?: (send: CloudSend) => void;
   /** 一帧语音，已去掉 4 字节头：codec 和说话的人。 */
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
   /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
@@ -162,6 +174,18 @@ export class Gateway {
           case 'contacts':
             this.handlers.onContacts?.(m as unknown as ContactsMessage);
             break;
+          case 'cloud':
+            this.handlers.onCloud?.(m as unknown as CloudState);
+            break;
+          case 'cloudChat':
+            this.handlers.onCloudChat?.(m as unknown as CloudChat);
+            break;
+          case 'cloudMessage':
+            this.handlers.onCloudMessage?.(m as unknown as CloudMessageEvent);
+            break;
+          case 'cloudSend':
+            this.handlers.onCloudSend?.(m as unknown as CloudSend);
+            break;
           case 'stream':
             this.handlers.onStream?.(m as unknown as StreamEvent);
             break;
@@ -287,6 +311,37 @@ export class Gateway {
 
   accountRefresh() {
     this.send({ t: 'account', act: 'refresh' });
+  }
+
+  /** 连上云端聊天（需要已登录 myTeamSpeak）。状态从 onCloud 回来。 */
+  cloudConnect() {
+    this.send({ t: 'cloud', act: 'connect' });
+  }
+
+  cloudDisconnect() {
+    this.send({ t: 'cloud', act: 'disconnect' });
+  }
+
+  /** 打开某位好友的会话；回包从 onCloudChat 回来。 */
+  cloudOpen(friendId: string) {
+    this.send({ t: 'cloud', act: 'open', friendId });
+  }
+
+  /** 往某个房间发一条文字。 */
+  cloudSend(roomId: string, text: string) {
+    this.send({ t: 'cloud', act: 'send', roomId, text });
+  }
+
+  cloudHistory(roomId: string) {
+    this.send({ t: 'cloud', act: 'history', roomId });
+  }
+
+  cloudRead(roomId: string, eventId: string) {
+    this.send({ t: 'cloud', act: 'read', roomId, eventId });
+  }
+
+  cloudRefresh() {
+    this.send({ t: 'cloud', act: 'refresh' });
   }
 
   /** 一帧 Opus（960 采样 / 20ms）。空数组表示停止说话。 */

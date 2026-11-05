@@ -5,7 +5,11 @@ import type {
   AccountState,
   ChannelNode,
   ChatLine,
+  CloudChat,
+  CloudState,
+  ContactsMessage,
   FilesMessage,
+  Friend,
   Member,
   MicMode,
   State,
@@ -17,6 +21,7 @@ import ChannelTree from './ChannelTree';
 import ChatPanel from './ChatPanel';
 import ControlBar from './ControlBar';
 import FilesPanel from './FilesPanel';
+import FriendsPanel from './FriendsPanel';
 import ServerInfoPanel from './ServerInfo';
 import Stage from './Stage';
 import StreamPanel from './StreamPanel';
@@ -38,6 +43,20 @@ interface Props {
   avatarToken: string;
   /** myTeamSpeak 账号：头像和账号操作。 */
   account: AccountState;
+  /** 好友列表（myTeamSpeak 联系人），好友云聊天的入口。 */
+  friends: ContactsMessage;
+  /** 云聊天连接状态。 */
+  cloud: CloudState;
+  /** 当前打开的好友会话；没打开是 null。 */
+  cloudChat: CloudChat | null;
+  /** 云聊天的一次性提示（发送失败等），可为空。 */
+  cloudNotice: string | null;
+  onCloudConnect: () => void;
+  onCloudDisconnect: () => void;
+  onCloudOpen: (friend: Friend) => void;
+  onCloudSend: (roomId: string, text: string) => void;
+  onCloudHistory: (roomId: string) => void;
+  onDismissCloudNotice: () => void;
   /** 浏览器 ↔ 网关的往返（毫秒），还没测到是 null。 */
   pingGateway: number | null;
   /** 网关 ↔ TeamSpeak 服务器的往返（毫秒），还没测到是 null。 */
@@ -102,6 +121,16 @@ export default function ServerPage({
   fileToken,
   avatarToken,
   account,
+  friends,
+  cloud,
+  cloudChat,
+  cloudNotice,
+  onCloudConnect,
+  onCloudDisconnect,
+  onCloudOpen,
+  onCloudSend,
+  onCloudHistory,
+  onDismissCloudNotice,
   pingGateway,
   pingServer,
   micOn,
@@ -148,6 +177,7 @@ export default function ServerPage({
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
+  const [friendsOpen, setFriendsOpen] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const joinTimer = useRef<number | null>(null);
 
@@ -266,6 +296,18 @@ export default function ServerPage({
             {notifyOn ? <IconBell size="small" /> : <IconBellStroked size="small" />}
             <span>通知</span>
           </button>
+          {account.phase === 'signedIn' && (
+            <button
+              type="button"
+              className={`notice-btn${friendsOpen ? ' is-on' : ''}`}
+              onClick={() => setFriendsOpen((v) => !v)}
+              aria-pressed={friendsOpen}
+              title="好友与云聊天"
+            >
+              <IconUserGroup size="small" />
+              <span>好友</span>
+            </button>
+          )}
           <span className="pill" title="服务器总在线人数">
             <IconUserGroup size="small" />
             全服 {state.clientCount} 人
@@ -290,6 +332,22 @@ export default function ServerPage({
           </button>
         </div>
       </header>
+
+      <FriendsPanel
+        open={friendsOpen}
+        onClose={() => setFriendsOpen(false)}
+        friends={friends}
+        account={account}
+        cloud={cloud}
+        chat={cloudChat}
+        notice={cloudNotice}
+        onConnect={onCloudConnect}
+        onDisconnect={onCloudDisconnect}
+        onOpenFriend={onCloudOpen}
+        onSend={onCloudSend}
+        onHistory={onCloudHistory}
+        onDismissNotice={onDismissCloudNotice}
+      />
 
       {(state.error && !errorDismissed) || !audioReady ? (
         <div className="banner-stack">

@@ -64,6 +64,8 @@ class WebSession(
         private const val WRONG_CHANNEL_PASSWORD = "781"
         private const val LEVEL_TOO_LOW = "519"
         private const val IDENTITY_ONLINE = "521"
+        private const val CONNECT_FAILED_BANNED = "3329" // connect_failed_banned
+        private const val BAN_FLOODING = "3331" // ban_flooding
 
         /**
          * The banners of the live sessions, looked up by the token in the state's banner address. One tab per server
@@ -128,6 +130,15 @@ class WebSession(
         fileToken = fileId,
         log = { log("account: $it") },
         onSignedIn = { rememberNow() },
+    )
+
+    /** The tab's cloud chat over Matrix; shares [account]'s myTeamSpeak session, so it needs a signed-in account. */
+    private val cloudChat = CloudChatSession(
+        push = { sink.text(it) },
+        log = { log("cloud: $it") },
+        myTsSession = { account.chatSession() },
+        username = { account.chatUsername() },
+        contacts = { account.contactSnapshot() },
     )
 
     /** The remembered-account id this tab's cookie stands for; null until a password login is remembered. */
@@ -265,10 +276,20 @@ class WebSession(
         // 显式退出登录才真正忘掉这台浏览器；关标签页/刷新不影响记住的登录。
         rememberedId?.let { RememberedAccounts.drop(it) }
         rememberedId = null
+        cloudChat.disconnect()
         account.logout()
     }
 
     fun accountRefresh() = account.refresh()
+
+    // ====== cloud chat (Matrix), signed-in accounts only ======
+    fun cloudConnect() = cloudChat.connect()
+    fun cloudDisconnect() = cloudChat.disconnect()
+    fun cloudOpen(friendId: String) = cloudChat.open(friendId)
+    fun cloudSend(roomId: String, text: String) = cloudChat.send(roomId, text)
+    fun cloudHistory(roomId: String) = cloudChat.history(roomId)
+    fun cloudMarkRead(roomId: String, eventId: String) = cloudChat.markRead(roomId, eventId)
+    fun cloudRefresh() = cloudChat.refresh()
 
     /**
      * 密码登录成功后把会话存进 [RememberedAccounts]，并把新 id 告诉浏览器（前端拿它换 HttpOnly cookie）。
@@ -561,6 +582,7 @@ class WebSession(
         fileSessions.remove(fileId)
         avatars.remove(avatarId)
         account.close()
+        cloudChat.close()
         leave()
         owned?.close()
         owned = null
@@ -700,16 +722,24 @@ class WebSession(
         owned?.close()
     }
 
-    private fun errorText(id: String, msg: String, extra: String?): String = when (id) {
-        WRONG_CHANNEL_PASSWORD -> "频道密码不正确"
-        NO_PERMISSION -> msg.ifBlank { "权限不足" }
-        // The server wants a stronger identity than the one this tab has: it has to be raised, which takes a while.
-        LEVEL_TOO_LOW -> {
-            val level = extra?.toIntOrNull() ?: 0
-            "该服务器要求身份安全等级 $level，当前身份等级不够。请让本站在服务端提升身份后重试"
+    private fun errorText(id: String, msg: String, extra: String?): String {
+        // 519 的 extra_msg 是「需要的安全等级」这个数字，已在下面用掉，不再当补充说明重复显示。
+        val hint = extra?.trim()?.takeIf { it.isNotEmpty() && id != LEVEL_TOO_LOW }
+        val base = when (id) {
+            WRONG_CHANNEL_PASSWORD -> "频道密码不正确"
+            NO_PERMISSION -> msg.ifBlank { "权限不足" }
+            // The server wants a stronger identity than the one this tab has: it has to be raised, which takes a while.
+            LEVEL_TOO_LOW -> {
+                val level = extra?.toIntOrNull() ?: 0
+                "该服务器要求身份安全等级 $level，当前身份等级不够。请让本站在服务端提升身份后重试"
+            }
+            IDENTITY_ONLINE -> "这个身份已经在服务器上登录了（同一个身份不能同时在线两次）"
+            CONNECT_FAILED_BANNED -> "你已被该服务器封禁，连接被拒绝。常见原因是本站共享的出口 IP 或本机匿名身份触发了服务器风控"
+            BAN_FLOODING -> "连接被该服务器按「洪泛」临时封禁（flood ban），通常是连接或查询过于频繁，请稍等一段时间再试"
+            else -> msg.ifBlank { "服务器返回错误 $id" }
         }
-        IDENTITY_ONLINE -> "这个身份已经在服务器上登录了（同一个身份不能同时在线两次）"
-        else -> msg.ifBlank { "服务器返回错误 $id" }
+        // 服务器在错误里附带的额外说明（例如「N 秒后可重试」）也展示出来，不让用户猜。
+        return if (hint != null) "$base（服务器提示：$hint）" else base
     }
 
     private fun fail(text: String) {

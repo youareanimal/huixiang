@@ -85,6 +85,15 @@ class AccountSession(
     /** For [site.huixiang.web.WebSession.connect]: the account proof for the next voice connection, if it has one. */
     fun voiceIdentity(): MyTsVoiceIdentity? = voiceIdentity
 
+    /** For [CloudChatSession]: the live myTeamSpeak session, from which chat credentials are minted. Null while signed out. */
+    fun chatSession(): MyTsAccount.Session? = session
+
+    /** For [CloudChatSession]: the account username, carried in the cloud account transfer. */
+    fun chatUsername(): String = username
+
+    /** For [CloudChatSession]: a stable snapshot of the contacts, used to turn a friend id into a Matrix user id. */
+    fun contactSnapshot(): List<MyTsAccount.Contact> = synchronized(contactsLock) { contacts }
+
     fun login(email: String, password: String, otp: String) {
         if (closed) return
         if (phase == "busy") return
@@ -510,6 +519,7 @@ class AccountSession(
                     "id" to it.identifier,
                     "name" to it.displayName,
                     "subtitle" to it.subtitle,
+                    "matrixId" to it.matrixId,
                 )
             }
         }

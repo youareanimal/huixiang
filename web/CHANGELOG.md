@@ -30,7 +30,12 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 - 新增 `POST /account/resume`：用 remember 消息里的 id 换 cookie，只认网关自己发出、尚未过期的 id；`DELETE /account/resume` 忘掉会话并回 `Max-Age=0`。cookie 在 HTTPS（或反代 `X-Forwarded-Proto: https`）下带 `Secure`。
 - 登录后连接会携带 `MyTsVoiceIdentity`，服务器可以显示账号徽章；连接成功后再拉取签名证书、头像和徽章（`updatemytsdata`）。连接后再登录不会追溯，重新连接才生效。
 - 云书签由 `MyTsBookmarks` 在网关内解密，地址、昵称和服务器密码随 `bookmarks` 消息下发；密码只用于填隐藏输入框，不显示、不写 localStorage。
-- 好友列表用 `MyTsAccount.contacts()`，并用公开 Matrix 资料补显示名；这一版不做云聊天和在线状态。
+- 好友列表用 `MyTsAccount.contacts()`，并用公开 Matrix 资料补显示名；无在线状态。
+- 新增好友云聊天（Matrix）：网关新增 `CloudChatSession`，用登录会话换 `MyTsAccount.chatCredentials()` 后登录 `MatrixCloud`，按好友 Matrix id 复用/新建直聊房，后台每 4 秒 `sync` 长轮询（`timeout=0`）增量拉消息；`send` 带幂等 `transactionId`；私聊只在内存转发、不落盘。
+- 云聊天 token 过期自动重登：轮询遇 401 / `M_UNKNOWN_TOKEN` 时用同账号、同设备后台 `relogin()` 并重定游标（不重放旧消息），失败才提示会话失效。
+- 加密房间只读：对方端到端加密的会话只能显示「[加密消息]」，不能解密也不能发送。
+- 新增好友头像代理 `GET /cloud-avatar/<matrixId>`：网关代取对方 Matrix 资料的 96×96 头像缩略图并缓存，无头像/失败回退首字母；域名只信任官方 `chat*.tmspk.net` / `teamspeak.com`，其余 404。
+- 消息协议新增上行 `cloud`（connect/disconnect/open/send/history/read/refresh）与下行 `cloud` / `cloudChat` / `cloudMessage` / `cloudSend`；`contacts` 每项新增 `matrixId`。
 - 新增账号头像 HTTP 端点：`POST /account/avatar`（PNG，≤ 512 KB）和 `DELETE /account/avatar`，凭账号消息里的 `fileToken` 认会话；浏览器先裁成 320×320 的 PNG。
 - 成员快照新增 `avatar` / `avatarName` / `myTeamSpeakAvatar`，聊天消息也带上头像字段；新增 `GET /avatar/<avatarToken>/<clientId>?v=<flag>`，按会话下载并缓存服务器头像。该令牌只能读头像，读不到频道文件。
 - 消息协议新增上行 `account`（login/logout/refresh），下行 `account` / `bookmarks` / `contacts`；状态快照新增 `avatarToken`。CORS 增加 `DELETE` 与头像令牌头，开发代理补上 `/avatar` 与 `/account`。
@@ -40,9 +45,10 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 - React 18 + TypeScript + Vite + Semi Design，构建产物由网关同源托管，一个进程同时提供页面和 `/ws`。
 - 连接页新增 myTeamSpeak 账号卡片：可登录/退出/刷新、查看云书签和好友、设置或删除头像；游客表单保留，不登录直接填地址即可进入。
 - 登录后默认填入账号昵称；状态栏和提示明确说明登录状态下连接会携带账号身份，要完全匿名需先退出。
-- 云书签点一条即填入地址、昵称和服务器密码；好友列表显示昵称/备注，不做云聊天。
+- 云书签点一条即填入地址、昵称和服务器密码；好友列表显示昵称/备注，可从服务器页顶栏「好友」打开云聊天。
 - 新增 `UserAvatar` 组件，舞台、聊天、顶栏和右栏统一按「账号头像 > 服务器头像 > myTS 头像 > 首字母」回退。
 - 右栏新增账号卡：头像、邮箱、换/删头像、刷新、退出和好友列表；手机上隐藏，账号入口仍在连接页。
+- 服务器页顶栏新增「好友」按钮（仅登录后显示，位于「通知」开关旁）：点开从右侧滑出好友抽屉，列出好友并用 Matrix 头像（`/cloud-avatar`）或首字母展示；点好友即开一对一云聊天，含消息气泡、加载更早、刷新、断开；加密会话只读。新增 `FriendsPanel` 组件与配套样式。
 - 离开服务器只发 `leave`，不关 WebSocket，账号、书签和好友在本次页面会话内保留；页面刷新或关闭才断开。
 - 连接页支持地址（含 `ts3server://` 邀请）、昵称、服务器密码、访问口令与最近连接；地址或昵称不合法时按钮不可点。
 - 服务器页为三栏布局：频道树（带成员与说话高亮）、频道文字、当前频道成员，底部麦克风/扬声器/离开控制条；频道密码、改昵称走弹窗。
