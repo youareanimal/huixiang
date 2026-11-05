@@ -282,10 +282,10 @@ private fun App() {
             else switching = target
         } else { route = "VOICE"; connectFavorite(ctx, target) }
     }
-    LaunchedEffect(account.restored, account.hasAccount, account.username) {
+    LaunchedEffect(account.restored, account.hasAccount, account.username, account.authRevision) {
         if (!account.restored) return@LaunchedEffect
         if (account.hasAccount) {
-            if (state.phase != Session.Phase.IDLE &&
+            if (state.phase != Session.Phase.IDLE && account.authRevision == 0 &&
                 (guestEntered || state.client(state.ownId)?.nickname != account.username)) Session.disconnect()
             guestEntered = false
             entry.clearGuest()

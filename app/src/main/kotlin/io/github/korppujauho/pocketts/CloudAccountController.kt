@@ -15,13 +15,14 @@ import java.util.UUID
 
 /**
  * Errors that mean the saved myTeamSpeak session must be replaced by a fresh password login.
- * The authentication/session endpoint reports 103, while synchronization uses 102 and tschat uses 3.
+ * Authentication, synchronization, and the legacy tschat endpoints use separate status namespaces.
  */
 internal fun myTsSessionExpired(code: String?): Boolean = code != null && code in setOf(
     "MYTS_103", "BOOKMARK_SYNC_${MyTsAccount.SYNC_SESSION_EXPIRED}",
     "CONTACTS_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "CONTACTS_102",
     "MYTS_CHAT_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "MYTS_CHAT_102",
     "MYTS_TAG_${MyTsAccount.TSCHAT_SESSION_EXPIRED}", "MYTS_TAG_102",
+    "MYTS_SIGNED_IDENTIFIER_${MyTsChatTag.SIGNED_IDENTIFIER_SESSION_EXPIRED}",
 )
 
 /** Expiry is sticky while any account endpoint still reports it, even if another cache refresh just succeeded. */
@@ -35,6 +36,7 @@ class CloudAccountController(
     private val http: CloudTransport = HttpsCloudTransport,
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val store: CloudAccountStore = CloudAccountStore(cloudSecretPrefs(context.applicationContext)),
+    private val onMyTsIdentityChanged: (String) -> Unit = {},
 ) {
     data class State(
         val restored: Boolean = true,
@@ -432,6 +434,10 @@ class CloudAccountController(
             localServers = Favorites.load(app),
             notice = "TeamSpeak 账号登录成功。云聊天尚未连接。",
         )
+        // The MyTS proof is part of the voice handshake, so an already-connected server must reconnect.
+        try { onMyTsIdentityChanged(fresh.username) } catch (_: Exception) {
+            AppLog.log("myTeamSpeak voice identity refresh request unavailable")
+        }
         refreshBookmarks()
         refreshContacts()
         refreshProfile()

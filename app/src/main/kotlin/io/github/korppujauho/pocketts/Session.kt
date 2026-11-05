@@ -251,6 +251,26 @@ object Session : TsClient.Listener {
         disconnect()
     }
 
+    /**
+     * MyTeamSpeak authentication is part of the voice handshake. A clientupdate cannot replace that proof,
+     * so a successful account login must reconnect the current server with the newly saved identity.
+     */
+    fun reconnectMyTsIdentity(nickname: String? = null) {
+        val currentTarget = target ?: return
+        if (_state.value.phase == Phase.IDLE) return
+        val nextTarget = currentTarget.copy(
+            nickname = nickname?.takeIf { it.isNotBlank() } ?: currentTarget.nickname,
+        )
+        AppLog.log("myTeamSpeak identity changed; reconnecting current server")
+        switchTo {
+            target = nextTarget
+            retries = 0
+            oldWaits = 0
+            wasConnected = false
+            start(keepChat = true)
+        }
+    }
+
     @Volatile private var pendingSwitch: (() -> Unit)? = null
 
     /** Whether the app is on screen; away, private messages and pokes also come as notifications. */

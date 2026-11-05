@@ -142,6 +142,8 @@ class MyTsChatTag(private val http: CloudTransport = HttpsCloudTransport) {
     }
 
     companion object {
+        /** ChatRequests.ChatRequestReturnCode.SESSION_EXPIRED for requestSignedAllowedIdentifierList. */
+        const val SIGNED_IDENTIFIER_SESSION_EXPIRED = 5L
         private const val SUCCESS = 1L
         private const val MAX_IDENTIFIER_LENGTH = 100
         private const val MAX_SIGNED_TOKEN_BYTES = 8 * 1024
