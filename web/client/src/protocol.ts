@@ -37,6 +37,14 @@ export interface ChannelNode {
   codec: number;
   neededTalkPower: number;
   maxClients: number;
+  /** 频道当前描述（编辑用）。 */
+  description?: string;
+  /** 音质 0–10（编辑用）。 */
+  quality?: number;
+  /** 频道类型：永久 / 半永久 / 临时（编辑用）。 */
+  kind?: ChannelKind;
+  /** 在同级里的排序位（编辑用）。 */
+  order?: number;
   clients: Member[];
   children: ChannelNode[];
 }
@@ -80,6 +88,46 @@ export interface State {
   avatarToken?: string;
   server?: ServerInfo | null;
   tree: ChannelNode[];
+}
+
+/** 频道类型：永久 / 半永久 / 临时。 */
+export type ChannelKind = 'permanent' | 'semi' | 'temporary';
+
+/** 建频道时提交的字段（可选字段由网关补默认值）。 */
+export interface ChannelCreate {
+  name: string;
+  description?: string;
+  kind?: ChannelKind;
+  password?: boolean;
+  newPassword?: string;
+  codec?: number;
+  quality?: number;
+  maxClients?: number;
+  parent?: number;
+  after?: number;
+}
+
+/** 改频道：只提交要改的字段，网关以服务器上的当前值为基准做 diff。 */
+export interface ChannelPatch {
+  name?: string;
+  description?: string;
+  kind?: ChannelKind;
+  password?: boolean;
+  newPassword?: string;
+  codec?: number;
+  quality?: number;
+  maxClients?: number;
+  parent?: number;
+  after?: number;
+}
+
+/** 一次频道管理操作（建/删/改/踢/封）的结果，label 与 error 都是中文。 */
+export interface ChannelOpResult {
+  t: 'chanOp';
+  id: string;
+  ok: boolean;
+  label: string;
+  error: string | null;
 }
 
 export interface ChatLine {

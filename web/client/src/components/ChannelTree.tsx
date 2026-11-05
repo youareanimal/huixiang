@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
+import { Dropdown } from '@douyinfe/semi-ui';
 import {
   IconChevronDown,
   IconChevronRight,
+  IconDelete,
+  IconEdit,
   IconLock,
   IconMicrophoneOff,
+  IconMore,
+  IconPlus,
   IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
@@ -15,6 +20,13 @@ interface Props {
   /** 正在切换的目标频道：置灰 + 禁止重复点 */
   joiningChannel: number | null;
   onJoin: (channel: ChannelNode) => void;
+  /** 频道管理：建子频道 / 编辑 / 删除 */
+  onCreateChannel: (parent: number) => void;
+  onEditChannel: (channel: ChannelNode) => void;
+  onDeleteChannel: (channel: ChannelNode) => void;
+  /** 成员管理（可选）：别的频道里的人也能踢 / 封 */
+  onKick?: (member: Member) => void;
+  onBan?: (member: Member) => void;
 }
 
 interface Row {
@@ -34,8 +46,16 @@ function walk(list: ChannelNode[], depth: number, collapsed: Set<number>, out: R
 }
 
 /** 别人频道里的成员：只在这里露一行。当前频道的人交给舞台，不重复画。 */
-function PersonRow({ member }: { member: Member }) {
-  return (
+function PersonRow({
+  member,
+  onKick,
+  onBan,
+}: {
+  member: Member;
+  onKick?: (m: Member) => void;
+  onBan?: (m: Member) => void;
+}) {
+  const row = (
     <div className={`person${member.talking ? ' person-talking' : ''}`}>
       <span className="person-dot" />
       <span className="person-name" title={member.nickname}>
@@ -62,9 +82,34 @@ function PersonRow({ member }: { member: Member }) {
       </span>
     </div>
   );
+  if (!onKick && !onBan) return row;
+  return (
+    <Dropdown
+      trigger="contextMenu"
+      position="bottomLeft"
+      menu={[
+        ...(onKick ? [{ node: 'item' as const, name: '踢出成员', onClick: () => onKick(member) }] : []),
+        ...(onBan
+          ? [{ node: 'item' as const, name: '封禁成员', type: 'danger' as const, onClick: () => onBan(member) }]
+          : []),
+      ]}
+    >
+      {row}
+    </Dropdown>
+  );
 }
 
-export default function ChannelTree({ tree, ownChannel, joiningChannel, onJoin }: Props) {
+export default function ChannelTree({
+  tree,
+  ownChannel,
+  joiningChannel,
+  onJoin,
+  onCreateChannel,
+  onEditChannel,
+  onDeleteChannel,
+  onKick,
+  onBan,
+}: Props) {
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set());
   const rows = useMemo(() => walk(tree, 0, collapsed, []), [tree, collapsed]);
 
@@ -76,6 +121,28 @@ export default function ChannelTree({ tree, ownChannel, joiningChannel, onJoin }
       return next;
     });
   };
+
+  const menuFor = (channel: ChannelNode) => [
+    {
+      node: 'item' as const,
+      name: '新建子频道',
+      icon: <IconPlus size="small" />,
+      onClick: () => onCreateChannel(channel.id),
+    },
+    {
+      node: 'item' as const,
+      name: '编辑频道',
+      icon: <IconEdit size="small" />,
+      onClick: () => onEditChannel(channel),
+    },
+    {
+      node: 'item' as const,
+      name: '删除频道',
+      icon: <IconDelete size="small" />,
+      type: 'danger' as const,
+      onClick: () => onDeleteChannel(channel),
+    },
+  ];
 
   if (rows.length === 0) {
     return <div className="rail-body">这个服务器还没有频道</div>;
@@ -103,54 +170,67 @@ export default function ChannelTree({ tree, ownChannel, joiningChannel, onJoin }
         const joining = joiningChannel === channel.id;
         const people = channel.clients;
 
+        const rowNode = (
+          <div
+            className={`chan-row${here ? ' chan-on' : ''}`}
+            style={{ paddingLeft: 8 + depth * 12 }}
+            role="button"
+            tabIndex={0}
+            aria-current={here ? 'true' : undefined}
+            aria-disabled={joining || undefined}
+            onClick={() => {
+              if (joining) return;
+              onJoin(channel);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (!joining) onJoin(channel);
+              }
+            }}
+          >
+            {hasChildren ? (
+              <span
+                className="chan-caret"
+                role="presentation"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(channel.id);
+                }}
+              >
+                {open ? <IconChevronDown size="small" /> : <IconChevronRight size="small" />}
+              </span>
+            ) : (
+              <span className="chan-caret-space" />
+            )}
+            <span className="chan-icon">
+              <IconVolume2 size="small" />
+            </span>
+            <span className="chan-name" title={channel.topic || channel.display}>
+              {channel.display || channel.name}
+            </span>
+            {channel.password && <IconLock size="small" className="chan-lock" />}
+            {people.length > 0 && <span className="chan-count">{people.length}</span>}
+            <span className="chan-more" onClick={(e) => e.stopPropagation()}>
+              <Dropdown trigger="click" position="bottomRight" menu={menuFor(channel)}>
+                <button type="button" className="chan-more-btn" aria-label="频道操作">
+                  <IconMore size="small" />
+                </button>
+              </Dropdown>
+            </span>
+          </div>
+        );
+
         return (
           <div key={channel.id}>
-            <div
-              className={`chan-row${here ? ' chan-on' : ''}`}
-              style={{ paddingLeft: 8 + depth * 12 }}
-              role="button"
-              tabIndex={0}
-              aria-current={here ? 'true' : undefined}
-              aria-disabled={joining || undefined}
-              onClick={() => {
-                if (joining) return;
-                onJoin(channel);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  if (!joining) onJoin(channel);
-                }
-              }}
-            >
-              {hasChildren ? (
-                <span
-                  className="chan-caret"
-                  role="presentation"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggle(channel.id);
-                  }}
-                >
-                  {open ? <IconChevronDown size="small" /> : <IconChevronRight size="small" />}
-                </span>
-              ) : (
-                <span className="chan-caret-space" />
-              )}
-              <span className="chan-icon">
-                <IconVolume2 size="small" />
-              </span>
-              <span className="chan-name" title={channel.topic || channel.display}>
-                {channel.display || channel.name}
-              </span>
-              {channel.password && <IconLock size="small" className="chan-lock" />}
-              {people.length > 0 && <span className="chan-count">{people.length}</span>}
-            </div>
+            <Dropdown trigger="contextMenu" position="bottomLeft" menu={menuFor(channel)}>
+              {rowNode}
+            </Dropdown>
 
             {people.length > 0 && !here && (
               <div className="chan-people" style={{ paddingLeft: 8 + depth * 12 + 22 }}>
                 {people.map((m) => (
-                  <PersonRow key={m.id} member={m} />
+                  <PersonRow key={m.id} member={m} onKick={onKick} onBan={onBan} />
                 ))}
               </div>
             )}

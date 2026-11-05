@@ -23,6 +23,10 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 - 频道文件区新增写端点：`POST /files/upload`（流式上传，`overwrite=1` 覆盖）、`DELETE /files`、`POST /files/rename`、`POST /files/mkdir`；都走 `X-File-Token`，同名上传/改名冲突回 `409`，上传不落网关磁盘。
 - 部署提供 `web/Dockerfile`、`installDist` 产物与 systemd 示例，前端构建产物放在 `web/client/dist` 时由网关一并托管。
 
+- 新增频道管理下行/上行 `channel` 消息：`act` = `create` / `edit` / `delete` / `kick` / `ban`。网关用 `tsproto` 的 `ChannelEdits` 生成 `channelcreate` / `channeledit`（换父级时补 `channelmove`）/ `channeldelete`，踢人用 `clientkick`、封禁用 `banclient`；权限由服务器判定，失败以中文回页面。
+- 频道管理命令统一带 `return_code`，网关把一次操作的若干条命令聚合成一条下行 `chanOp`（`id` / `label` / `ok` / `error`）；带 `return_code` 的 error 帧不再被当成会话级错误弹红条。
+- 状态快照的频道节点新增 `description` / `kind`（permanent/semi/temporary）/ `quality` / `order`，供前端编辑表单回填。
+
 ### 网页版 myTeamSpeak 账号（未发布）
 
 - 网关新增 `AccountSession`，把 myTeamSpeak 登录、云书签、好友列表和账号头像接到网页版；登录与语音连接解耦，可以只登录不连服务器，离开服务器也不会退出账号。
@@ -48,6 +52,7 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 ### 网页前端（web/client）
 
 - React 18 + TypeScript + Vite + Semi Design，构建产物由网关同源托管，一个进程同时提供页面和 `/ws`。
+- 新增频道管理：频道树右键或行内「⋯」可新建子频道 / 编辑 / 删除，顶栏频道区「+」新建；成员（非自己）右键或「⋯」可踢出 / 封禁。表单可填名称、描述、类型（永久/半永久/临时）、编解码、音质、人数上限与密码；踢人可带原因，封禁可设时长（分钟，0 = 永久）与原因；操作结果以 Toast 提示成功或失败原因（失败多来自服务器权限判定）。
 - 连接页新增 myTeamSpeak 账号卡片：可登录/退出/刷新、查看云书签和好友、设置或删除头像；游客表单保留，不登录直接填地址即可进入。
 - 登录后默认填入账号昵称；状态栏和提示明确说明登录状态下连接会携带账号身份，要完全匿名需先退出。
 - 云书签点一条即填入地址、昵称和服务器密码；好友列表显示昵称/备注，可从服务器页顶栏「好友」打开云聊天。

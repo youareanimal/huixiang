@@ -1,6 +1,9 @@
 import type {
   AccountState,
   BookmarksMessage,
+  ChannelCreate,
+  ChannelOpResult,
+  ChannelPatch,
   ChatLine,
   CloudChat,
   CloudMessageEvent,
@@ -45,6 +48,8 @@ export interface GatewayHandlers {
   onVoice?: (codec: number, clientId: number, opus: Uint8Array) => void;
   /** 串流信令：谁开播了、谁要看、以及双方的 SDP 和地址。 */
   onStream?: (event: StreamEvent) => void;
+  /** 一次频道管理操作（建/删/改/踢/封）的结果。 */
+  onChanOp?: (result: ChannelOpResult) => void;
   /** 网关这句话走了多久：浏览器 ↔ 网关的 WebSocket 往返（毫秒）。 */
   onRoundTrip?: (ms: number) => void;
   /** 网关到 TeamSpeak 服务器的 UDP 往返（毫秒），由服务器每秒的 keepalive ping 算出。 */
@@ -189,6 +194,9 @@ export class Gateway {
           case 'stream':
             this.handlers.onStream?.(m as unknown as StreamEvent);
             break;
+          case 'chanOp':
+            this.handlers.onChanOp?.(m as unknown as ChannelOpResult);
+            break;
         }
       };
 
@@ -285,6 +293,28 @@ export class Gateway {
 
   setMuted(input: boolean, output: boolean) {
     this.send({ t: 'mute', input, output });
+  }
+
+  // ====== 频道管理：建 / 删 / 改 / 踢 / 封（结果从 onChanOp 回来） ======
+
+  createChannel(patch: ChannelCreate) {
+    this.send({ t: 'channel', act: 'create', ...patch });
+  }
+
+  editChannel(cid: number, patch: ChannelPatch) {
+    this.send({ t: 'channel', act: 'edit', cid, ...patch });
+  }
+
+  deleteChannel(cid: number) {
+    this.send({ t: 'channel', act: 'delete', cid });
+  }
+
+  kickClient(clid: number, fromChannel: boolean, reason: string) {
+    this.send({ t: 'channel', act: 'kick', clid, fromChannel, reason });
+  }
+
+  banClient(clid: number, seconds: number, reason: string) {
+    this.send({ t: 'channel', act: 'ban', clid, seconds, reason });
   }
 
   /** 串流的信令。画面不经过这里：那是浏览器和对方之间的 WebRTC。 */

@@ -1,5 +1,6 @@
 package site.huixiang.web
 
+import io.github.korppujauho.pocketts.proto.ChannelEdits
 import io.github.korppujauho.pocketts.proto.Command
 import io.github.korppujauho.pocketts.proto.Commands
 import io.github.korppujauho.pocketts.proto.ChatHistory
@@ -19,6 +20,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * One browser tab's connection to a TeamSpeak server.
@@ -113,6 +115,13 @@ class WebSession(
         Thread(r, "web-push").apply { isDaemon = true }
     }
     private val dirty = AtomicBoolean(false)
+
+    /** 频道管理操作的应答跟踪：一批命令共用一个 return_code，全部成功或出现错误时回页面一条 chanOp。 */
+    private val opSeq = AtomicInteger(0)
+    private val pendingOps = ConcurrentHashMap<String, OpState>()
+
+    private class OpState(val label: String, var remaining: Int, var failed: Boolean = false)
+
     private val bannerId = UUID.randomUUID().toString().replace("-", "")
 
     /**
@@ -396,6 +405,154 @@ class WebSession(
         outputMuted = muted
         syncMutes()
         dirty.set(true)
+    }
+
+    // ====== 频道管理：建 / 删 / 改 / 踢 / 封（权限由服务器判定，失败以中文回到页面） ======
+
+    fun createChannel(
+        name: String,
+        description: String,
+        kind: String,
+        password: Boolean,
+        newPassword: String,
+        codec: Int,
+        quality: Int,
+        maxClients: Int,
+        parent: Int,
+        after: Int,
+    ) {
+        val c = client ?: return
+        if (name.isBlank()) return
+        val s = ChannelEdits.Settings(
+            name = name,
+            description = description,
+            kind = kindOf(kind, ChannelEdits.Kind.PERMANENT),
+            password = password,
+            newPassword = newPassword,
+            codec = codec,
+            quality = quality,
+            maxClients = maxClients,
+            parent = parent,
+            after = after,
+        )
+        sendOp(c, "创建频道", listOf(ChannelEdits.create(s)))
+    }
+
+    fun editChannel(
+        cid: Int,
+        name: String?,
+        description: String?,
+        kind: String?,
+        password: Boolean?,
+        newPassword: String?,
+        codec: Int?,
+        quality: Int?,
+        maxClients: Int?,
+        parent: Int?,
+        after: Int?,
+    ) {
+        val c = client ?: return
+        // 读 model 必须在连接自己的线程上（ServerModel 不是线程安全的）
+        c.post {
+            val ch = model.channels[cid] ?: return@post
+            val cur = ChannelEdits.settingsOf(ch)
+            val s = cur.copy(
+                name = name ?: cur.name,
+                description = description ?: cur.description,
+                kind = if (kind != null) kindOf(kind, cur.kind) else cur.kind,
+                password = password ?: cur.password,
+                newPassword = newPassword ?: "",
+                codec = codec ?: cur.codec,
+                quality = quality ?: cur.quality,
+                maxClients = maxClients ?: cur.maxClients,
+                parent = parent ?: cur.parent,
+                after = after ?: cur.after,
+            )
+            sendOp(c, "修改频道", ChannelEdits.edit(ch, s))
+        }
+    }
+
+    fun deleteChannel(cid: Int) {
+        val c = client ?: return
+        c.post {
+            val ch = model.channels[cid] ?: return@post
+            sendOp(c, "删除频道", listOf(ChannelEdits.delete(ch)))
+        }
+    }
+
+    fun kickClient(clid: Int, fromChannel: Boolean, reason: String) {
+        val c = client ?: return
+        if (clid <= 0) return
+        sendOp(
+            c,
+            "踢出成员",
+            listOf(
+                ChannelEdits.Edit(
+                    "clientkick",
+                    listOf(
+                        "clid" to clid,
+                        "reasonid" to if (fromChannel) 4 else 5,
+                        "reasonmsg" to reason.trim().ifEmpty { null },
+                    ),
+                )
+            ),
+        )
+    }
+
+    fun banClient(clid: Int, seconds: Int, reason: String) {
+        val c = client ?: return
+        if (clid <= 0) return
+        sendOp(
+            c,
+            "封禁成员",
+            listOf(
+                ChannelEdits.Edit(
+                    "banclient",
+                    listOf(
+                        "clid" to clid,
+                        "time" to seconds.coerceAtLeast(0),
+                        "banreason" to reason.trim().ifEmpty { null },
+                    ),
+                )
+            ),
+        )
+    }
+
+    private fun kindOf(value: String, fallback: ChannelEdits.Kind): ChannelEdits.Kind = when (value) {
+        "permanent" -> ChannelEdits.Kind.PERMANENT
+        "semi" -> ChannelEdits.Kind.SEMI_PERMANENT
+        "temporary" -> ChannelEdits.Kind.TEMPORARY
+        else -> fallback
+    }
+
+    /** 一批频道管理命令共用一个 return_code：全部成功、或任意一条失败时，回页面一条 chanOp。 */
+    private fun sendOp(c: TsClient, label: String, edits: List<ChannelEdits.Edit>) {
+        if (edits.isEmpty()) return
+        val id = "chop-" + opSeq.incrementAndGet()
+        pendingOps[id] = OpState(label, edits.size)
+        for (e in edits) {
+            c.sendCommand(Commands.build(e.name, *(e.params + ("return_code" to id)).toTypedArray()))
+        }
+    }
+
+    /** 频道管理命令的应答（带 return_code 的 error 帧）。 */
+    private fun handleOpResult(returnCode: String, errorId: String?, message: String, extra: String?) {
+        val op = pendingOps[returnCode] ?: return
+        if (errorId == null || errorId == "0") {
+            op.remaining -= 1
+            if (op.remaining <= 0 && !op.failed) {
+                pendingOps.remove(returnCode)
+                pushOp(returnCode, op.label, true, null)
+            }
+        } else {
+            op.failed = true
+            pendingOps.remove(returnCode)
+            pushOp(returnCode, op.label, false, errorText(errorId, message, extra))
+        }
+    }
+
+    private fun pushOp(id: String, label: String, ok: Boolean, err: String?) {
+        sink.text(Json.write(mapOf("t" to "chanOp", "id" to id, "label" to label, "ok" to ok, "error" to err)))
     }
 
     /** One Opus frame from the browser's microphone: handed to the server as it is. */
@@ -716,9 +873,12 @@ class WebSession(
             }
             "error" -> {
                 val id = cmd["id"]
-                // 带 return_code 的是某一条命令的应答（文件传输、静默查询），该由发命令的那一方处理：
+                val rc = cmd["return_code"]
+                // 带 return_code 的是某一条命令的应答（文件传输、静默查询、频道管理），该由发命令的那一方处理：
                 // 空文件夹的 1281、没权限的 2568 都会这样回来，报到会话级就成了莫名其妙的红条
-                if (cmd["return_code"] == null && id != null && id != "0") {
+                if (rc != null) {
+                    handleOpResult(rc, id, cmd["msg"].orEmpty(), cmd["extra_msg"])
+                } else if (id != null && id != "0") {
                     error = errorText(id, cmd["msg"].orEmpty(), cmd["extra_msg"])
                     dirty.set(true)
                     log("$address: server error $id ${cmd["msg"]}")
@@ -773,7 +933,7 @@ class WebSession(
         val hint = extra?.trim()?.takeIf { it.isNotEmpty() && id != LEVEL_TOO_LOW }
         val base = when (id) {
             WRONG_CHANNEL_PASSWORD -> "频道密码不正确"
-            NO_PERMISSION -> msg.ifBlank { "权限不足" }
+            NO_PERMISSION -> if (msg.isBlank()) "没有权限执行这个操作" else "没有权限执行这个操作（$msg）"
             // The server wants a stronger identity than the one this tab has: it has to be raised, which takes a while.
             LEVEL_TOO_LOW -> {
                 val level = extra?.toIntOrNull() ?: 0
@@ -907,6 +1067,14 @@ class WebSession(
         "password" to n.channel.hasPassword,
         "topic" to n.channel.topic,
         "codec" to n.channel.codec,
+        "quality" to n.channel.codecQuality,
+        "description" to n.channel.description,
+        "kind" to when {
+            n.channel.permanent -> "permanent"
+            n.channel.semiPermanent -> "semi"
+            else -> "temporary"
+        },
+        "order" to n.channel.order,
         "neededTalkPower" to n.channel.neededTalkPower,
         "maxClients" to n.channel.maxClients,
         "clients" to n.clients.map { client(it) },

@@ -13,6 +13,8 @@ import {
   store,
   type AccountState,
   type BookmarksMessage,
+  type ChannelCreate,
+  type ChannelPatch,
   type ChatLine,
   type CloudChat,
   type CloudState,
@@ -438,6 +440,10 @@ export default function App() {
           playerRef.current?.play(clientId, codec, opus);
         },
         onStream: (e) => streamRef.current?.onEvent(e),
+        onChanOp: (r) => {
+          if (r.ok) Toast.success(`${r.label}成功`);
+          else Toast.error(`${r.label}失败：${r.error ?? '未知错误'}`);
+        },
         onClose: (code, reason) => {
           // 掉线/关页前记一笔开关，重连后恢复
           {
@@ -850,6 +856,19 @@ export default function App() {
   );
   const cloudLoadHistory = useCallback((roomId: string) => gatewayRef.current?.cloudHistory(roomId), []);
 
+  // 频道管理：动作都通过网关连接发出去；结果从 onChanOp 以 Toast 提示
+  const createChannel = useCallback((patch: ChannelCreate) => gatewayRef.current?.createChannel(patch), []);
+  const editChannel = useCallback((cid: number, patch: ChannelPatch) => gatewayRef.current?.editChannel(cid, patch), []);
+  const deleteChannel = useCallback((cid: number) => gatewayRef.current?.deleteChannel(cid), []);
+  const kickMember = useCallback(
+    (member: Member, reason: string) => gatewayRef.current?.kickClient(member.id, false, reason),
+    [],
+  );
+  const banMember = useCallback(
+    (member: Member, seconds: number, reason: string) => gatewayRef.current?.banClient(member.id, seconds, reason),
+    [],
+  );
+
   const content = useMemo(() => {
     if (!state) {
       return (
@@ -928,6 +947,11 @@ export default function App() {
         onStopShare={stopShare}
         onWatch={watchStream}
         onStopWatch={stopWatch}
+        onCreateChannel={createChannel}
+        onEditChannel={editChannel}
+        onDeleteChannel={deleteChannel}
+        onKickMember={kickMember}
+        onBanMember={banMember}
       />
     );
   }, [
@@ -986,6 +1010,11 @@ export default function App() {
     accountRefresh,
     changeAccountAvatar,
     removeAccountAvatarNow,
+    createChannel,
+    editChannel,
+    deleteChannel,
+    kickMember,
+    banMember,
   ]);
 
   return (

@@ -760,6 +760,7 @@ private fun onText(session: WebSession, text: String, ip: String) {
             session.setInputMuted(m["input"] == true)
             session.setOutputMuted(m["output"] == true)
         }
+        "channel" -> onChannel(session, m)
         "stream" -> onStream(session, m)
         "file" -> onFile(session, m)
         "account" -> onAccount(session, m)
@@ -771,6 +772,50 @@ private fun onText(session: WebSession, text: String, ip: String) {
  * The myTeamSpeak account, which is independent of the voice connection: signing in does not join a server, and
  * leaving one does not sign out. The password and one-time code go over this socket only and are never logged.
  */
+/**
+ * 频道管理：建 / 删 / 改 / 踢 / 封。谁有权限由服务器判定，失败会以 chanOp 的中文错误回到页面。
+ */
+private fun onChannel(session: WebSession, m: Map<*, *>) {
+    when (m["act"]) {
+        "create" -> session.createChannel(
+            name = (m["name"] as? String).orEmpty(),
+            description = (m["description"] as? String).orEmpty(),
+            kind = (m["kind"] as? String).orEmpty(),
+            password = m["password"] == true,
+            newPassword = (m["newPassword"] as? String).orEmpty(),
+            codec = (m["codec"] as? Number)?.toInt() ?: 4,
+            quality = (m["quality"] as? Number)?.toInt() ?: 6,
+            maxClients = (m["maxClients"] as? Number)?.toInt() ?: -1,
+            parent = (m["parent"] as? Number)?.toInt() ?: 0,
+            after = (m["after"] as? Number)?.toInt() ?: 0,
+        )
+        "edit" -> session.editChannel(
+            cid = (m["cid"] as? Number)?.toInt() ?: return,
+            name = m["name"] as? String,
+            description = m["description"] as? String,
+            kind = m["kind"] as? String,
+            password = m["password"] as? Boolean,
+            newPassword = m["newPassword"] as? String,
+            codec = (m["codec"] as? Number)?.toInt(),
+            quality = (m["quality"] as? Number)?.toInt(),
+            maxClients = (m["maxClients"] as? Number)?.toInt(),
+            parent = (m["parent"] as? Number)?.toInt(),
+            after = (m["after"] as? Number)?.toInt(),
+        )
+        "delete" -> session.deleteChannel((m["cid"] as? Number)?.toInt() ?: return)
+        "kick" -> session.kickClient(
+            clid = (m["clid"] as? Number)?.toInt() ?: return,
+            fromChannel = m["fromChannel"] == true,
+            reason = (m["reason"] as? String).orEmpty(),
+        )
+        "ban" -> session.banClient(
+            clid = (m["clid"] as? Number)?.toInt() ?: return,
+            seconds = (m["seconds"] as? Number)?.toInt() ?: 0,
+            reason = (m["reason"] as? String).orEmpty(),
+        )
+    }
+}
+
 private fun onAccount(session: WebSession, m: Map<*, *>) {
     when (m["act"]) {
         "login" -> session.accountLogin(

@@ -3240,3 +3240,86 @@ button.files-name:hover {
     max-width: none;
   }
 }
+
+/* ====== 频道 / 成员管理：行内「更多」按钮与表单 ====== */
+.rail-add {
+  margin-left: 4px;
+  padding: 4px;
+}
+
+.chan-row {
+  position: relative;
+}
+
+.chan-more {
+  margin-left: 2px;
+  display: none;
+}
+
+.chan-row:hover .chan-more,
+.chan-row:focus-within .chan-more {
+  display: inline-flex;
+}
+
+.chan-more-btn,
+.tile-more-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chan-more-btn:hover,
+.tile-more-btn:hover {
+  background: var(--bg-fill);
+  color: var(--text-1);
+}
+
+.tile-more {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  z-index: 2;
+}
+
+.member-tile:hover .tile-more,
+.member-tile:focus-within .tile-more {
+  display: inline-flex;
+}
+
+.chan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.chan-field > span {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.chan-field-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chan-hint {
+  margin: 0 0 10px;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1.6;
+}
