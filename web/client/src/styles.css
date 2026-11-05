@@ -3168,3 +3168,75 @@ button.files-name:hover {
   color: var(--text-4);
   font-weight: 500;
 }
+
+/* 频道成员进出的轻提示：右下角堆叠，几秒自动消失，不打断操作 */
+.presence-toasts {
+  position: fixed;
+  right: 20px;
+  bottom: 84px;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.presence-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(21, 23, 28, 0.92);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.35;
+  box-shadow: 0 6px 20px rgba(21, 23, 28, 0.22);
+  animation: presence-in 0.18s ease-out;
+}
+
+.presence-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.presence-join .presence-dot {
+  background: var(--speaking);
+}
+
+.presence-leave .presence-dot {
+  background: var(--warn);
+}
+
+.presence-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes presence-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .presence-toasts {
+    right: 12px;
+    left: 12px;
+    bottom: 76px;
+    align-items: stretch;
+  }
+  .presence-toast {
+    max-width: none;
+  }
+}
