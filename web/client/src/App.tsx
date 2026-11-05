@@ -17,6 +17,7 @@ import {
   type ContactsMessage,
   type FilesMessage,
   type Member,
+  type MicMode,
   type State,
 } from './protocol';
 import { forgetAccount, rememberAccount, removeAccountAvatar, uploadAccountAvatar } from './account';
@@ -79,9 +80,14 @@ export default function App() {
   const [micGain, setMicGain] = useState(() => store.micGain());
   const [volumes, setVolumes] = useState<Record<string, number>>(() => store.volumes());
 
-  // 按住说话：默认关（常开麦），打开后按才出声
-  const [pttMode, setPttMode] = useState(false);
+  // 说话方式：自动（检测到人声才发）/ 常开 / 按住说话，默认自动，存本地
+  const [micMode, setMicModeState] = useState<MicMode>(() => store.micMode());
   const [pttHeld, setPttHeld] = useState(false);
+  const pttMode = micMode === 'ptt';
+  const setMicMode = useCallback((m: MicMode) => {
+    setMicModeState(m);
+    store.setMicMode(m);
+  }, []);
 
   // 桌面通知：有新消息时弹系统通知。开关存本地，但真正的权限在浏览器手里——
   // 存了「开」而权限被撤销时按关处理，免得开关看着是开的却弹不出来。
@@ -125,11 +131,12 @@ export default function App() {
     };
   }, []);
 
-  // 麦克风开关和按住说话共同决定「这一刻到底发不发」
+  // 麦克风开关、说话方式、按住说话共同决定「这一刻到底发不发」
   useEffect(() => {
     if (!micOn) return;
+    micRef.current?.setMode(micMode);
     micRef.current?.setSending(pttMode ? pttHeld : true);
-  }, [pttMode, pttHeld, micOn]);
+  }, [micMode, pttMode, pttHeld, micOn]);
 
   // 名单一变就把每个人的音量对齐：新来的按记下的值起步，走掉的顺手收掉
   useEffect(() => {
@@ -649,14 +656,15 @@ export default function App() {
       setMicOn(true);
       // 记住的音量在开麦时补上，不然要再拖一次滑块才生效
       mic.setVolume(micGain);
-      // 按住说话模式下，开麦不等于立刻出声
+      // 说话方式要赶在第一帧之前定下来：按住说话时开麦不等于立刻出声
+      mic.setMode(micMode);
       mic.setSending(!pttMode);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       Toast.error(msg.includes('Permission') ? '没有麦克风权限' : `麦克风打不开：${msg}`);
       mic.stop();
     }
-  }, [micOn, pttMode, micGain]);
+  }, [micOn, pttMode, micMode, micGain]);
 
   const connected = state?.phase === 'connected';
 
@@ -720,14 +728,14 @@ export default function App() {
         volumes={volumes}
         talkingIds={voiceTalking}
         ownTalking={ownTalking}
-        pttMode={pttMode}
+        micMode={micMode}
         pttHeld={pttHeld}
         audioReady={audioReady}
         stream={streamState}
         notifyOn={notifyOn}
         notifySupported={notifySupported()}
         onToggleNotify={toggleNotify}
-        onTogglePttMode={() => setPttMode((v) => !v)}
+        onMicMode={setMicMode}
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
         onSay={say}
@@ -766,7 +774,7 @@ export default function App() {
     volumes,
     voiceTalking,
     ownTalking,
-    pttMode,
+    micMode,
     pttHeld,
     audioReady,
     streamState,
