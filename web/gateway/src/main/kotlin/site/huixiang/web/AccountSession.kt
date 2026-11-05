@@ -516,7 +516,7 @@ class AccountSession(
         val items = synchronized(contactsLock) {
             contacts.map {
                 linkedMapOf(
-                    "id" to it.identifier,
+                    "id" to it.identifier.ifBlank { it.matrixId },
                     "name" to it.displayName,
                     "subtitle" to it.subtitle,
                     "matrixId" to it.matrixId,

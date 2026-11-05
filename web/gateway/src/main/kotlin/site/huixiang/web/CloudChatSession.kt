@@ -100,6 +100,7 @@ class CloudChatSession(
                 try { cloud.discoverServer() } catch (e: Exception) { log("discover failed: ${e.message}") }
                 val sess = cloud.login(transfer, deviceId)
                 if (closed) return@submit
+                log("cloud connected me=${sess.userId}")
                 api = cloud; session = sess; userId = sess.userId
                 val snap = cloud.sync(sess, "", 0)
                 cursor = snap.cursor
@@ -125,7 +126,8 @@ class CloudChatSession(
     }
 
     fun open(friendId: String) {
-        val peer = contacts().firstOrNull { it.identifier == friendId }?.matrixId?.takeIf { it.isNotBlank() }
+        val peer = contacts().firstOrNull { it.identifier == friendId || it.matrixId == friendId }?.matrixId?.takeIf { it.isNotBlank() }
+            ?: friendId.takeIf { it.startsWith("@") && ':' in it }
         if (peer == null) { pushChatError(friendId, "CONTACT_NO_CHAT"); return }
         val cloud = api; val sess = session
         if (cloud == null || sess == null) { pushChatError(friendId, "CHAT_NOT_CONNECTED"); return }
@@ -134,7 +136,24 @@ class CloudChatSession(
                 val opened = cloud.openDirect(sess, peer)
                 // Pull the room's timeline so the first view already has the recent history, not just an empty shell.
                 try { cursor = cloud.sync(sess, cursor, 0).cursor } catch (e: CloudFailure) { log("sync after open: ${e.code}") }
-                val room = cloud.current().firstOrNull { it.id == opened.id } ?: opened
+                var room = cloud.current().firstOrNull { it.id == opened.id } ?: opened
+                // 选房间：优先「对方所在 homeserver」上的房间（对方通常已 join、他自己的客户端认得），
+                // 其次消息最多（最活跃）的房间；一个都没有时才新建并邀请对方。
+                val peerDomain = peer.substringAfter(':')
+                val candidates = cloud.current().filter { it.joined && (it.directPeer == peer || peer in it.members) }
+                val best = candidates.sortedWith(
+                    compareByDescending<MatrixCloud.Room> { it.id.substringAfter(':') == peerDomain }
+                        .thenByDescending { it.messages.size },
+                ).firstOrNull()
+                if (best != null) {
+                    room = best
+                } else {
+                    log("cloud no room with peer; creating a local room and inviting peer")
+                    val fresh = cloud.openNewDirect(sess, peer)
+                    try { cursor = cloud.sync(sess, cursor, 0).cursor } catch (e: CloudFailure) { log("sync after new room: ${e.code}") }
+                    room = cloud.current().firstOrNull { it.id == fresh.id } ?: fresh
+                }
+                log("cloud open peer=$peer room=${room.id} joined=${room.joined} enc=${room.encrypted}")
                 synchronized(seenLock) { for (m in room.messages) seen[key(room.id, m.id)] = true }
                 pushChat(room, friendId)
             } catch (e: CloudFailure) {

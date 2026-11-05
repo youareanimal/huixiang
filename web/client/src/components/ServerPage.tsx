@@ -14,7 +14,7 @@ import type {
   MicMode,
   State,
 } from '../protocol';
-import { findChannel, findMember } from '../protocol';
+import { eachMember, findChannel, findMember } from '../protocol';
 import type { StreamState } from '../stream';
 import { avatarSources } from '../ui';
 import ChannelTree from './ChannelTree';
@@ -30,6 +30,8 @@ import UserAvatar from './UserAvatar';
 interface Props {
   state: State;
   chat: ChatLine[];
+  /** 完整的实时聊天行（含私聊），好友抽屉按人筛私聊用；主面板则只显示 chat。 */
+  allChat: ChatLine[];
   /** 聊天记录里还有更早的可以往上翻。 */
   chatMore: boolean;
   /** 正在取更早的一页。 */
@@ -83,6 +85,8 @@ interface Props {
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
   onSay: (text: string) => void;
+  /** 给服务器上某个人发私聊（官方客户端认的服务器文本消息）。 */
+  onPrivately: (clientId: number, text: string) => void;
   /** 要一层目录的文件列表。 */
   onListFiles: (cid: number, path: string) => void;
   onRename: (name: string) => void;
@@ -114,6 +118,7 @@ function typingInField(target: EventTarget | null): boolean {
 export default function ServerPage({
   state,
   chat,
+  allChat,
   chatMore,
   chatBusy,
   onLoadMoreChat,
@@ -150,6 +155,7 @@ export default function ServerPage({
   onPttHold,
   onJoinChannel,
   onSay,
+  onPrivately,
   onListFiles,
   onRename,
   onMicGain,
@@ -249,6 +255,26 @@ export default function ServerPage({
 
   const channelTitle = current?.display || current?.name || '频道';
   const people = current?.clients ?? [];
+  // 好友是不是正连在这台服务器上：uid → clientId；昵称兜底（好友的 identifier 就是 TS 身份 UID）
+  const onlineUids = useMemo(() => {
+    const m = new Map<string, number>();
+    eachMember(state.tree, (c) => {
+      if (c.uid) m.set(c.uid, c.id);
+    });
+    return m;
+  }, [state.tree]);
+  const onlineByName = useMemo(() => {
+    const m = new Map<string, number>();
+    eachMember(state.tree, (c) => {
+      if (c.nickname) m.set(c.nickname, c.id);
+    });
+    return m;
+  }, [state.tree]);
+  const memberById = useMemo(() => {
+    const m = new Map<number, Member>();
+    eachMember(state.tree, (c) => m.set(c.id, c));
+    return m;
+  }, [state.tree]);
   const connecting = state.phase === 'connecting';
   const channelTag = current?.password ? '有密码' : '公共';
   const watchingName = stream.watching
@@ -341,6 +367,14 @@ export default function ServerPage({
         cloud={cloud}
         chat={cloudChat}
         notice={cloudNotice}
+        onlineUids={onlineUids}
+        onlineByName={onlineByName}
+        memberById={memberById}
+        avatarToken={avatarToken}
+        accountAvatar={accountAvatar}
+        serverLines={allChat}
+        ownId={state.ownId}
+        onSendServer={onPrivately}
         onConnect={onCloudConnect}
         onDisconnect={onCloudDisconnect}
         onOpenFriend={onCloudOpen}

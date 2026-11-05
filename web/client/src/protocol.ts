@@ -94,6 +94,14 @@ export interface ChatLine {
   avatar?: string;
   avatarName?: string;
   myTeamSpeakAvatar?: string;
+  /** 私聊：发送方稳定的 TS 身份 UID（不随重连变）。 */
+  fromUid?: string;
+  /** 私聊：对方稳定的 TS 身份 UID（好友 identifier 即它，用来配对会话）。 */
+  peerUid?: string;
+  /** 私聊：对方昵称（UID 对不上时兜底配对）。 */
+  peerName?: string;
+  /** 这条是不是我自己发的（按发送时自己的 clientId 判定）。 */
+  mine?: boolean;
 }
 
 /** 网关回来的那一页频道历史；只有网关连着这个服务器时收过消息才有。 */
