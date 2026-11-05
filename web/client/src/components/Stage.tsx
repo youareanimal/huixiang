@@ -65,11 +65,11 @@ export default function Stage({
     <div className="stage">
       <div className="monkey-scene" aria-label={channelName + ' 的语音成员舞台'}>
         <svg className="monkey-branch-art" viewBox="0 0 1200 128" preserveAspectRatio="none" aria-hidden="true">
-          <path className="branch-trunk" d="M-35 132 C9 94 18 51 43 -18 L119 -18 C91 34 91 84 150 132Z" />
-          <path className="branch-main-outline" d="M28 76 C205 57 347 79 503 65 C704 47 903 59 1235 25" />
-          <path className="branch-main" d="M28 76 C205 57 347 79 503 65 C704 47 903 59 1235 25" />
-          <path className="branch-bark" d="M72 69 C220 63 328 76 452 65 M530 61 C680 51 806 57 930 46 M968 42 C1050 39 1120 33 1192 27" />
-          <path className="branch-bark branch-bark-light" d="M120 58 C244 52 342 65 420 56 M585 51 C710 42 818 48 910 38" />
+          <path className="branch-trunk" d="M-35 132 C9 94 18 51 43 -18 L119 -18 C91 25 91 50 150 63Z" />
+          <path className="branch-main-outline" d="M28 54 C205 39 347 58 503 48 C704 35 903 43 1235 17" />
+          <path className="branch-main" d="M28 54 C205 39 347 58 503 48 C704 35 903 43 1235 17" />
+          <path className="branch-bark" d="M72 48 C220 42 328 55 452 48 M530 45 C680 37 806 42 930 34 M968 31 C1050 28 1120 22 1192 19" />
+          <path className="branch-bark branch-bark-light" d="M120 39 C244 35 342 47 420 41 M585 36 C710 29 818 34 910 28" />
           <g className="branch-leaves">
             <path d="M92 20 C52 -10 41 -43 68 -56 C105 -48 119 -14 92 20Z" />
             <path d="M119 13 C122 -31 153 -55 179 -34 C177 2 148 23 119 13Z" />
