@@ -36,6 +36,10 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 - 云聊天 token 过期自动重登：轮询遇 401 / `M_UNKNOWN_TOKEN` 时用同账号、同设备后台 `relogin()` 并重定游标（不重放旧消息），失败才提示会话失效。
 - 加密房间只读：对方端到端加密的会话只能显示「[加密消息]」，不能解密也不能发送。
 - 新增好友头像代理 `GET /cloud-avatar/<matrixId>`：网关代取对方 Matrix 资料的 96×96 头像缩略图并缓存，无头像/失败回退首字母；域名只信任官方 `chat*.tmspk.net` / `teamspeak.com`，其余 404。
+- 好友聊天改为双通道：对方在本服务器在线时走服务器私聊（`sendtextmessage targetmode=1`，官方 TS5/TS6 可见），不在时走 Matrix 云聊天；服务器私聊的消息经 `notifytextmessage` 补 `fromUid` / `peerUid` / `peerName` / `mine`，前端按稳定 UID 配对（clientId 重连会变）。
+- 好友稳定 id 改用 `matrixId`（myTS 联系人 `identifier` 为空时兜底）；Matrix 选房优先「对方所在 homeserver 上、对方已加入」的房间，其次最活跃，最后才新建邀请。
+- 好友头像取图顺序改为：在线成员的服务器 / myTS 头像 → Matrix 头像 → 首字母。
+- 麦克风开关同步 `client_input_muted`；进服默认闭麦也会主动上报一次（此前只同步扬声器 `client_output_muted`）。
 - 消息协议新增上行 `cloud`（connect/disconnect/open/send/history/read/refresh）与下行 `cloud` / `cloudChat` / `cloudMessage` / `cloudSend`；`contacts` 每项新增 `matrixId`。
 - 新增账号头像 HTTP 端点：`POST /account/avatar`（PNG，≤ 512 KB）和 `DELETE /account/avatar`，凭账号消息里的 `fileToken` 认会话；浏览器先裁成 320×320 的 PNG。
 - 成员快照新增 `avatar` / `avatarName` / `myTeamSpeakAvatar`，聊天消息也带上头像字段；新增 `GET /avatar/<avatarToken>/<clientId>?v=<flag>`，按会话下载并缓存服务器头像。该令牌只能读头像，读不到频道文件。
@@ -49,7 +53,8 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 - 云书签点一条即填入地址、昵称和服务器密码；好友列表显示昵称/备注，可从服务器页顶栏「好友」打开云聊天。
 - 新增 `UserAvatar` 组件，舞台、聊天、顶栏和右栏统一按「账号头像 > 服务器头像 > myTS 头像 > 首字母」回退。
 - 右栏新增账号卡：头像、邮箱、换/删头像、刷新、退出和好友列表；手机上隐藏，账号入口仍在连接页。
-- 服务器页顶栏新增「好友」按钮（仅登录后显示，位于「通知」开关旁）：点开从右侧滑出好友抽屉，列出好友并用 Matrix 头像（`/cloud-avatar`）或首字母展示；点好友即开一对一云聊天，含消息气泡、加载更早、刷新、断开；加密会话只读。新增 `FriendsPanel` 组件与配套样式。
+- 服务器页顶栏新增「好友」按钮（仅登录后显示，位于「通知」开关旁）：点开从右侧滑出好友抽屉，列出好友并标注「在线 / 云聊天」；在线走服务器私聊、离线走 Matrix 云聊天；消息按稳定 UID 配对（clientId 变化不影响），含消息气泡、加载更早、刷新、断开；加密会话只读。头像在线优先服务器/myTS 头像，其次 Matrix，最后首字母。新增 `FriendsPanel` 组件与配套样式。
+- 麦克风开关与进服默认闭麦都会向服务器上报输入静音（`client_input_muted`），官方客户端里能看到麦克风图标状态。
 - 离开服务器只发 `leave`，不关 WebSocket，账号、书签和好友在本次页面会话内保留；页面刷新或关闭才断开。
 - 连接页支持地址（含 `ts3server://` 邀请）、昵称、服务器密码、访问口令与最近连接；地址或昵称不合法时按钮不可点。
 - 服务器页为三栏布局：频道树（带成员与说话高亮）、频道文字、当前频道成员，底部麦克风/扬声器/离开控制条；频道密码、改昵称走弹窗。

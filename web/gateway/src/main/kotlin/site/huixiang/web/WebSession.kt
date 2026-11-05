@@ -666,13 +666,23 @@ class WebSession(
                 val from = cmd["invokerid"]?.toIntOrNull() ?: 0
                 val person = model.clients[from]
                 val mode = cmd["targetmode"]?.toIntOrNull() ?: 2
+                val ownId = model.ownClientId
+                val targetId = cmd["target"]?.toIntOrNull() ?: 0
                 // 频道消息（targetmode 2）的回显里没有 target：频道就是「己方当前频道」。
                 // 协议层也是这么认定的（proto/Chat.kt 的 here = model.ownClient?.channel）。
                 val channel = if (mode == 2) {
-                    model.ownClient?.channel ?: (cmd["target"]?.toIntOrNull() ?: 0)
+                    model.ownClient?.channel ?: targetId
                 } else {
-                    cmd["target"]?.toIntOrNull() ?: 0
+                    targetId
                 }
+                // 私聊双方按「对方 uid」配对：clientId 断线重连会变，uid 不会变。
+                val fromUid = cmd["invokeruid"].orEmpty().ifEmpty { person?.uid.orEmpty() }
+                val peerUid = if (mode == 1) {
+                    if (from == ownId) model.clients[targetId]?.uid.orEmpty() else fromUid
+                } else ""
+                val peerName = if (mode == 1) {
+                    if (from == ownId) model.clients[targetId]?.nickname.orEmpty() else cmd["invokername"].orEmpty()
+                } else ""
                 val text = cmd["msg"].orEmpty()
                 val time = System.currentTimeMillis()
                 // 频道消息进历史：网关订阅了所有频道，离线期间别人说的话这里收不到，所以它只是「网关看到过的那一段」
@@ -696,6 +706,10 @@ class WebSession(
                             "avatar" to (person?.avatar ?: ""),
                             "avatarName" to (person?.avatarName ?: ""),
                             "myTeamSpeakAvatar" to (person?.myTeamSpeakAvatar ?: ""),
+                            "fromUid" to fromUid,
+                            "peerUid" to peerUid,
+                            "peerName" to peerName,
+                            "mine" to (ownId != 0 && from == ownId),
                         )
                     )
                 )

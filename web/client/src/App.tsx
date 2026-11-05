@@ -249,11 +249,21 @@ export default function App() {
             setPing((p) => (p.server == null ? p : { ...p, server: null }));
             return;
           }
-          stateRef.current = s;
-          setState(s);
-          if (s.phase === 'connected') {
+          const prevPhase = stateRef.current?.phase;
+          let st = s;
+          // 首次进入/重连时本地默认是闭麦的，把状态对齐成「输入已静音」，下面再上报给服务器
+          if (s.phase === 'connected' && prevPhase !== 'connected' && micRef.current == null && !st.inputMuted) {
+            st = { ...st, inputMuted: true };
+          }
+          stateRef.current = st;
+          setState(st);
+          if (st.phase === 'connected') {
             setConnecting(false);
-            if (s.address) store.addRecent(s.address);
+            if (st.address) store.addRecent(st.address);
+            if (prevPhase !== 'connected') {
+              // 默认闭麦也要报告一次，官方客户端（TS5/TS6）才会正确显示麦克风静音
+              gatewayRef.current?.setMuted(micRef.current == null, st.outputMuted);
+            }
           } else {
             // 已经不在语音连接里了，服务器那半段延迟作废；网关那半段还活着
             setPing((p) => (p.server == null ? p : { ...p, server: null }));
@@ -545,6 +555,13 @@ export default function App() {
     gatewayRef.current?.say(text, s.ownChannel, 0);
   }, []);
 
+  /** 服务器私聊：target 指定某个在线成员，官方客户端（TS5/TS6）收得到。 */
+  const sayTo = useCallback((clientId: number, text: string) => {
+    const s = stateRef.current;
+    if (!s || !text.trim() || clientId <= 0) return;
+    gatewayRef.current?.say(text, s.ownChannel, clientId);
+  }, []);
+
   // 开关通知。打开时要走浏览器的权限申请（必须在点击里），拒绝/不支持都给出明确说法。
   const toggleNotify = useCallback(async () => {
     if (notifyOn) {
@@ -615,11 +632,10 @@ export default function App() {
     void loadHistory(s.ownChannel, oldest ? oldest.time : 0);
   }, [historyBusy, historyMore, historyLines, loadHistory]);
 
-  /** 屏幕上要显示的消息：当前频道的（历史 + 实时），私聊照旧混排。 */
+  /** 主聊天面板只显示「当前频道」的频道消息；私聊（mode 1）不进这里，只在好友抽屉里按人显示。 */
   const visibleChat = useMemo(() => {
-    // 没有频道 id 的行（解析不出来、或服务器只给了点名不认频道）一律留着，别悄悄吞消息
     const live = chat.filter(
-      (l) => l.mode !== 2 || !(l.channel > 0) || l.channel === connectedChannel,
+      (l) => l.mode === 2 && (!(l.channel > 0) || l.channel === connectedChannel),
     );
     return mergeLines(historyLines, live);
   }, [chat, historyLines, connectedChannel]);
@@ -671,6 +687,10 @@ export default function App() {
       setMicOn(false);
       setMicLevel(0);
       setPttHeld(false);
+      // 告诉服务器「我静音了」，这样官方客户端（TS5/TS6）里也会显示麦克风静音图标
+      const s = stateRef.current;
+      gatewayRef.current?.setMuted(true, s?.outputMuted ?? false);
+      if (s) setState({ ...s, inputMuted: true });
       return;
     }
     if (!micCodecAvailable()) {
@@ -688,6 +708,12 @@ export default function App() {
       );
       micRef.current = mic;
       setMicOn(true);
+      // 解除服务器端的输入静音，官方客户端里会恢复麦克风图标
+      {
+        const s0 = stateRef.current;
+        gatewayRef.current?.setMuted(false, s0?.outputMuted ?? false);
+        if (s0) setState({ ...s0, inputMuted: false });
+      }
       // 记住的音量在开麦时补上，不然要再拖一次滑块才生效
       mic.setVolume(micGain);
       // 说话方式要赶在第一帧之前定下来：按住说话时开麦不等于立刻出声
@@ -753,6 +779,7 @@ export default function App() {
       <ServerPage
         state={state}
         chat={visibleChat}
+        allChat={chat}
         chatMore={historyMore}
         chatBusy={historyBusy}
         onLoadMoreChat={loadMoreHistory}
@@ -793,6 +820,7 @@ export default function App() {
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
         onSay={say}
+        onPrivately={sayTo}
         onListFiles={listFiles}
         onRename={rename}
         onMicGain={changeMicGain}

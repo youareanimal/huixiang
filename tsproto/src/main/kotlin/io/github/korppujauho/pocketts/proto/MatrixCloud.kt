@@ -148,8 +148,10 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         val data = try { request("GET", "/user/${quote(session.userId)}/account_data/m.direct", token = session.token) }
             catch (e: CloudFailure) { if (e.code == "M_NOT_FOUND") emptyMap<String, Any?>() else throw e }
         readDirectData(data)
+        val ownDomain = session.userId.substringAfter(':')
         val candidates = (listOfNotNull(createdRooms[peer]) + directRooms[peer].orEmpty() +
             rooms.values.filter { it.directPeer == peer || (peer in it.members && it.members.keys.all { m -> m == peer || m == session.userId }) }.map { it.id }).distinct()
+            .sortedByDescending { it.substringAfter(':') == ownDomain }
         for (id in candidates) {
             val known = rooms[id]
             if (known?.joined == false) joinRoom(session, id, peer)
@@ -173,6 +175,20 @@ class MatrixCloud(private val domain: String, private val http: CloudTransport =
         if (!validRoom(id)) throw CloudFailure("MATRIX_INVALID_REPLY")
         createdRooms[peer] = id // Keep the acknowledged room even if later state/account-data requests fail.
         uncertainCreations.remove(peer)
+        val room = refreshRoom(session, id, peer)
+        saveDirect(session, peer, id)
+        return room
+    }
+
+    /** Always create a fresh local direct room and invite the peer (used when a foreign-hosted DM appears dead). */
+    fun openNewDirect(session: Session, peer: String): Room {
+        if (!validPeer(peer) || peer == session.userId) throw CloudFailure("CONTACT_NO_CHAT")
+        val result = request("POST", "/createRoom", mapOf(
+            "visibility" to "private", "preset" to "trusted_private_chat", "is_direct" to true, "invite" to listOf(peer),
+        ), session.token)
+        val id = result["room_id"] as? String ?: throw CloudFailure("MATRIX_INVALID_REPLY")
+        if (!validRoom(id)) throw CloudFailure("MATRIX_INVALID_REPLY")
+        createdRooms[peer] = id
         val room = refreshRoom(session, id, peer)
         saveDirect(session, peer, id)
         return room
