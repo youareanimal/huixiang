@@ -1,4 +1,5 @@
-import { IconVolume1, IconVolumnSilent, IconMicrophoneOff } from '@douyinfe/semi-icons';
+import { Dropdown } from '@douyinfe/semi-ui';
+import { IconVolume1, IconVolumnSilent, IconMicrophoneOff, IconMore } from '@douyinfe/semi-icons';
 import type { Member } from '../protocol';
 import { memberKey } from '../protocol';
 import { DEFAULT_GAIN, gainPercent } from '../audio/gain';
@@ -24,6 +25,9 @@ interface Props {
   accountAvatar: string;
   onWatch?: (clientId: number) => void;
   onVolume: (member: Member, v: number) => void;
+  /** 成员管理：踢 / 封（非自己才显示） */
+  onKick?: (member: Member) => void;
+  onBan?: (member: Member) => void;
 }
 
 /** 状态行：说话 > 静音 > 离开 > 身份组，只显示一句，别堆在一起。 */
@@ -51,6 +55,8 @@ export default function Stage({
   accountAvatar,
   onWatch,
   onVolume,
+  onKick,
+  onBan,
 }: Props) {
   if (members.length === 0) {
     return (
@@ -63,6 +69,13 @@ export default function Stage({
     );
   }
 
+  const memberMenu = (m: Member) => [
+    ...(onKick ? [{ node: 'item' as const, name: '踢出成员', onClick: () => onKick(m) }] : []),
+    ...(onBan
+      ? [{ node: 'item' as const, name: '封禁成员', type: 'danger' as const, onClick: () => onBan(m) }]
+      : []),
+  ];
+
   return (
     <div className="stage">
       <div className="stage-grid">
@@ -73,11 +86,22 @@ export default function Stage({
           const sub = subline(m, me, talking);
           const watching = watchingId === m.id;
           const vol = volumes[memberKey(m)] ?? DEFAULT_GAIN;
-          return (
+          const manageable = !me && (!!onKick || !!onBan);
+
+          const tile = (
             <div
               className={`member-tile${m.streaming ? ' is-streaming' : ''}${talking ? ' is-talking' : ''}`}
               key={`${m.uid}-${m.id}`}
             >
+              {manageable && (
+                <span className="tile-more" onClick={(e) => e.stopPropagation()}>
+                  <Dropdown trigger="click" position="bottomRight" menu={memberMenu(m)}>
+                    <button type="button" className="tile-more-btn" aria-label={`${m.nickname} 的成员操作`}>
+                      <IconMore size="small" />
+                    </button>
+                  </Dropdown>
+                </span>
+              )}
               {!me && (
                 <VolumePopover
                   title={`${m.nickname} 的音量`}
@@ -138,6 +162,13 @@ export default function Stage({
                 </div>
               ) : null}
             </div>
+          );
+
+          if (!manageable) return tile;
+          return (
+            <Dropdown key={`${m.uid}-${m.id}`} trigger="contextMenu" position="bottomLeft" menu={memberMenu(m)}>
+              {tile}
+            </Dropdown>
           );
         })}
       </div>

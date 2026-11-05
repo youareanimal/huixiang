@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Input, Modal, Spin } from '@douyinfe/semi-ui';
-import { IconBell, IconBellStroked, IconClose, IconEdit, IconFolder, IconMenu, IconUserGroup } from '@douyinfe/semi-icons';
+import { Input, InputNumber, Modal, Select, Spin, Switch } from '@douyinfe/semi-ui';
+import { IconBell, IconBellStroked, IconClose, IconEdit, IconFolder, IconMenu, IconPlus, IconUserGroup } from '@douyinfe/semi-icons';
 import type {
   AccountState,
+  ChannelCreate,
+  ChannelKind,
   ChannelNode,
+  ChannelPatch,
   ChatLine,
   CloudChat,
   CloudState,
@@ -101,6 +104,13 @@ interface Props {
   onStopShare: () => void;
   onWatch: (clientId: number) => void;
   onStopWatch: () => void;
+  /** 频道管理：建 / 改 / 删 */
+  onCreateChannel: (patch: ChannelCreate) => void;
+  onEditChannel: (cid: number, patch: ChannelPatch) => void;
+  onDeleteChannel: (cid: number) => void;
+  /** 成员管理：踢 / 封（非自己） */
+  onKickMember: (member: Member, reason: string) => void;
+  onBanMember: (member: Member, seconds: number, reason: string) => void;
   onAccountLogout: () => void;
   onAccountRefresh: () => void;
   onAvatarChange: (file: File) => void;
@@ -169,6 +179,11 @@ export default function ServerPage({
   onStopShare,
   onWatch,
   onStopWatch,
+  onCreateChannel,
+  onEditChannel,
+  onDeleteChannel,
+  onKickMember,
+  onBanMember,
   onAccountLogout,
   onAccountRefresh,
   onAvatarChange,
@@ -186,6 +201,13 @@ export default function ServerPage({
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const joinTimer = useRef<number | null>(null);
+  const [channelForm, setChannelForm] = useState<ChannelForm | null>(null);
+  const [kickTarget, setKickTarget] = useState<Member | null>(null);
+  const [kickReason, setKickReason] = useState('');
+  const [banTarget, setBanTarget] = useState<Member | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const [banMinutes, setBanMinutes] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<ChannelNode | null>(null);
 
   const current = useMemo(
     () => (state.ownChannel ? findChannel(state.tree, state.ownChannel) : null),
@@ -251,6 +273,81 @@ export default function ServerPage({
     if (joinTimer.current) window.clearTimeout(joinTimer.current);
     joinTimer.current = window.setTimeout(() => setJoiningChannel(null), 3000);
     onJoinChannel(channel.id);
+  };
+
+  const openCreateChannel = (parent: number) => {
+    setChannelForm({
+      mode: 'create',
+      parent,
+      name: '',
+      description: '',
+      kind: 'permanent',
+      password: false,
+      newPassword: '',
+      codec: current?.codec ?? 4,
+      quality: 6,
+      maxClients: -1,
+    });
+  };
+
+  const openEditChannel = (ch: ChannelNode) => {
+    setChannelForm({
+      mode: 'edit',
+      cid: ch.id,
+      parent: ch.parent,
+      name: ch.name,
+      description: ch.description ?? '',
+      kind: (ch.kind ?? 'permanent') as ChannelKind,
+      password: ch.password,
+      newPassword: '',
+      codec: ch.codec,
+      quality: ch.quality ?? 6,
+      maxClients: ch.maxClients,
+    });
+  };
+
+  const submitChannelForm = () => {
+    const f = channelForm;
+    if (!f || !f.name.trim()) return;
+    if (f.mode === 'create') {
+      onCreateChannel({
+        name: f.name.trim(),
+        description: f.description,
+        kind: f.kind,
+        password: f.password,
+        newPassword: f.newPassword,
+        codec: f.codec,
+        quality: f.quality,
+        maxClients: f.maxClients,
+        parent: f.parent,
+      });
+    } else if (f.cid != null) {
+      onEditChannel(f.cid, {
+        name: f.name.trim(),
+        description: f.description,
+        kind: f.kind,
+        password: f.password,
+        newPassword: f.newPassword,
+        codec: f.codec,
+        quality: f.quality,
+        maxClients: f.maxClients,
+        parent: f.parent,
+      });
+    }
+    setChannelForm(null);
+  };
+
+  const doKick = () => {
+    if (kickTarget) onKickMember(kickTarget, kickReason.trim());
+    setKickTarget(null);
+    setKickReason('');
+  };
+
+  const doBan = () => {
+    if (banTarget) onBanMember(banTarget, Math.max(0, Math.floor(banMinutes)) * 60, banReason.trim());
+    setBanTarget(null);
+    setBanReason('');
+    setBanMinutes(0);
   };
 
   const channelTitle = current?.display || current?.name || '频道';
@@ -443,12 +540,26 @@ export default function ServerPage({
             <div className="rail-head">
               <span className="rail-title">频道</span>
               <span className="rail-count">{countChannels(state.tree)}</span>
+              <button
+                type="button"
+                className="icon-btn rail-add"
+                title="新建频道"
+                aria-label="新建频道"
+                onClick={() => openCreateChannel(0)}
+              >
+                <IconPlus size="small" />
+              </button>
             </div>
             <ChannelTree
               tree={state.tree}
               ownChannel={state.ownChannel}
               joiningChannel={joiningChannel}
               onJoin={join}
+              onCreateChannel={openCreateChannel}
+              onEditChannel={openEditChannel}
+              onDeleteChannel={setDeleteTarget}
+              onKick={setKickTarget}
+              onBan={setBanTarget}
             />
             <div className="rail-foot">
               <span className="dot" />
@@ -511,6 +622,8 @@ export default function ServerPage({
                 accountAvatar={accountAvatar}
                 onWatch={onWatch}
                 onVolume={onMemberVolume}
+                onKick={setKickTarget}
+                onBan={setBanTarget}
               />
             )}
 
@@ -630,9 +743,169 @@ export default function ServerPage({
           }}
         />
       </Modal>
+
+      <Modal
+        title={channelForm?.mode === 'edit' ? '编辑频道' : '新建频道'}
+        visible={!!channelForm}
+        onCancel={() => setChannelForm(null)}
+        onOk={submitChannelForm}
+        okText={channelForm?.mode === 'edit' ? '保存' : '创建'}
+        cancelText="取消"
+        width={480}
+      >
+        {channelForm && (
+          <div className="chan-form">
+            <label className="chan-field">
+              <span>名称</span>
+              <Input
+                value={channelForm.name}
+                maxLength={40}
+                onChange={(v) => setChannelForm({ ...channelForm, name: v })}
+                placeholder="频道名称"
+              />
+            </label>
+            <label className="chan-field">
+              <span>描述</span>
+              <Input
+                value={channelForm.description}
+                maxLength={200}
+                onChange={(v) => setChannelForm({ ...channelForm, description: v })}
+                placeholder="可选"
+              />
+            </label>
+            <label className="chan-field">
+              <span>类型</span>
+              <Select
+                value={channelForm.kind}
+                style={{ width: '100%' }}
+                onChange={(v) => setChannelForm({ ...channelForm, kind: v as ChannelKind })}
+              >
+                <Select.Option value="permanent">永久</Select.Option>
+                <Select.Option value="semi">半永久</Select.Option>
+                <Select.Option value="temporary">临时</Select.Option>
+              </Select>
+            </label>
+            <label className="chan-field">
+              <span>编解码</span>
+              <Select
+                value={channelForm.codec}
+                style={{ width: '100%' }}
+                onChange={(v) => setChannelForm({ ...channelForm, codec: Number(v) })}
+              >
+                <Select.Option value={4}>Opus Voice</Select.Option>
+                <Select.Option value={5}>Opus Music</Select.Option>
+              </Select>
+            </label>
+            <label className="chan-field">
+              <span>音质 0–10</span>
+              <InputNumber
+                min={0}
+                max={10}
+                value={channelForm.quality}
+                onChange={(v) => setChannelForm({ ...channelForm, quality: Number(v ?? 6) })}
+                style={{ width: '100%' }}
+              />
+            </label>
+            <label className="chan-field">
+              <span>人数上限（-1 不限）</span>
+              <InputNumber
+                min={-1}
+                value={channelForm.maxClients}
+                onChange={(v) => setChannelForm({ ...channelForm, maxClients: Number(v ?? -1) })}
+                style={{ width: '100%' }}
+              />
+            </label>
+            <div className="chan-field chan-field-row">
+              <span>设置密码</span>
+              <Switch
+                checked={channelForm.password}
+                onChange={(v) => setChannelForm({ ...channelForm, password: v })}
+              />
+            </div>
+            {channelForm.password && (
+              <label className="chan-field">
+                <span>{channelForm.mode === 'edit' ? '新密码（留空保持不变）' : '密码'}</span>
+                <Input
+                  mode="password"
+                  value={channelForm.newPassword}
+                  onChange={(v) => setChannelForm({ ...channelForm, newPassword: v })}
+                  placeholder={channelForm.mode === 'edit' ? '留空则不修改' : ''}
+                />
+              </label>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        title={`踢出「${kickTarget?.nickname ?? ''}」`}
+        visible={!!kickTarget}
+        onCancel={() => setKickTarget(null)}
+        onOk={doKick}
+        okText="踢出"
+        cancelText="取消"
+      >
+        <p className="chan-hint">把 ta 从服务器上踢出去（可以重新连进来）。</p>
+        <Input value={kickReason} maxLength={100} onChange={setKickReason} placeholder="原因（可选）" />
+      </Modal>
+
+      <Modal
+        title={`封禁「${banTarget?.nickname ?? ''}」`}
+        visible={!!banTarget}
+        onCancel={() => setBanTarget(null)}
+        onOk={doBan}
+        okText="封禁"
+        cancelText="取消"
+      >
+        <p className="chan-hint">封禁后 ta 将无法再连入本服务器。</p>
+        <label className="chan-field">
+          <span>时长（分钟，0 = 永久）</span>
+          <InputNumber
+            min={0}
+            value={banMinutes}
+            onChange={(v) => setBanMinutes(Number(v ?? 0))}
+            style={{ width: '100%' }}
+          />
+        </label>
+        <Input
+          style={{ marginTop: 12 }}
+          value={banReason}
+          maxLength={100}
+          onChange={setBanReason}
+          placeholder="原因（可选）"
+        />
+      </Modal>
+
+      <Modal
+        title={`删除「${deleteTarget?.display || deleteTarget?.name || ''}」？`}
+        visible={!!deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onOk={() => {
+          if (deleteTarget) onDeleteChannel(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        okText="删除"
+        cancelText="取消"
+      >
+        <p className="chan-hint">这个频道和它下面的子频道都会删除，里面的人会被移到默认频道。</p>
+      </Modal>
     </div>
   );
 }
+
+type ChannelForm = {
+  mode: 'create' | 'edit';
+  cid?: number;
+  parent: number;
+  name: string;
+  description: string;
+  kind: ChannelKind;
+  password: boolean;
+  newPassword: string;
+  codec: number;
+  quality: number;
+  maxClients: number;
+};
 
 function countChannels(tree: ChannelNode[]): number {
   let n = 0;

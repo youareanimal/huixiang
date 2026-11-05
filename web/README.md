@@ -36,7 +36,7 @@ cd web/gateway && PORT=8080 ../../gradlew run
 
 ### 联调脚本
 
-`test/` 下三个脚本都是直接连 `ws://127.0.0.1:8080/ws` 的真实客户端，不依赖浏览器：
+`test/` 下的脚本都是直接连 `ws://127.0.0.1:8080/ws` 的真实客户端，不依赖浏览器：
 
 ```bash
 cd web/gateway/test
@@ -46,6 +46,7 @@ node smoke.mjs pi.animal26.site                 # 连真实服务器，打印频
 node flow.mjs  pi.animal26.site                 # 连接 → 切频道 → 发文字，全流程
 node voice.mjs pi.animal26.site                 # 两个会话同频道互发 Opus 帧，验证语音链路
 node files.mjs pi.animal26.site                 # 文件：列目录 → 进文件夹 → 下载比对（只读，不写）
+node chan.mjs  pi.animal26.site                 # 频道管理：发一条建频道命令，验证 chanOp 回路（有权限会真的建）
 node security.mjs 你的口令                       # Origin 白名单与访问口令，逐项打勾
 ```
 
@@ -72,6 +73,7 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 头像 | 自己的 myTeamSpeak 头像可上传/更换/删除；频道成员显示服务器头像或公开的 myTS 头像，失败退回首字母 |
 | 连接 | 地址 + 端口（默认 9987）、昵称、服务器密码、直接进指定频道（含频道密码）；信息栏显示延迟（浏览器↔网关 + 网关↔服务器） |
 | 频道树 | 名称、密码标记、话题、人数上限、编解码器、权限等级、分隔符频道 |
+| 频道管理 | 建 / 删 / 改频道（名称、描述、类型、编解码与音质、人数上限、密码），踢人与封禁（时长、原因）；权限由服务器判定，失败以中文提示 |
 | 成员列表 | 昵称、UID、说话状态、离开、输入/输出静音、talk power、优先发言人、频道组、服务器组 |
 | 成员进出提示 | 有人进入或离开我所在频道时，右下角文字提示并响一声（进场/离场不同音高）；只针对自己所在频道，默认常开、无开关 |
 | PWA / 安装 | 可作为 PWA 安装到桌面或手机主屏（manifest + Service Worker）；断网时能打开外壳并提示需联网；静态资源缓存、实时语音/文件等动态请求不缓存 |
@@ -84,11 +86,9 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 文件 | 频道文件区：浏览、下载、上传、新建文件夹、改名、删除（后四个带确认）。文件在服务器上，安卓 App 和官方客户端看到的是同一批；列目录走 WS，字节和写命令走 HTTP |
 | 断开 | 主动离开，之后可再连 |
 
-**还没接**（`tsproto` 里都有现成实现，缺的是网关这一层把它暴露出来）
+**还没接**
 
-| 能力 | 难度 | 说明 |
-|---|---|---|
-| 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
+暂无。
 
 ## myTeamSpeak 账号
 
@@ -229,6 +229,15 @@ TeamSpeak 服务器不保存频道消息，所以「历史」只能由收消息�
 - **好友头像**：好友当前在本服务器时，直接复用服务器成员的服务器头像 / 公开 myTS 头像；不在时 `GET /cloud-avatar/<matrixId>` 代取对方 Matrix 资料头像（96×96）并缓存；都没有则首字母。Matrix 域名只信任官方 `chat*.tmspk.net` / `teamspeak.com`，其余一律 404。
 - 私聊消息**不落盘**：服务器私聊只在实时连接里转发，Matrix 私聊只在网关内存转发并推给当前标签页，都不像频道历史那样存 JSONL。
 
+## 频道管理
+
+浏览器可以直接建 / 删 / 改频道，以及踢人、封禁——权限完全由 TeamSpeak 服务器判定，网关不额外放行或拦截。
+
+- 上行 `{"t":"channel"}`，`act` 为 `create` / `edit` / `delete` / `kick` / `ban`；网关用 `tsproto` 的 `ChannelEdits` 生成对应命令：`channelcreate`、`channeledit`（换父级时补 `channelmove`）、`channeldelete`、`clientkick`、`banclient`。
+- 一次操作可能拆成多条命令（例如「改名 + 换父级」= `channeledit` + `channelmove`），它们共用一个 `return_code`；网关把结果聚合成一条下行 `{"t":"chanOp"}`，`ok` 为 `true` 才算全部成功，否则 `error` 带中文原因。
+- 常见失败是「没有权限执行这个操作（insufficient client permissions）」——需要在该服务器有对应的 `i_channel_*` 权限。
+- 编辑以服务器上的当前值为基准做 diff（`ChannelEdits.edit`）：提交哪些字段就改哪些，没提交的不动。
+
 ## 接入控制
 
 网关是个 UDP 代理，谁能让它连，谁就能借这台机器访问外面的 TS 服务器。所以有两道门，挡的是不同的人。
@@ -299,6 +308,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"mute"}` | `input` `output` 布尔 |
 | `{"t":"stream"}` | 串流的信令，见下面的「串流」一节 |
 | `{"t":"file"}` | `act`（只有 `list`）`cid` `path`，见下面的「文件」一节 |
+| `{"t":"channel"}` | 频道管理，`act`：`create`（`name` `description` `kind` `password` `newPassword` `codec` `quality` `maxClients` `parent` `after`）、`edit`（`cid` + 上述可选字段）、`delete`（`cid`）、`kick`（`clid` `fromChannel` `reason`）、`ban`（`clid` `seconds` `reason`）；结果走下行 `chanOp` |
 | `{"t":"account"}` | `act`：`login`（`email` `password` `otp`）、`logout`、`refresh`；与语音连接无关 |
 | `{"t":"cloud"}` | 好友云聊天，`act`：`connect`（连 Matrix）、`disconnect`、`open`（`friend` 好友标识）、`send`（`room` `text`）、`history`（`room`）、`read`（`room` `event`）、`refresh`；仅登录后可用 |
 
@@ -327,6 +337,7 @@ ACCESS_TOKEN=你自己想一串
 | `{"t":"pong","v":…}` | 上行 `ping` 的原样回应 |
 | `{"t":"serverPing","v":18}` | 网关 ↔ TeamSpeak 服务器的 UDP 往返毫秒数，跟着每秒的 keepalive 更新 |
 | `{"t":"stream", …}` | 串流事件：`event` 是 `started` / `stopped` / `viewer` / `viewerLeft` / `offer` / `answer` / `candidate` / `ended` / `refused` / `failed` |
+| `{"t":"chanOp", …}` | 一次频道管理操作的结果：`id` `label`（中文动作名）`ok` `error`（失败为中文原因，成功为 null） |
 
 二进制下行：`[0x02][codec][clientId:2 大端][opus…]`。`opus` 为空表示这个人停止说话。
 
@@ -352,7 +363,8 @@ ACCESS_TOKEN=你自己想一串
     {
       "id": 1, "parent": 0, "name": "基地大厅", "display": "基地大厅",
       "spacer": false, "password": false, "topic": "",
-      "codec": 4, "neededTalkPower": 0, "maxClients": -1,
+      "codec": 4, "quality": 6, "description": "", "kind": "permanent", "order": 0,
+      "neededTalkPower": 0, "maxClients": -1,
       "clients": [
         { "id": 106, "nickname": "webtest", "uid": "…", "talking": false,
           "away": false, "inputMuted": false, "outputMuted": false,
