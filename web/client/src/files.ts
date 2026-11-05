@@ -1,4 +1,4 @@
-// 频道文件的字节。面板是只读的，所以这里只有下载。
+// 频道文件的字节：下载、上传，以及删除/改名/建目录（写操作都是短命令，走 HTTP，见下）。
 //
 // 命令走 WebSocket（要哪一层目录的列表），字节走 HTTP——WebSocket 一帧上限 64 KB，搬一个大文件要拆成
 // 上千帧、自己写重组和流控；HTTP 现成，还顺手给了进度和取消。网关那个端点见 Gateway.kt 的 /files/download。
@@ -94,4 +94,86 @@ export function formatBytes(n: number): string {
 /** 拼出 "/a/b/c.txt"；dir 为 "/" 时不留双斜杠。 */
 export function joinPath(dir: string, name: string): string {
   return dir === '/' ? `/${name}` : `${dir}/${name}`;
+}
+
+// ---- 写操作：上传、删除、改名、新建文件夹 ----
+// 都是短命令走 HTTP，和下载共用 X-File-Token 会话令牌（见 Gateway.kt 的 /files 端点）。
+
+/** 一个会带 HTTP 状态码的错误，前端靠 409 区分「同名文件已存在」。 */
+export type FileOpError = Error & { status?: number };
+
+async function writeFailure(res: Response, what: string): Promise<FileOpError> {
+  const text = (await res.text().catch(() => '')).trim();
+  const err = new Error(text || `${what}失败（HTTP ${res.status}）`) as FileOpError;
+  err.status = res.status;
+  return err;
+}
+
+export interface WriteOptions {
+  token: string;
+  cid: number;
+  /** 完整虚拟路径，如 "/报表/三月.pdf"。 */
+  path: string;
+}
+
+export interface UploadOptions extends WriteOptions {
+  file: File;
+  /** 覆盖同名文件。false 时网关回 409，调用方应确认后以 true 重试。 */
+  overwrite?: boolean;
+  onProgress?: (p: TransferProgress) => void;
+  signal?: AbortSignal;
+}
+
+/**
+ * 上传一个文件。用 XHR 而不是 fetch：只有 XHR 能给出上传进度。
+ * 同名文件且未 overwrite 时抛出的错误带 status=409，交给面板弹确认框。
+ */
+export function uploadFile(opts: UploadOptions): Promise<void> {
+  const query = new URLSearchParams({
+    cid: String(opts.cid),
+    path: opts.path,
+    overwrite: opts.overwrite ? '1' : '0',
+  });
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/files/upload?${query}`);
+    xhr.setRequestHeader('X-File-Token', opts.token);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) opts.onProgress?.({ done: e.loaded, total: e.total });
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        const err = new Error((xhr.responseText || '').trim() || `上传失败（HTTP ${xhr.status}）`) as FileOpError;
+        err.status = xhr.status;
+        reject(err);
+      }
+    };
+    xhr.onerror = () => reject(new Error('上传中断：网络错误') as FileOpError);
+    xhr.onabort = () => reject(new Error('已取消') as FileOpError);
+    opts.signal?.addEventListener('abort', () => xhr.abort());
+    xhr.send(opts.file);
+  });
+}
+
+/** 删除文件或整个目录（目录会连同其中内容一起删）。 */
+export async function deleteFile(opts: WriteOptions): Promise<void> {
+  const query = new URLSearchParams({ cid: String(opts.cid), path: opts.path });
+  const res = await fetch(`/files?${query}`, { method: 'DELETE', headers: { 'X-File-Token': opts.token } });
+  if (!res.ok) throw await writeFailure(res, '删除');
+}
+
+/** 把 [path] 改名为同目录下的 [name]。 */
+export async function renameFile(opts: WriteOptions & { name: string }): Promise<void> {
+  const query = new URLSearchParams({ cid: String(opts.cid), path: opts.path, name: opts.name });
+  const res = await fetch(`/files/rename?${query}`, { method: 'POST', headers: { 'X-File-Token': opts.token } });
+  if (!res.ok) throw await writeFailure(res, '改名');
+}
+
+/** 在当前目录新建文件夹 [path]（完整路径）。 */
+export async function makeFolder(opts: WriteOptions): Promise<void> {
+  const query = new URLSearchParams({ cid: String(opts.cid), path: opts.path });
+  const res = await fetch(`/files/mkdir?${query}`, { method: 'POST', headers: { 'X-File-Token': opts.token } });
+  if (!res.ok) throw await writeFailure(res, '新建文件夹');
 }

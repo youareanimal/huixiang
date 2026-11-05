@@ -45,13 +45,13 @@ node smoke.mjs                                  # 只验证 WS 管线和地址�
 node smoke.mjs pi.animal26.site                 # 连真实服务器，打印频道树
 node flow.mjs  pi.animal26.site                 # 连接 → 切频道 → 发文字，全流程
 node voice.mjs pi.animal26.site                 # 两个会话同频道互发 Opus 帧，验证语音链路
-node files.mjs pi.animal26.site                 # 文件：列目录 → 进文件夹 → 下载比对 → 确认写入口不在
+node files.mjs pi.animal26.site                 # 文件：列目录 → 进文件夹 → 下载比对（只读，不写）
 node security.mjs 你的口令                       # Origin 白名单与访问口令，逐项打勾
 ```
 
 `flow.mjs`、`voice.mjs` 和 `files.mjs` 会真的在那台服务器上以随机昵称登录一次，结束后离开。
 
-`files.mjs` 是只读的，不会在服务器上留下任何东西；它顺带确认 `POST /files/upload` 确实已经拆掉。想看别的频道的文件区：`CHANNEL=2 node files.mjs pi.animal26.site`。
+`files.mjs` 是只读的，不会在服务器上留下任何东西（上传、删除、改名这些写操作已支持，但脚本不碰）。想看别的频道的文件区：`CHANNEL=2 node files.mjs pi.animal26.site`。
 
 网关配了口令时，前三个脚本加 `TOKEN=你的口令`，端口不同加 `WS=ws://127.0.0.1:端口/ws`：
 
@@ -79,14 +79,13 @@ TOKEN=你的口令 WS=ws://127.0.0.1:8081/ws node flow.mjs pi.animal26.site
 | 静音 | 麦克风和扬声器状态同步到服务器 |
 | 语音 | 双向裸 Opus，浏览器 WebCodecs 编解码 |
 | 屏幕 / 摄像头串流 | WebRTC 直连，能看别人也能自己播；画面不经网关，这里只走信令 |
-| 文件 | 频道文件区（只读）：浏览目录、下载。文件在服务器上，安卓 App 和官方客户端看到的是同一批；命令走 WS，字节走 HTTP |
+| 文件 | 频道文件区：浏览、下载、上传、新建文件夹、改名、删除（后四个带确认）。文件在服务器上，安卓 App 和官方客户端看到的是同一批；列目录走 WS，字节和写命令走 HTTP |
 | 断开 | 主动离开，之后可再连 |
 
 **还没接**（`tsproto` 里都有现成实现，缺的是网关这一层把它暴露出来）
 
 | 能力 | 难度 | 说明 |
 |---|---|---|
-| 文件上传与管理（传 / 删 / 改名 / 建文件夹） | 低 | `FileTransfer` 现成，缺的是一个带确认的交互：传上去、删错了，同频道的人都跟着变 |
 | 频道管理（建/删/改/踢/封） | 低 | `ChannelEdits` 现成，加 `cmd` 白名单即可 |
 
 ## myTeamSpeak 账号
@@ -399,9 +398,9 @@ NAT 打不通时要 TURN。构建时给 `VITE_TURN_URL` / `VITE_TURN_USER` / `VI
 
 ### 文件
 
-**文件在 TeamSpeak 服务器的频道文件区里，不是网关的磁盘，也不是浏览器缓存。** 网页这边**只读**：浏览目录、
-下载文件。上传、删除、改名都不做——那些动的是服务器上的东西，同频道的人都会跟着变，值得单独做一次带确认
-的交互。
+**文件在 TeamSpeak 服务器的频道文件区里，不是网关的磁盘，也不是浏览器缓存。** 网页这边可浏览、下载，
+也能上传、新建文件夹、改名、删除——后四个都动服务器上的东西，同频道的人都会跟着变，所以每个都带一次
+确认，而且需要登录后、在这个频道有对应的文件权限。
 
 正因为文件本来就在服务器上，安卓 App 和官方客户端在自己的文件浏览器里看到的是同一批，网关不需要磁盘、
 不需要清理，重启也不丢东西。
@@ -412,6 +411,8 @@ NAT 打不通时要 TURN。构建时给 `VITE_TURN_URL` / `VITE_TURN_USER` / `VI
 |---|---|---|
 | 列目录 | WebSocket `{"t":"file","act":"list"}` → `{"t":"files"}` | 本来就短，往返快，一个命令不值得开一次 HTTP |
 | 字节 | HTTP `/files/download` | WS 一帧上限 64 KB，一个大文件要拆成上千帧，分片、重组、流控都得自己写；HTTP 这三样都是现成的，还顺手给了进度、取消和准确的错误码 |
+| 上传 | HTTP `POST /files/upload` | 大文件要流式进服务器，一条 TCP 直传；WS 帧太小，也不好带进度 |
+| 删除 / 改名 / 建目录 | HTTP `DELETE /files`、`POST /files/rename`、`POST /files/mkdir` | 短命令，但都要带确认和准确错误码；和下载共用同一个会话令牌 |
 
 ```jsonc
 // 上行：要某一层
@@ -443,6 +444,21 @@ GET /files/download?cid=2&path=/report.pdf
   要改的东西。
 - 频道密码：进频道时用的是明文，文件区要的是它的哈希，所以网关在 `clientmove` 那一步把哈希记下来
   （`Crypto.hashPassword`，和安卓端一样），之后传文件自动带上。
+
+写操作端点（都带同一个 `X-File-Token`）：
+
+```
+POST   /files/upload?cid=2&path=/report.pdf[&overwrite=1]   请求体是文件原始字节，需 Content-Length
+DELETE /files?cid=2&path=/report.pdf
+POST   /files/rename?cid=2&path=/report.pdf&name=report-v2.pdf
+POST   /files/mkdir?cid=2&path=/归档
+```
+
+- **上传不落网关磁盘**：网关把请求体直接流进 `FileTransfer.upload`（`ftinitupload` 之后与服务器开一条 TCP
+  写字节），本机不留副本。同名文件且没带 `overwrite=1` 时回 `409`，前端弹「覆盖」确认后重传。
+- **改名先判重**：服务器会静默覆盖同名目标，所以网关先列一次目录，撞名就回 `409`。
+- **删除文件夹会连同里面内容一起删**，前端因此要求二次确认。
+- 写操作和下载一样受服务器权限（`2568`）与频道密码约束，错误文案一致；单次上传上限同为 1 GiB。
 
 ### 头像
 
@@ -516,8 +532,9 @@ const opusHead = new Uint8Array([
 - 每个连接是一个 UDP socket 加一个线程，扩到几百人需要改成分片或协程。
 - 身份安全等级低于服务器要求时（错误 519）只提示、不自动升级——升级很吃 CPU，放到后台跑要单独设计。
 - 网页关掉连接就断，没有 App 那种后台保活。
-- 文件传输的两个 HTTP 端点靠 `X-File-Token` 认会话，令牌只发给对应的那个标签页、断开即失效；但它和
-  `ACCESS_TOKEN` 一样不是身份认证——拿到令牌的人可以在那次会话的有效期内读这个频道文件区里的文件，
-  就这么长的时间窗。面板只读，所以这个令牌换不来任何写操作；单次下载上限 1 GiB。
+- 文件的 HTTP 端点（下载、上传、删除、改名、建目录）都靠 `X-File-Token` 认会话，令牌只发给对应的那个
+  标签页、断开即失效；但它和 `ACCESS_TOKEN` 一样不是身份认证——拿到令牌的人可以在那次会话的有效期内
+  对这个频道文件区做对应的事（能写是因为面板现在支持写操作），能不能真正落地仍由服务器按身份和频道权限
+  裁决。单次传输上限 1 GiB。
 - 串流的画面不经过网关，但共享是 mesh：N 个人看就有 N 份上行从**浏览器**出去（不是网关的带宽）。
   5 个人看 4 Mbps 的屏幕，发布者要 20 Mbps 上行，家宽基本到顶了。

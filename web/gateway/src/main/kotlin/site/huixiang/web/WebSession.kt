@@ -480,6 +480,37 @@ class WebSession(
         return f.list(cid, parent, filePassword(cid)).firstOrNull { it.name == name }
     }
 
+    /** 上传：把 [input] 的 [size] 字节写成频道 [cid] 的 [path]（完整路径）。[overwrite] 为 false 时同名文件会被拒。阻塞。 */
+    fun uploadFile(cid: Int, path: String, input: java.io.InputStream, size: Long, overwrite: Boolean) {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        f.upload(cid, path, input, size, filePassword(cid), overwrite)
+    }
+
+    /** 删除频道 [cid] 的 [path]（文件或整个目录）。阻塞。 */
+    fun deleteFile(cid: Int, path: String) {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        f.delete(cid, path, filePassword(cid))
+    }
+
+    /** 在频道 [cid] 新建目录 [path]（完整路径；已存在不算错）。阻塞。 */
+    fun createFolder(cid: Int, path: String) {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        f.createDirectory(cid, path, filePassword(cid))
+    }
+
+    /** 把频道 [cid] 的 [path] 改名为同目录下的 [newName]，返回新的完整路径。目标已存在时抛 [FileTransfer.FILE_EXISTS]。阻塞。 */
+    fun renameFile(cid: Int, path: String, newName: String): String {
+        val f = ft ?: throw FileTransfer.Error("还没连上服务器")
+        val parent = path.substringBeforeLast('/', "").ifEmpty { "/" }
+        val to = if (parent == "/") "/$newName" else "$parent/$newName"
+        // 服务器会静默覆盖同名目标，所以先查一次，免得一声不响吞掉别人的文件
+        if (f.list(cid, parent, filePassword(cid)).any { it.name == newName }) {
+            throw FileTransfer.Error("同名文件已存在", FileTransfer.FILE_EXISTS)
+        }
+        f.rename(cid, path, to, filePassword(cid))
+        return to
+    }
+
     /** 密码频道的文件区要同一个密码，形态是哈希（进入频道时用的是明文，见 [joinChannel]）。 */
     private fun filePassword(cid: Int): String = channelPasswords[cid].orEmpty()
 
@@ -554,6 +585,7 @@ class WebSession(
             if (failedOn != null) "没有权限操作这个频道的文件（服务器卡在 $failedOn）"
             else "没有权限操作这个频道的文件"
         }
+        FileTransfer.FILE_EXISTS -> "同名文件已存在"
         FileTransfer.FILE_NOT_FOUND, FileTransfer.INVALID_PATH -> "文件不存在"
         else -> when (e) {
             is java.net.SocketTimeoutException -> "传输超时"
