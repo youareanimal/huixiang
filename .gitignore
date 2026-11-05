@@ -33,6 +33,7 @@ web/gateway/build/
 
 # 页面验证的截图，只是测试产物，不入库
 web/client/test/*.png
+test-shots/
 
 # TypeScript 增量编译缓存
 *.tsbuildinfo

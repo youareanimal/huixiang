@@ -30,11 +30,14 @@ import { clampGain, DEFAULT_GAIN } from './audio/gain';
 import { TalkingTracker } from './talking';
 import { StreamClient, initialStreamState, type StreamState } from './stream';
 import { notifyPermission, notifySupported, requestNotifyPermission, showMessageNotice } from './notify';
+import { playJoinCue, playLeaveCue } from './audio/cues';
+import { diffPresence, type PresenceBaseline } from './presence';
 import { avatarSources } from './ui';
 import { VoicePlayer, webCodecsAvailable } from './audio/player';
 import { MicSender, micCodecAvailable } from './audio/mic';
 import ConnectPage from './components/ConnectPage';
 import ServerPage from './components/ServerPage';
+import PresenceToasts, { type PresenceNotice } from './components/PresenceToasts';
 
 const MAX_CHAT = 300;
 
@@ -111,6 +114,12 @@ export default function App() {
   const talkingRef = useRef<TalkingTracker | null>(null);
   if (!talkingRef.current) talkingRef.current = new TalkingTracker(setVoiceTalking);
   const talking = talkingRef.current;
+
+  // 频道成员进出提示：上一次的成员基线 + 右下角提示队列。功能始终开启，不提供开关。
+  // 网关推的是全量快照，前端 diff 出「我所在频道」的进出，不用改后端。
+  const presenceBaseline = useRef<PresenceBaseline | null>(null);
+  const [presenceNotices, setPresenceNotices] = useState<PresenceNotice[]>([]);
+  const presenceSeq = useRef(0);
 
   // 串流：画面是浏览器和对方直连的 WebRTC，网关只管信令
   const [streamState, setStreamState] = useState<StreamState>(initialStreamState);
@@ -299,6 +308,7 @@ export default function App() {
           // 得再点一次才回登录页——所以 idle 一律当作「已离开」，直接回连接页（错误照常显示）。
           if (s.phase === 'idle') {
             if (s.error) setError(s.error);
+            presenceBaseline.current = null;
             stateRef.current = null;
             setState(null);
             setConnecting(false);
@@ -314,6 +324,35 @@ export default function App() {
             const wantInputMuted = micRef.current ? s.inputMuted : true;
             const wantOutputMuted = pref ? pref.outputMuted : s.outputMuted;
             st = { ...st, inputMuted: wantInputMuted, outputMuted: wantOutputMuted };
+          }
+          // 频道成员进出提示：拿这一份快照跟上一份「我所在频道」的成员比。
+          // 首次快照、或我自己换了频道时只重置基线、不报（diffPresence 内部处理）。
+          if (st.phase === 'connected') {
+            const delta = diffPresence(presenceBaseline.current, st.tree, st.ownChannel, st.ownId);
+            presenceBaseline.current = delta.baseline;
+            if (delta.joins.length || delta.leaves.length) {
+              const summarize = (names: string[]) =>
+                names.length <= 3
+                  ? names.join('、')
+                  : `${names.slice(0, 3).join('、')} 等 ${names.length} 人`;
+              const push = (text: string, kind: 'join' | 'leave') => {
+                const id = ++presenceSeq.current;
+                setPresenceNotices((prev) => [...prev.slice(-3), { id, text, kind }]);
+                window.setTimeout(() => {
+                  setPresenceNotices((prev) => prev.filter((x) => x.id !== id));
+                }, 3600);
+              };
+              if (delta.joins.length) {
+                push(`${summarize(delta.joins)} 进入了频道`, 'join');
+                playJoinCue();
+              }
+              if (delta.leaves.length) {
+                push(`${summarize(delta.leaves)} 离开了频道`, 'leave');
+                playLeaveCue();
+              }
+            }
+          } else {
+            presenceBaseline.current = null;
           }
           stateRef.current = st;
           setState(st);
@@ -464,6 +503,7 @@ export default function App() {
     setPttHeld(false);
     // 只发 leave；WebSocket 留着，账号和云书签不用重新登录
     gatewayRef.current?.leave();
+    presenceBaseline.current = null;
     stateRef.current = null;
     setState(null);
     setChat([]);
@@ -948,5 +988,10 @@ export default function App() {
     removeAccountAvatarNow,
   ]);
 
-  return <div className={connected ? 'app app-connected' : 'app'}>{content}</div>;
+  return (
+    <div className={connected ? 'app app-connected' : 'app'}>
+      {content}
+      <PresenceToasts items={presenceNotices} />
+    </div>
+  );
 }
