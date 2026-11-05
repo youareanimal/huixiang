@@ -53,5 +53,5 @@ so the gateway can enforce its normal allow-list. No wildcard origin is needed.
 5. Confirm the production main site and its domain are unchanged.
 
 The Pages Worker proxies /ws, /auth, /healthz, /files*,
-/ server-banner/*, /avatar/*, /cloud-avatar/*, and /account/*.
+/server-banner/*, /avatar/*, /cloud-avatar/*, and /account/*.
 All other requests are served from Pages static assets.
