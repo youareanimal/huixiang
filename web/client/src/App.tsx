@@ -180,6 +180,62 @@ export default function App() {
   }, [talking]);
 
   /**
+   * 打开麦克风并开始发送。silent=true 用于「进服时自动恢复上次开麦状态」：
+   * 没有权限或浏览器不支持时静默失败、保持闭麦，不弹 Toast 打扰。
+   */
+  const startMic = useCallback(
+    async (silent = false): Promise<boolean> => {
+      if (micRef.current) return true;
+      // 自动恢复开麦时，只有麦克风权限已经授权才真正去开，避免页面一加载就弹权限框
+      if (silent) {
+        try {
+          const status = await navigator.permissions.query({ name: 'microphone' as unknown as PermissionName });
+          if (status.state !== 'granted') return false;
+        } catch {
+          return false;
+        }
+      }
+      if (!micCodecAvailable()) {
+        if (!silent) Toast.error('这个浏览器不支持 WebCodecs 音频编码，换 Chrome 或 Edge');
+        return false;
+      }
+      const s = stateRef.current;
+      const codec = s ? (findChannel(s.tree, s.ownChannel)?.codec ?? 4) : 4;
+      const mic = new MicSender();
+      try {
+        const g = gatewayRef.current;
+        await mic.start(
+          (opus) => g?.voice(codec, opus),
+          (level) => setMicLevel(level),
+        );
+        micRef.current = mic;
+        setMicOn(true);
+        // 解除服务器端的输入静音，官方客户端里会恢复麦克风图标
+        const s0 = stateRef.current;
+        gatewayRef.current?.setMuted(false, s0?.outputMuted ?? false);
+        if (s0) {
+          const st = { ...s0, inputMuted: false };
+          stateRef.current = st;
+          setState(st);
+          // 记下「现在是开麦」，下次短暂退出再进来照此恢复
+          store.setMutePref(false, st.outputMuted);
+        }
+        // 记住的音量在开麦时补上，不然要再拖一次滑块才生效
+        mic.setVolume(micGain);
+        mic.setMode(micMode);
+        mic.setSending(!pttMode);
+        return true;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (!silent) Toast.error(msg.includes('Permission') ? '没有麦克风权限' : `麦克风打不开：${msg}`);
+        mic.stop();
+        return false;
+      }
+    },
+    [micGain, micMode, pttMode],
+  );
+
+  /**
    * 收到别人的消息时弹桌面通知。
    * 规则：私聊一定提醒；频道消息在两种情况下提醒——页面不在前台，或者消息不是
    * 你当前所在频道（你看不到那条聊天）。只有「正盯着当前频道的聊天」才不打扰。
@@ -251,9 +307,13 @@ export default function App() {
           }
           const prevPhase = stateRef.current?.phase;
           let st = s;
-          // 首次进入/重连时本地默认是闭麦的，把状态对齐成「输入已静音」，下面再上报给服务器
-          if (s.phase === 'connected' && prevPhase !== 'connected' && micRef.current == null && !st.inputMuted) {
-            st = { ...st, inputMuted: true };
+          // 进服/重连时：若 14 天内有「上次离开时的开关」，就按它恢复；否则默认闭麦、扬声器沿用服务器状态。
+          if (s.phase === 'connected' && prevPhase !== 'connected') {
+            const pref = store.mutePref();
+            // 麦克风：本地采集没起来前一律先按闭麦，真正开麦由下面 startMic 成功后翻成不静音
+            const wantInputMuted = micRef.current ? s.inputMuted : true;
+            const wantOutputMuted = pref ? pref.outputMuted : s.outputMuted;
+            st = { ...st, inputMuted: wantInputMuted, outputMuted: wantOutputMuted };
           }
           stateRef.current = st;
           setState(st);
@@ -261,8 +321,12 @@ export default function App() {
             setConnecting(false);
             if (st.address) store.addRecent(st.address);
             if (prevPhase !== 'connected') {
-              // 默认闭麦也要报告一次，官方客户端（TS5/TS6）才会正确显示麦克风静音
-              gatewayRef.current?.setMuted(micRef.current == null, st.outputMuted);
+              // 扬声器静音先在本地播放器上落实，再把输入/输出静音都报给服务器（官方客户端据此显示图标）
+              playerRef.current?.setMuted(st.outputMuted);
+              gatewayRef.current?.setMuted(st.inputMuted, st.outputMuted);
+              // 上次是开麦的话，自动恢复；失败就静默保持闭麦
+              const pref = store.mutePref();
+              if (pref && !pref.inputMuted && !micRef.current) void startMic(true);
             }
           } else {
             // 已经不在语音连接里了，服务器那半段延迟作废；网关那半段还活着
@@ -336,6 +400,11 @@ export default function App() {
         },
         onStream: (e) => streamRef.current?.onEvent(e),
         onClose: (code, reason) => {
+          // 掉线/关页前记一笔开关，重连后恢复
+          {
+            const s = stateRef.current;
+            if (s) store.setMutePref(s.inputMuted, s.outputMuted);
+          }
           gatewayRef.current = null;
           stateRef.current = null;
           streamRef.current?.reset();
@@ -363,7 +432,7 @@ export default function App() {
         throw e;
       }
     },
-    [talking, notifyMessage],
+    [talking, notifyMessage, startMic],
   );
 
   // 页面一打开就把网关连上：浏览器若还带着「记住我」cookie，网关会在这条连接上恢复账号登录，
@@ -379,6 +448,11 @@ export default function App() {
   }, [tokenChecked, tokenNeeded, openGateway]);
 
   const disconnect = useCallback(() => {
+    // 断开前记一笔当前的麦克风/扬声器开关，短暂退出再进来能恢复
+    {
+      const s = stateRef.current;
+      if (s) store.setMutePref(s.inputMuted, s.outputMuted);
+    }
     talking.reset();
     streamRef.current?.reset();
     streamRef.current = null;
@@ -677,7 +751,11 @@ export default function App() {
     const muted = !s.outputMuted;
     gatewayRef.current?.setMuted(s.inputMuted, muted);
     playerRef.current?.setMuted(muted);
-    setState({ ...s, outputMuted: muted });
+    const st = { ...s, outputMuted: muted };
+    stateRef.current = st;
+    setState(st);
+    // 记住这次开关，14 天内再进来沿用
+    store.setMutePref(st.inputMuted, muted);
   }, []);
 
   const toggleInput = useCallback(async () => {
@@ -690,41 +768,17 @@ export default function App() {
       // 告诉服务器「我静音了」，这样官方客户端（TS5/TS6）里也会显示麦克风静音图标
       const s = stateRef.current;
       gatewayRef.current?.setMuted(true, s?.outputMuted ?? false);
-      if (s) setState({ ...s, inputMuted: true });
-      return;
-    }
-    if (!micCodecAvailable()) {
-      Toast.error('这个浏览器不支持 WebCodecs 音频编码，换 Chrome 或 Edge');
-      return;
-    }
-    const s = stateRef.current;
-    const codec = s ? (findChannel(s.tree, s.ownChannel)?.codec ?? 4) : 4;
-    const mic = new MicSender();
-    try {
-      const g = gatewayRef.current;
-      await mic.start(
-        (opus) => g?.voice(codec, opus),
-        (level) => setMicLevel(level),
-      );
-      micRef.current = mic;
-      setMicOn(true);
-      // 解除服务器端的输入静音，官方客户端里会恢复麦克风图标
-      {
-        const s0 = stateRef.current;
-        gatewayRef.current?.setMuted(false, s0?.outputMuted ?? false);
-        if (s0) setState({ ...s0, inputMuted: false });
+      if (s) {
+        const st = { ...s, inputMuted: true };
+        stateRef.current = st;
+        setState(st);
+        // 记住「现在是闭麦」，下次短暂退出再进来照此恢复
+        store.setMutePref(true, st.outputMuted);
       }
-      // 记住的音量在开麦时补上，不然要再拖一次滑块才生效
-      mic.setVolume(micGain);
-      // 说话方式要赶在第一帧之前定下来：按住说话时开麦不等于立刻出声
-      mic.setMode(micMode);
-      mic.setSending(!pttMode);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      Toast.error(msg.includes('Permission') ? '没有麦克风权限' : `麦克风打不开：${msg}`);
-      mic.stop();
+      return;
     }
-  }, [micOn, pttMode, micMode, micGain]);
+    await startMic(false);
+  }, [micOn, startMic]);
 
   const connected = state?.phase === 'connected';
 
