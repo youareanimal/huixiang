@@ -144,14 +144,14 @@ async function run() {
     log(`下载「${file.name}」${buf.length} 字节，与目录一致`);
   }
 
-  // 4. 只读该是只读的：上传端点已经拆掉了
+  // 4. 写端点受令牌保护：不带 X-File-Token 一律 401，不会真的在服务器上留东西
   const up = await fetch(`${BASE}/files/upload?cid=${cid}&path=/x.txt`, {
     method: 'POST',
-    headers: { 'X-File-Token': fileToken, 'Content-Type': 'application/octet-stream' },
+    headers: { 'Content-Type': 'application/octet-stream' },
     body: Buffer.from('x'),
   });
-  if (up.ok) return fail('上传端点居然还能用，只读的面板不该留着它');
-  log(`上传端点确实不在（HTTP ${up.status}）`);
+  if (up.status !== 401) return fail(`上传端点没有拦住无令牌请求：HTTP ${up.status}`);
+  log('上传端点存在且要求令牌（无令牌 401）');
 
   finish(0);
 }

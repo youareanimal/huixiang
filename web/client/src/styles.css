@@ -3087,3 +3087,63 @@ button.files-name:hover {
   opacity: 0.45;
   cursor: default;
 }
+
+/* ====== 文件面板：写操作（上传/新建/改名/删除） ====== */
+.files-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.files-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.files-act {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.files-row:hover .files-act {
+  opacity: 1;
+}
+
+.files-act:hover:not(:disabled) {
+  background: var(--bg-fill-2);
+  color: var(--text-1);
+}
+
+.files-act.is-danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.files-act:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (hover: none) {
+  .files-act {
+    opacity: 1;
+  }
+}
+
+.files-dialog-text {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+}

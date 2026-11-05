@@ -1,5 +1,6 @@
 package site.huixiang.web
 
+import io.github.korppujauho.pocketts.proto.FileTransfer
 import io.github.korppujauho.pocketts.proto.Json
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -14,6 +15,7 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.path
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveStream
 import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
@@ -438,6 +440,118 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
             }
         }
 
+        /**
+         * 上传到一个频道文件区：原始字节直接进来，不解析、不缓冲到磁盘（先 ftinitupload，再把字节写到服务器给的
+         * TCP 端口）。认 X-File-Token，和下载同一个令牌。`overwrite=1` 覆盖同名文件；否则同名回 409，前端再确认重传。
+         */
+        post("/files/upload") {
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@post
+            }
+            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
+            val path = filePath(call.request.queryParameters["path"])
+            if (cid == null || path == null || path == "/") {
+                call.respond(HttpStatusCode.BadRequest, "缺少文件路径")
+                return@post
+            }
+            val size = call.request.contentLength()
+            if (size == null || size < 0) {
+                call.respond(HttpStatusCode.LengthRequired, "缺少 Content-Length")
+                return@post
+            }
+            if (size > WebSession.MAX_FILE_BYTES) {
+                call.respond(HttpStatusCode.PayloadTooLarge, "文件太大")
+                return@post
+            }
+            val overwrite = call.request.queryParameters["overwrite"] in setOf("1", "true")
+            try {
+                withContext(Dispatchers.IO) {
+                    call.receiveStream().use { session.uploadFile(cid, path, it, size, overwrite) }
+                }
+                call.respondText("ok")
+            } catch (e: Exception) {
+                log.info("upload $path of channel $cid failed: ${e.message}")
+                val code = (e as? FileTransfer.Error)?.code
+                call.respond(
+                    if (code == FileTransfer.FILE_EXISTS) HttpStatusCode.Conflict else HttpStatusCode.BadGateway,
+                    session.fileError(e),
+                )
+            }
+        }
+
+        /** 删除文件或整个目录。认 X-File-Token。 */
+        delete("/files") {
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@delete
+            }
+            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
+            val path = filePath(call.request.queryParameters["path"])
+            if (cid == null || path == null || path == "/") {
+                call.respond(HttpStatusCode.BadRequest, "缺少文件路径")
+                return@delete
+            }
+            try {
+                withContext(Dispatchers.IO) { session.deleteFile(cid, path) }
+                call.respondText("ok")
+            } catch (e: Exception) {
+                log.info("delete $path of channel $cid failed: ${e.message}")
+                call.respond(HttpStatusCode.BadGateway, session.fileError(e))
+            }
+        }
+
+        /** 新建文件夹：`path` 是完整目录路径。认 X-File-Token。 */
+        post("/files/mkdir") {
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@post
+            }
+            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
+            val path = filePath(call.request.queryParameters["path"])
+            if (cid == null || path == null || path == "/") {
+                call.respond(HttpStatusCode.BadRequest, "缺少目录路径")
+                return@post
+            }
+            try {
+                withContext(Dispatchers.IO) { session.createFolder(cid, path) }
+                call.respondText("ok")
+            } catch (e: Exception) {
+                log.info("mkdir $path of channel $cid failed: ${e.message}")
+                call.respond(HttpStatusCode.BadGateway, session.fileError(e))
+            }
+        }
+
+        /** 改名：`path` 是现有完整路径，`name` 是新文件名（同目录、不含 '/'）。认 X-File-Token。 */
+        post("/files/rename") {
+            val session = call.fileSession()
+            if (session == null) {
+                call.respond(HttpStatusCode.Unauthorized, "会话已结束，刷新页面再连一次")
+                return@post
+            }
+            val cid = call.request.queryParameters["cid"]?.toIntOrNull()
+            val path = filePath(call.request.queryParameters["path"])
+            val name = call.request.queryParameters["name"]?.trim().orEmpty()
+            if (cid == null || path == null || path == "/" || !isPlainName(name)) {
+                call.respond(HttpStatusCode.BadRequest, "缺少文件路径或文件名不合法")
+                return@post
+            }
+            try {
+                withContext(Dispatchers.IO) { session.renameFile(cid, path, name) }
+                call.respondText("ok")
+            } catch (e: Exception) {
+                log.info("rename $path of channel $cid failed: ${e.message}")
+                val code = (e as? FileTransfer.Error)?.code
+                call.respond(
+                    if (code == FileTransfer.FILE_EXISTS) HttpStatusCode.Conflict else HttpStatusCode.BadGateway,
+                    session.fileError(e),
+                )
+            }
+        }
+
         webSocket("/ws") {
             val ip = clientIp(call)
             if (!access.originAllowed(call)) {
@@ -577,6 +691,10 @@ private fun filePath(raw: String?): String? {
     if (p.split('/').any { it == ".." }) return null
     return p
 }
+
+/** A single path segment: no '/', no "..", not blank, not absurdly long. */
+private fun isPlainName(name: String): Boolean =
+    name.isNotEmpty() && name.length <= 255 && name != "." && name != ".." && '/' !in name
 
 private fun acquire(ip: String): Boolean {
     if (openTotal.incrementAndGet() > Limits.TOTAL) {

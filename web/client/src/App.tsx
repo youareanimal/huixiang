@@ -239,6 +239,16 @@ export default function App() {
       const g = new Gateway(gatewayUrl(), useToken, {
         onIdentity: (v) => store.setIdentity(v),
         onState: (s) => {
+          // 离开服务器后网关还会补推一帧 phase=idle 的快照。若照单全收，前端会停在一个空的服务器页，
+          // 得再点一次才回登录页——所以 idle 一律当作「已离开」，直接回连接页（错误照常显示）。
+          if (s.phase === 'idle') {
+            if (s.error) setError(s.error);
+            stateRef.current = null;
+            setState(null);
+            setConnecting(false);
+            setPing((p) => (p.server == null ? p : { ...p, server: null }));
+            return;
+          }
           stateRef.current = s;
           setState(s);
           if (s.phase === 'connected') {
