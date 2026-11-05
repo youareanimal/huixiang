@@ -263,6 +263,7 @@ object Session : TsClient.Listener {
         val nextTarget = currentTarget.copy(
             nickname = nickname?.takeIf { it.isNotBlank() } ?: currentTarget.nickname,
         )
+        val previousState = _state.value
         AppLog.log("myTeamSpeak identity changed; reconnecting current server")
         switchTo {
             target = nextTarget
@@ -270,6 +271,15 @@ object Session : TsClient.Listener {
             oldWaits = 0
             wasConnected = false
             start(keepChat = true)
+            // finish() resets the public UI snapshot; restore the active conversation state after the handshake restart.
+            _state.update {
+                it.copy(
+                    chat = previousState.chat,
+                    privateTabs = previousState.privateTabs,
+                    unread = previousState.unread,
+                    pokes = previousState.pokes,
+                )
+            }
         }
     }
 
