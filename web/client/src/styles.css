@@ -860,134 +860,425 @@ body {
   flex: 0 0 auto;
 }
 
-/* ====== 成员舞台 ====== */
+/* ====== 猴子树梢舞台 ====== */
 
 .stage {
   flex: 1 1 auto;
-  min-height: 132px;
-  overflow-y: auto;
+  min-height: 220px;
+  overflow: auto;
   display: flex;
-  padding: 24px 28px;
+  padding: 12px 18px;
 }
 
-/* 用 margin:auto 居中：内容比容器高时 auto 会退成 0，顶部不会被裁掉，能滚到最上面 */
-.stage-grid {
-  margin: auto;
+.monkey-scene {
+  position: relative;
+  isolation: isolate;
+  flex: 1 0 auto;
+  width: max-content;
+  min-width: 100%;
+  min-height: 282px;
   display: flex;
-  flex-wrap: wrap;
-  align-content: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 28px 36px;
+  padding: 3px 12px 12px;
+  overflow: hidden;
+  border: 1px solid rgba(77, 148, 183, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 84% 20%, rgba(255, 255, 255, 0.42) 0 2px, transparent 3px),
+    radial-gradient(circle at 15% 65%, rgba(255, 255, 255, 0.28) 0 2px, transparent 3px),
+    linear-gradient(180deg, #74c7f3 0%, #9bd9f7 58%, #d8f1fc 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
-.member-tile {
-  width: 132px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 6px 8px;
-  border-radius: 16px;
-  text-align: center;
-  transition: background-color 0.18s ease;
-}
-
-/* 说话中：整块淡淡提亮，离开眼睛余光也能扫到 */
-.member-tile.is-talking {
-  background: var(--speaking-soft);
-}
-
-.avatar-ring {
-  position: relative;
-  width: 80px;
-  height: 80px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  border: 2px solid transparent;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.avatar-ring.is-talking {
-  border-color: var(--speaking);
-  box-shadow:
-    0 0 0 4px rgba(20, 184, 154, 0.16),
-    0 0 16px rgba(20, 184, 154, 0.4);
-}
-
-/* 说话时向外扩一圈：不是装饰，是「正在出声」的动静 */
-.avatar-ring.is-talking::after {
+.monkey-scene::before {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-radius: 999px;
-  border: 2px solid var(--speaking);
-  animation: talk-pulse 1.6s ease-out infinite;
+  z-index: 0;
+  right: 8%;
+  top: 26px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 244, 185, 0.7);
+  box-shadow: 0 0 34px rgba(255, 244, 185, 0.45);
+}
+
+.monkey-scene::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  bottom: -34px;
+  height: 70px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.34));
+  border-radius: 50% 50% 0 0;
+}
+
+.monkey-branch-art {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 118px;
+  overflow: visible;
   pointer-events: none;
 }
 
-.avatar-ring.is-talking .avatar {
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+.branch-trunk {
+  fill: #8a481f;
+  stroke: #5b2e17;
+  stroke-width: 8;
+  stroke-linejoin: round;
 }
 
-@keyframes talk-pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  70%,
-  100% {
-    transform: scale(1.24);
-    opacity: 0;
-  }
+.branch-main-outline {
+  fill: none;
+  stroke: #542811;
+  stroke-width: 42;
+  stroke-linecap: round;
 }
 
-.member-tile.is-talking .tile-name {
-  color: var(--speaking-ink);
-  font-weight: 600;
+.branch-main {
+  fill: none;
+  stroke: #a65c27;
+  stroke-width: 32;
+  stroke-linecap: round;
 }
 
-.avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 999px;
+.branch-bark {
+  fill: none;
+  stroke: #6f381a;
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.branch-bark-light {
+  stroke: #d38a49;
+  stroke-width: 3;
+  opacity: 0.75;
+}
+
+.branch-leaves {
+  fill: #68a92f;
+  stroke: #39772a;
+  stroke-width: 4;
+  stroke-linejoin: round;
+}
+
+.stage-grid {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  width: max-content;
+  min-width: 100%;
+  margin: 0 auto;
+  padding: 1px 18px 0;
+}
+
+.member-tile.monkey-member {
+  position: relative;
+  flex: 0 0 148px;
+  width: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px 8px;
+  border-radius: 16px;
+  text-align: center;
+  background: transparent;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+.member-tile.monkey-member.is-talking {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.monkey-figure {
+  position: relative;
+  width: 142px;
+  height: 207px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  transform-origin: 50% 14%;
+}
+
+.monkey-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 3px 1px rgba(66, 38, 18, 0.16));
+  --monkey-fur: #9b4d16;
+  --monkey-outline: #51270f;
+  --monkey-skin: #f4c18a;
+  --monkey-ear: #e78d61;
+}
+
+.monkey-variant-1 {
+  --monkey-fur: #ad5a1b;
+  --monkey-outline: #5c2b10;
+  --monkey-skin: #f7c994;
+  --monkey-ear: #e99469;
+}
+
+.monkey-variant-2 {
+  --monkey-fur: #874015;
+  --monkey-outline: #49200d;
+  --monkey-skin: #edb77e;
+  --monkey-ear: #d97d55;
+}
+
+.monkey-variant-3 {
+  --monkey-fur: #a34a18;
+  --monkey-outline: #54230e;
+  --monkey-skin: #f5c58f;
+  --monkey-ear: #e88c5d;
+}
+
+.monkey-tail {
+  transform-origin: 80px 48px;
+}
+
+.monkey-tail-outline,
+.monkey-tail-fill {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.monkey-tail-outline {
+  stroke: var(--monkey-outline);
+  stroke-width: 15;
+}
+
+.monkey-tail-fill {
+  stroke: var(--monkey-fur);
+  stroke-width: 9;
+}
+
+.monkey-limb-outline,
+.monkey-limb-fill {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.monkey-limb-outline {
+  stroke: var(--monkey-outline);
+  stroke-width: 20;
+}
+
+.monkey-limb-fill {
+  stroke: var(--monkey-fur);
+  stroke-width: 13;
+}
+
+.monkey-foot,
+.monkey-hand {
+  fill: var(--monkey-skin);
+  stroke: var(--monkey-outline);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.monkey-toes,
+.monkey-fingers {
+  fill: none;
+  stroke: #a76642;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.monkey-body,
+.monkey-head-fur {
+  fill: var(--monkey-fur);
+  stroke: var(--monkey-outline);
+  stroke-width: 3.5;
+}
+
+.monkey-belly,
+.monkey-face {
+  fill: var(--monkey-skin);
+  stroke: var(--monkey-outline);
+  stroke-width: 2.5;
+}
+
+.monkey-belly {
+  opacity: 0.58;
+  stroke: none;
+}
+
+.monkey-ear {
+  fill: var(--monkey-fur);
+  stroke: var(--monkey-outline);
+  stroke-width: 3;
+}
+
+.monkey-ear-inner {
+  fill: var(--monkey-ear);
+  stroke: #a95e39;
+  stroke-width: 1.5;
+}
+
+.monkey-tuft {
+  fill: none;
+  stroke: var(--monkey-outline);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.monkey-cheek {
+  fill: #e99072;
+  opacity: 0.38;
+}
+
+.monkey-brow {
+  fill: none;
+  stroke: var(--monkey-outline);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.monkey-eye {
+  fill: #fffaf0;
+  stroke: var(--monkey-outline);
+  stroke-width: 1.5;
+}
+
+.monkey-pupil {
+  fill: #21160f;
+}
+
+.monkey-nose {
+  fill: #4a2416;
+}
+
+.monkey-nostrils {
+  fill: none;
+  stroke: #2f170e;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+.monkey-mouth-closed {
+  fill: none;
+  stroke: #51200f;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: opacity 0.12s ease;
+}
+
+.monkey-mouth-open {
+  opacity: 0;
+  transform: scaleY(0.35);
+  transform-origin: 80px 183px;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.monkey-mouth-open ellipse {
+  fill: #32100d;
+  stroke: #51200f;
+  stroke-width: 2.5;
+}
+
+.monkey-teeth {
+  fill: #fff4df;
+}
+
+.monkey-tongue {
+  fill: #ec6570;
+  stroke: #9e3545;
+  stroke-width: 1.5;
+}
+
+.monkey-svg.is-mic-open .monkey-mouth-closed {
+  opacity: 0;
+}
+
+.monkey-svg.is-mic-open .monkey-mouth-open {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.monkey-svg.is-speaking .monkey-mouth-open {
+  animation: monkey-mouth-talk 0.24s ease-in-out infinite alternate;
+}
+
+.monkey-arm {
+  transform-origin: 80px 130px;
+}
+
+.monkey-member .tile-name-row {
+  max-width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.5px;
-  user-select: none;
+  gap: 6px;
+  margin-top: -2px;
 }
 
-.tile-name {
+.monkey-member .tile-name {
   max-width: 100%;
+  min-width: 0;
+  color: #24465a;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-1);
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tile-sub {
+.monkey-member.is-talking .tile-name {
+  color: #075d61;
+}
+
+.monkey-member .tile-sub {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  font-size: 11.5px;
-  color: var(--text-4);
   max-width: 100%;
+  min-height: 18px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.48);
+  color: #426578;
+  font-size: 10.5px;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tile-sub.is-talking {
-  color: var(--speaking-ink);
-  font-weight: 500;
+.monkey-member .tile-sub.is-talking {
+  color: #087b70;
+  font-weight: 600;
+}
+
+.monkey-member .tile-sub.tile-live {
+  color: #087b70;
+  font-weight: 600;
+}
+
+.monkey-member .tile-vol {
+  top: 6px;
+  right: 10px;
+}
+
+.monkey-member .tile-more {
+  top: 6px;
+  right: 7px;
 }
 
 .bars {
@@ -1020,7 +1311,7 @@ body {
 }
 
 .bars.is-live i {
-  background: var(--speaking);
+  background: #0a9d8c;
   animation: bar 0.9s ease-in-out infinite;
 }
 
@@ -1046,30 +1337,81 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .bars.is-live i {
-    animation: none;
+@keyframes monkey-mouth-talk {
+  from {
+    transform: scaleY(0.55);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes monkey-bob {
+  from {
+    transform: translateY(0) rotate(-0.8deg);
+  }
+  to {
+    transform: translateY(3px) rotate(0.8deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .stage {
+    min-height: 205px;
+    padding: 8px 10px;
   }
 
-  .avatar-ring.is-talking::after {
+  .monkey-scene {
+    min-height: 260px;
+    border-radius: 14px;
+  }
+
+  .stage-grid {
+    gap: 4px;
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .member-tile.monkey-member {
+    flex-basis: 128px;
+    width: 128px;
+  }
+
+  .monkey-figure {
+    width: 124px;
+    height: 190px;
+  }
+
+  .monkey-branch-art {
+    height: 105px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bars.is-live i,
+  .monkey-figure.is-speaking,
+  .monkey-svg.is-speaking .monkey-mouth-open {
     animation: none;
-    opacity: 0;
   }
 }
 
 .stage-empty {
+  position: relative;
+  z-index: 2;
+  margin: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: var(--text-3);
+  color: #41657a;
   font-size: 13px;
+  text-align: center;
 }
 
 .stage-empty-title {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--text-2);
+  font-weight: 600;
+  color: #24465a;
 }
 
 /* ====== 聊天 ====== */
