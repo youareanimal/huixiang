@@ -123,6 +123,7 @@ object Session : TsClient.Listener {
     private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "session").apply { isDaemon = true } }
     private var client: TsClient? = null
     @Volatile private var voiceAccount: MyTsAccount.Session? = null
+    @Volatile private var myTsSessionExpiredNoticeShown = false
     @Volatile private var files: FileTransfer? = null
     private var engine: StreamEngine? = null
 
@@ -256,6 +257,7 @@ object Session : TsClient.Listener {
      * so a successful account login must reconnect the current server with the newly saved identity.
      */
     fun reconnectMyTsIdentity(nickname: String? = null) {
+        myTsSessionExpiredNoticeShown = false
         val currentTarget = target ?: return
         if (_state.value.phase == Phase.IDLE) return
         val nextTarget = currentTarget.copy(
@@ -922,10 +924,27 @@ object Session : TsClient.Listener {
                 AppLog.log("myTeamSpeak chat tag sync: QUEUED")
             } catch (e: CloudFailure) {
                 val code = e.code.takeIf { it.matches(Regex("[A-Z0-9_]{1,64}")) } ?: "UNEXPECTED"
-                AppLog.log("myTeamSpeak chat tag unavailable (" + code + ")")
+                if (e.code == "MYTS_SIGNED_IDENTIFIER_${MyTsChatTag.SIGNED_IDENTIFIER_SESSION_EXPIRED}") {
+                    AppLog.log("myTeamSpeak chat tag sync: SESSION_EXPIRED")
+                    notifyMyTsSessionExpired()
+                } else {
+                    AppLog.log("myTeamSpeak chat tag unavailable (" + code + ")")
+                }
             } catch (_: Exception) {
                 AppLog.log("myTeamSpeak chat tag unavailable (UNEXPECTED)")
             }
+        }
+    }
+
+    private fun notifyMyTsSessionExpired() {
+        if (!::app.isInitialized || myTsSessionExpiredNoticeShown) return
+        myTsSessionExpiredNoticeShown = true
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(
+                app,
+                "MyTeamSpeak 登录会话已过期，请重新登录。",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
