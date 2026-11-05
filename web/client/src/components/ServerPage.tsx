@@ -618,8 +618,8 @@ export default function ServerPage({
                 talkingIds={talkingIds}
                 ownTalking={ownTalking}
                 watchingId={stream.watching}
-                avatarToken={avatarToken}
-                accountAvatar={accountAvatar}
+                micOn={micOn}
+                ownOutputMuted={state.outputMuted}
                 onWatch={onWatch}
                 onVolume={onMemberVolume}
                 onKick={setKickTarget}
