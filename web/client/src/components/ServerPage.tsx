@@ -7,6 +7,7 @@ import type {
   ChatLine,
   FilesMessage,
   Member,
+  MicMode,
   State,
 } from '../protocol';
 import { findChannel, findMember } from '../protocol';
@@ -50,7 +51,7 @@ interface Props {
   talkingIds: ReadonlySet<number>;
   /** 自己这一刻是否在说话（麦克风电平说了算）。 */
   ownTalking: boolean;
-  pttMode: boolean;
+  micMode: MicMode;
   pttHeld: boolean;
   audioReady: boolean;
   stream: StreamState;
@@ -59,7 +60,7 @@ interface Props {
   /** 这个浏览器/环境是否支持通知（http 非 localhost 就不支持）。 */
   notifySupported: boolean;
   onToggleNotify: () => void;
-  onTogglePttMode: () => void;
+  onMicMode: (mode: MicMode) => void;
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
   onSay: (text: string) => void;
@@ -109,14 +110,14 @@ export default function ServerPage({
   volumes,
   talkingIds,
   ownTalking,
-  pttMode,
+  micMode,
   pttHeld,
   audioReady,
   stream,
   notifyOn,
   notifySupported,
   onToggleNotify,
-  onTogglePttMode,
+  onMicMode,
   onPttHold,
   onJoinChannel,
   onSay,
@@ -138,6 +139,7 @@ export default function ServerPage({
   onAvatarChange,
   onAvatarRemove,
 }: Props) {
+  const pttMode = micMode === 'ptt';
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState('');
   const [passwordFor, setPasswordFor] = useState<ChannelNode | null>(null);
@@ -459,7 +461,7 @@ export default function ServerPage({
         micLevel={micLevel}
         micGain={micGain}
         outputMuted={state.outputMuted}
-        pttMode={pttMode}
+        micMode={micMode}
         pttHeld={pttHeld}
         channelName={channelTitle}
         clientCount={people.length}
@@ -471,7 +473,7 @@ export default function ServerPage({
         onMicGain={onMicGain}
         onToggleInput={onToggleInput}
         onToggleOutput={onToggleOutput}
-        onTogglePttMode={onTogglePttMode}
+        onMicMode={onMicMode}
         onPttHold={onPttHold}
         onDisconnect={onDisconnect}
       />

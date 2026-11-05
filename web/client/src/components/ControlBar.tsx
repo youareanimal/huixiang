@@ -7,9 +7,16 @@ import {
   IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
+import type { MicMode } from '../protocol';
 import type { ShareKind } from '../stream';
 import { gainPercent } from '../audio/gain';
 import VolumePopover from './VolumePopover';
+
+const MIC_MODES: Array<{ key: MicMode; label: string; hint: string }> = [
+  { key: 'auto', label: '自动', hint: '检测到你在说话才发送，安静时不占用带宽' },
+  { key: 'open', label: '常开', hint: '麦克风一直发送' },
+  { key: 'ptt', label: '按住说话', hint: '按住按钮或空格才发送' },
+];
 
 interface Props {
   micOn: boolean;
@@ -17,7 +24,7 @@ interface Props {
   /** 麦克风增益，0–2。 */
   micGain: number;
   outputMuted: boolean;
-  pttMode: boolean;
+  micMode: MicMode;
   pttHeld: boolean;
   channelName: string;
   clientCount: number;
@@ -30,21 +37,21 @@ interface Props {
   onMicGain: (v: number) => void;
   onToggleInput: () => void;
   onToggleOutput: () => void;
-  onTogglePttMode: () => void;
+  onMicMode: (mode: MicMode) => void;
   onPttHold: (held: boolean) => void;
   onDisconnect: () => void;
 }
 
 /**
  * 底部控制栏：左边是「你在哪」，中间是「你的话筒」，右边是「走」。
- * 常开 / 按住说话改成两段式，当前模式一眼可见，不会把「点它会变成什么」当文案。
+ * 说话方式分三档：自动（人声检测）/ 常开 / 按住说话，当前模式一眼可见。
  */
 export default function ControlBar({
   micOn,
   micLevel,
   micGain,
   outputMuted,
-  pttMode,
+  micMode,
   pttHeld,
   channelName,
   clientCount,
@@ -56,10 +63,11 @@ export default function ControlBar({
   onMicGain,
   onToggleInput,
   onToggleOutput,
-  onTogglePttMode,
+  onMicMode,
   onPttHold,
   onDisconnect,
 }: Props) {
+  const pttMode = micMode === 'ptt';
   const live = micOn && (!pttMode || pttHeld);
 
   return (
@@ -119,27 +127,25 @@ export default function ControlBar({
           </button>
         )}
 
-        {micOn && !pttMode && (
+        {micOn && micMode !== 'ptt' && (
           <div className="level" title="麦克风音量" aria-hidden="true">
             <div className="level-fill" style={{ width: `${Math.min(100, micLevel * 180)}%` }} />
           </div>
         )}
 
         <div className="segment" role="group" aria-label="说话方式">
-          <button
-            type="button"
-            className={pttMode ? '' : 'is-on'}
-            onClick={() => pttMode && onTogglePttMode()}
-          >
-            常开
-          </button>
-          <button
-            type="button"
-            className={pttMode ? 'is-on' : ''}
-            onClick={() => !pttMode && onTogglePttMode()}
-          >
-            按住说话
-          </button>
+          {MIC_MODES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className={micMode === m.key ? 'is-on' : ''}
+              title={m.hint}
+              aria-pressed={micMode === m.key}
+              onClick={() => micMode !== m.key && onMicMode(m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
         </div>
 
         <div className="v-divider" />

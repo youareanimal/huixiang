@@ -30,7 +30,7 @@ src/
   talking.ts               谁在说话：按下行语音帧的实际音量判读（静音帧不算）
   audio/
     player.ts              下行：每人一个 AudioDecoder，Web Audio 排程播放
-    mic.ts                 上行：AudioWorklet 攒 20ms → AudioEncoder 编 Opus
+    mic.ts                 上行：AudioWorklet 攒 20ms → 自动人声检测 → AudioEncoder 编 Opus
     capture-worklet.js     采集用的 worklet（纯 JS，不能写 TS）
   components/
     ConnectPage.tsx        地址、昵称、密码、口令、最近连接；myTeamSpeak 登录、云书签、好友
@@ -66,6 +66,16 @@ src/
 - **worklet 必须连到 destination** 才会被驱动，中间垫一个 `gain=0` 的节点，不然麦克风会从扬声器放出来。
 - **OpusHead 那 19 字节不能省**，WebCodecs 的 opus 解码器没有它就报配置错误。
 
+### 说话方式
+
+控制条上的三档决定「这一帧要不要发」：
+
+- **自动**（默认）：`mic.ts` 按帧算 RMS，超过 `VAD_THRESHOLD = 0.015` 记为在说话，之后 `VAD_TAIL_MS = 600` 内继续发；安静时只监听、不编码，不占上行带宽，也不往服务器丢静音包。
+- **常开**：一直发。
+- **按住说话**：按住按钮或空格才发，松手时把 worklet 静音。
+- 选择存在 `huixiang.micMode`。自动模式要一直听，所以 worklet 不会静音，只是不编码。
+- 头像点亮的门槛是另一个常量 `TALK_LEVEL = 0.045`，只管显示，跟发不发无关。
+
 ## 浏览器要求
 
 | 能力 | 需要 |
@@ -84,6 +94,7 @@ src/
 | `huixiang.nickname` | 上次用的昵称 |
 | `huixiang.recent` | 最近连过的地址，最多 8 条 |
 | `huixiang.micGain` / `huixiang.volumes` | 麦克风增益、按 uid 记的成员音量 |
+| `huixiang.micMode` | 说话方式：`auto` 自动（默认）/ `open` 常开 / `ptt` 按住说话 |
 | `huixiang.notify` | 桌面消息通知开关（`1` 开 / `0` 关；真正的权限在浏览器站点设置里） |
 
 myTeamSpeak 的邮箱、密码、会话令牌、书签密钥和云书签内容**都不进 localStorage**：登录会话只保存在网关内存里。浏览器只留一枚 `huixiang_account` 的 `HttpOnly` cookie（随机 id，JS 读不到），用于自动恢复登录；默认 30 天后过期，退出登录会立即清掉。
@@ -133,7 +144,7 @@ FAKE_MIC=1 node test/shot.mjs http://127.0.0.1:8080/ shot.png 3000 "..."
 - 文件上传与管理：传 / 删 / 改名 / 建文件夹（`FileTransfer` 都现成，缺的是一个带确认的交互）
 - 私聊：**不做**（按需求砍掉了，网关侧仍支持，将来要加只需改前端）
 
-已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**按住说话 / 常开麦切换**（按住说话支持空格键，输入框内不拦截）、单人音量、屏幕与摄像头串流、**频道文件的浏览 / 下载**、**myTeamSpeak 登录 / 云书签 / 好友列表 / 头像**、**延迟显示**（浏览器↔网关 + 网关↔服务器）、**新消息桌面通知**。
+已做：频道文字、切频道（含密码）、改名、静音同步、双向语音、**自动人声检测 / 常开 / 按住说话三档**（自动档安静时不发帧；按住说话支持空格键，输入框内不拦截）、单人音量、屏幕与摄像头串流、**频道文件的浏览 / 下载**、**myTeamSpeak 登录 / 云书签 / 好友列表 / 头像**、**延迟显示**（浏览器↔网关 + 网关↔服务器）、**新消息桌面通知**。
 
 ## 文件是怎么走的
 

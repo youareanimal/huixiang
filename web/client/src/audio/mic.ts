@@ -3,6 +3,12 @@
 
 import workletUrl from './capture-worklet.js?url';
 import { DEFAULT_GAIN, clampGain } from './gain';
+import type { MicMode } from '../protocol';
+
+/** 自动模式的门限：一帧的 RMS 超过它就算在说话。 */
+export const VAD_THRESHOLD = 0.015;
+/** 说完之后的尾音：这段时间内还继续发，避免句子中间的字被切掉。 */
+export const VAD_TAIL_MS = 600;
 
 const AudioEncoderCtor: any = (globalThis as any).AudioEncoder;
 const AudioDataCtor: any = (globalThis as any).AudioData;
@@ -21,6 +27,11 @@ export class MicSender {
   private volume = DEFAULT_GAIN;
   private ts = 0;
   private sending = true;
+  private mode: MicMode = 'auto';
+  /** 自动模式的门现在开着没有（正在说话或还在尾音里）。 */
+  private gateOpen = false;
+  /** 最后一次「够响」的时刻；负数表示还没说过话。 */
+  private lastLoud = -1e9;
 
   /** 每 20ms 一帧 Opus 交给 [onFrame]；空数组表示这一帧没有声音可发。 */
   async start(onFrame: (opus: Uint8Array) => void, onLevel?: (level: number) => void): Promise<void> {
@@ -71,18 +82,27 @@ export class MicSender {
     });
 
     this.ts = 0;
+    this.gateOpen = this.mode !== 'auto';
+    this.lastLoud = -1e9;
     this.node.port.onmessage = (e) => {
       const pcm = e.data as ArrayBuffer;
-      if (onLevel) {
-        const view = new Int16Array(pcm);
-        let peak = 0;
-        for (let i = 0; i < view.length; i += 16) {
-          const v = Math.abs(view[i]) / 32768;
-          if (v > peak) peak = v;
-        }
-        onLevel(peak);
+      const view = new Int16Array(pcm);
+      let peak = 0;
+      let sum = 0;
+      for (let i = 0; i < view.length; i++) {
+        const s = view[i] / 32768;
+        const a = Math.abs(s);
+        if (a > peak) peak = a;
+        sum += s * s;
       }
-      if (!this.sending) return;
+      // 自动模式：这一帧够响就刷新「最后说话时间」，尾音期内继续发。
+      if (this.mode === 'auto') {
+        const now = performance.now();
+        if (Math.sqrt(sum / (view.length || 1)) >= VAD_THRESHOLD) this.lastLoud = now;
+        this.gateOpen = now - this.lastLoud < VAD_TAIL_MS;
+      }
+      if (onLevel) onLevel(peak);
+      if (!this.transmitting) return;
       try {
         const data = new AudioDataCtor({
           format: 's16',
@@ -107,7 +127,20 @@ export class MicSender {
   /** 关掉采集但不释放麦克风：按住说话松开时用这个，省掉反复申请权限的开销。 */
   setSending(on: boolean) {
     this.sending = on;
-    this.node?.port.postMessage(on ? 'unmute' : 'mute');
+    // 自动模式要一直听，不能把 worklet 也静音，否则检测不到下一句；
+    // 按住说话松手时才真的把采集停掉。
+    const listen = on || this.mode === 'auto';
+    this.node?.port.postMessage(listen ? 'unmute' : 'mute');
+  }
+
+  /**
+   * 换说话方式。切到自动时先把门关上，等下一帧真的有人声再开；
+   * 常开和按住说话直接放行。
+   */
+  setMode(mode: MicMode) {
+    this.mode = mode;
+    this.gateOpen = mode !== 'auto';
+    this.lastLoud = -1e9;
   }
 
   /**
@@ -124,6 +157,11 @@ export class MicSender {
 
   get active() {
     return this.sending;
+  }
+
+  /** 这一刻是否真的在往外发帧（自动模式下静音时是 false）。 */
+  get transmitting() {
+    return this.sending && (this.mode !== 'auto' || this.gateOpen);
   }
 
   stop() {

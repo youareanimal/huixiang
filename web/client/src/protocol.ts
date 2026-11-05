@@ -229,12 +229,16 @@ export interface ConnectOptions {
 
 // ====== 本地保存 ======
 
+/** 说话方式。auto = 本地做人声检测（VAD），安静时不发送。 */
+export type MicMode = 'auto' | 'open' | 'ptt';
+
 const KEY = {
   identity: 'huixiang.identity',
   token: 'huixiang.token',
   recent: 'huixiang.recent',
   nickname: 'huixiang.nickname',
   micGain: 'huixiang.micGain',
+  micMode: 'huixiang.micMode',
   volumes: 'huixiang.volumes',
   notify: 'huixiang.notify',
 };
@@ -283,6 +287,14 @@ export const store = {
   },
   setMicGain(v: number) {
     localStorage.setItem(KEY.micGain, String(clampGain(v)));
+  },
+  /** 说话方式：自动（检测到人声才发）/ 常开 / 按住说话。跟着这台机器走。 */
+  micMode(): MicMode {
+    const raw = localStorage.getItem(KEY.micMode);
+    return raw === 'open' || raw === 'ptt' ? raw : 'auto';
+  },
+  setMicMode(v: MicMode) {
+    localStorage.setItem(KEY.micMode, v);
   },
   /** 成员音量：key 见 memberKey（uid 而不是 clientId）。 */
   volumes(): Record<string, number> {
