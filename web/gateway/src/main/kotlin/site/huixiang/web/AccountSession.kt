@@ -7,6 +7,7 @@ import io.github.korppujauho.pocketts.proto.MyTsBookmarks
 import io.github.korppujauho.pocketts.proto.MyTsProfile
 import io.github.korppujauho.pocketts.proto.MyTsVoiceData
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
+import io.github.korppujauho.pocketts.proto.MyTsVoiceMaterial
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutionException
@@ -22,9 +23,10 @@ import java.util.concurrent.TimeoutException
  * at your cloud bookmarks and friends, and a server connection started while signed in carries the voice identity
  * that makes TeamSpeak show the account's badges and signed avatar.
  *
- * Nothing is written to disk and the browser keeps no token: the myTeamSpeak session lives in this object, in the
- * gateway's memory, for as long as the tab's WebSocket is open. A reload means signing in again, which also means a
- * stolen browser profile cannot read the account afterwards.
+ * Nothing is written to disk and the browser keeps no token: the myTeamSpeak session lives here, in the gateway's
+ * memory, for as long as the tab's WebSocket is open. A browser that asked to be remembered holds only a random id
+ * in an HttpOnly cookie; [RememberedAccounts] keeps the session itself until the cookie is forgotten, so a reload
+ * can [resume] it without the password ever being stored — and a stolen browser profile still cannot read a token.
  *
  * All account RPCs (login, bookmarks, contacts, profile) run on one thread. They block on HTTPS for up to half a
  * minute, and none of that may happen on Netty's event loop. Contact display-name lookups and the optional voice
@@ -34,6 +36,8 @@ class AccountSession(
     private val push: (String) -> Unit,
     private val fileToken: String,
     private val log: (String) -> Unit = {},
+    /** Called on the account worker after a successful *password* login, never after a resume. */
+    private val onSignedIn: () -> Unit = {},
 ) {
     companion object {
         /** The same ceiling MyTsProfile applies; checked before an HTTP upload leaves memory. */
@@ -118,6 +122,11 @@ class AccountSession(
                 loadProfile(fresh)
                 loadBookmarks(fresh)
                 loadContacts(fresh)
+                try {
+                    onSignedIn()
+                } catch (e: Exception) {
+                    log("remember after login failed: ${e.message}")
+                }
             } catch (e: CloudFailure) {
                 failLogin(e.code)
             } catch (e: Exception) {
@@ -151,6 +160,97 @@ class AccountSession(
             loadProfile(current)
             loadBookmarks(current)
             loadContacts(current)
+        }
+    }
+
+    /**
+     * A copy of the signed-in session that can outlive this tab, for [RememberedAccounts]; null while signed out.
+     * Everything secret is copied so callers cannot zero out the live session by touching the snapshot.
+     */
+    fun remember(): RememberedAccount? {
+        val current = session ?: return null
+        return RememberedAccount(
+            token = current.token,
+            username = username,
+            email = email,
+            syncKey = current.syncKey?.copyOf(),
+            bookmarkKeyError = current.bookmarkKeyError,
+            voiceMaterial = try {
+                current.voiceMaterial?.encodeForStorage()
+            } catch (e: Exception) {
+                log("voice material snapshot failed: ${e.message}")
+                null
+            },
+            voiceMaterialError = current.voiceMaterialError,
+        )
+    }
+
+    /**
+     * Brings back the session [remember] saved, without the password and without re-issuing a cookie id. Resumes on
+     * the worker so a slow or dead network cannot block the WebSocket handshake. An expired or unknown token leaves
+     * the tab signed out with `MYTS_103`, which is what makes the browser forget its cookie.
+     */
+    fun resume(saved: RememberedAccount) {
+        if (closed) return
+        if (phase == "signedIn" || phase == "busy") return
+        phase = "busy"
+        error = null
+        pushAccount()
+        submit {
+            try {
+                val restored = MyTsAccount.Session(
+                    token = saved.token,
+                    username = saved.username,
+                    syncKey = saved.syncKey?.copyOf(),
+                    bookmarkKeyError = saved.bookmarkKeyError,
+                    email = saved.email,
+                    voiceMaterial = try {
+                        saved.voiceMaterial?.let { MyTsVoiceMaterial.decodeFromStorage(it) }
+                    } catch (e: Exception) {
+                        log("voice material restore failed: ${e.message}")
+                        null
+                    },
+                    voiceMaterialError = saved.voiceMaterialError,
+                )
+                if (!MyTsAccount().valid(restored)) {
+                    restored.syncKey?.fill(0)
+                    phase = "guest"
+                    error = "MYTS_103"
+                    pushAccount()
+                    pushBookmarks()
+                    pushContacts()
+                    return@submit
+                }
+                if (closed) {
+                    restored.syncKey?.fill(0)
+                    return@submit
+                }
+                session = restored
+                username = restored.username
+                email = restored.email
+                avatarUrl = ""
+                error = null
+                voiceIdentity = try {
+                    MyTsVoiceIdentity.fromSession(restored)
+                } catch (e: Exception) {
+                    log("voice identity unavailable: ${e.message}")
+                    null
+                }
+                phase = "signedIn"
+                pushAccount()
+                loadProfile(restored)
+                loadBookmarks(restored)
+                loadContacts(restored)
+            } catch (e: CloudFailure) {
+                phase = "guest"
+                error = e.code
+                pushAccount()
+            } catch (e: Exception) {
+                log("resume failed: ${e.message}")
+                phase = "guest"
+                error = "MYTS_103"
+                pushAccount()
+            }
         }
     }
 

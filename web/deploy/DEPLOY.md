@@ -163,9 +163,9 @@ HOST=127.0.0.1
 WEB_DIST=/opt/huixiang/web/client/dist
 ACCESS_TOKEN=$ACCESS_TOKEN
 ALLOWED_ORIGINS=https://$DOMAIN
+ACCOUNT_REMEMBER_DAYS=30
 LOG_LEVEL=INFO
-EOF
-sudo chmod 600 /etc/huixiang/env
+EOFsudo chmod 600 /etc/huixiang/env
 sudo chown root:root /etc/huixiang/env
 ```
 
@@ -404,6 +404,7 @@ sudo systemctl restart huixiang
 | `WEB_DIST` | `web/client/dist` | 前端产物目录。生产环境用绝对路径 |
 | `ACCESS_TOKEN` | 空 | 共享访问口令。**不设等于把服务器当免费代理** |
 | `ALLOWED_ORIGINS` | 空 | 允许的页面来源，逗号分隔。留空只接受同源 |
+| `ACCOUNT_REMEMBER_DAYS` | `30` | myTeamSpeak 登录在浏览器里保留多少天（HttpOnly cookie，会话本身在网关内存）。设 `0` 关闭「记住登录」，每次刷新都要重新登录 |
 | `LOG_LEVEL` | `INFO` | 改成 `DEBUG` 会打印每条服务器命令，排障用，平时别开 |
 
 ---

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Toast } from '@douyinfe/semi-ui';
-import { IconClose, IconGlobe, IconKey, IconServer, IconUserGroup } from '@douyinfe/semi-icons';
+import { IconClose, IconGlobe, IconKey, IconServer } from '@douyinfe/semi-icons';
 import { accountErrorText } from '../account';
 import {
   accountNickname,
@@ -10,7 +10,6 @@ import {
   type Bookmark,
   type BookmarksMessage,
   type ConnectOptions,
-  type ContactsMessage,
 } from '../protocol';
 import UserAvatar from './UserAvatar';
 
@@ -36,14 +35,11 @@ interface Props {
   error: string | null;
   account: AccountState;
   bookmarks: BookmarksMessage;
-  friends: ContactsMessage;
   onConnect: (opts: ConnectOptions) => void;
   onDismissError: () => void;
   onAccountLogin: (email: string, password: string, otp: string) => void;
   onAccountLogout: () => void;
   onAccountRefresh: () => void;
-  onAvatarChange: (file: File) => void;
-  onAvatarRemove: () => void;
 }
 
 const inputStyle = { height: 44 };
@@ -56,14 +52,11 @@ export default function ConnectPage({
   error,
   account,
   bookmarks,
-  friends,
   onConnect,
   onDismissError,
   onAccountLogin,
   onAccountLogout,
   onAccountRefresh,
-  onAvatarChange,
-  onAvatarRemove,
 }: Props) {
   const [address, setAddress] = useState('');
   const [nickname, setNickname] = useState(() => store.nickname());
@@ -76,7 +69,6 @@ export default function ConnectPage({
   const [otp, setOtp] = useState('');
   const [showOtp, setShowOtp] = useState(false);
   const [showAccountPassword, setShowAccountPassword] = useState(false);
-  const avatarInput = useRef<HTMLInputElement>(null);
   const lastAutoNick = useRef('');
   const recent = useMemo(() => store.recent(), []);
   const parsed = parseAddress(address);
@@ -154,10 +146,6 @@ export default function ConnectPage({
     Toast.info(bookmark.password ? '已填入云书签，含服务器密码' : '已填入云书签');
   };
 
-  const pickAvatar = (file: File | undefined) => {
-    if (file) onAvatarChange(file);
-  };
-
   return (
     <div className="connect-page">
       <div className="connect-card">
@@ -168,10 +156,6 @@ export default function ConnectPage({
             <span className="brand-sub">网页版 · 不用装客户端</span>
           </div>
         </div>
-
-        <p className="connect-note">
-          填服务器地址就能进，不登录也可以。登录 myTeamSpeak 后会同步云书签、好友和头像。
-        </p>
 
         {error && (
           <div
@@ -211,7 +195,7 @@ export default function ConnectPage({
                   ? account.email || '已登录'
                   : accountBusy
                     ? '正在登录…'
-                    : '登录后同步书签、好友和头像；不登录也能以游客身份进入'}
+                    : '登录后同步云书签；不登录也能以游客身份进入'}
               </span>
             </div>
             {signedIn ? (
@@ -229,30 +213,6 @@ export default function ConnectPage({
               </button>
             )}
           </div>
-
-          {signedIn && (
-            <div className="account-links account-tools">
-              <button type="button" className="field-link" onClick={() => avatarInput.current?.click()}>
-                {account.avatarUrl ? '更换头像' : '设置头像'}
-              </button>
-              {account.avatarUrl && (
-                <button type="button" className="field-link" onClick={onAvatarRemove}>
-                  删除头像
-                </button>
-              )}
-              <input
-                ref={avatarInput}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  pickAvatar(file);
-                }}
-              />
-            </div>
-          )}
 
           {!signedIn && loginOpen && (
             <div className="account-login">
@@ -331,7 +291,7 @@ export default function ConnectPage({
                 {accountBusy ? '正在登录…' : '登录 myTeamSpeak'}
               </button>
               <span className="field-help">
-                密码只发给网关换取本次会话，不写进浏览器存储；刷新页面或关掉标签页后需要重新登录。
+                密码只发给网关换取这次登录，不写进浏览器存储；登录状态会记在这台浏览器里，网关重启后需要重新登录。
               </span>
             </div>
           )}
@@ -370,38 +330,6 @@ export default function ConnectPage({
                           </span>
                         )}
                       </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="account-section">
-                <div className="account-section-head">
-                  <span className="account-section-title">好友</span>
-                  <span className="account-section-count">
-                    {friends.loading ? '加载中…' : `${friends.items.length} 位`}
-                  </span>
-                </div>
-                {friends.error ? (
-                  <span className="field-error">{accountErrorText(friends.error)}</span>
-                ) : friends.items.length === 0 && !friends.loading ? (
-                  <span className="field-help">这个账号还没有好友。</span>
-                ) : (
-                  <div className="saved-list">
-                    {friends.items.map((friend) => (
-                      <div key={friend.id} className="friend-item">
-                        <UserAvatar
-                          name={friend.name}
-                          colorKey={friend.id}
-                          className="friend-avatar"
-                          label={`${friend.name} 的头像`}
-                        />
-                        <span className="saved-main">
-                          <span className="saved-name">{friend.name}</span>
-                          {friend.subtitle && <span className="saved-sub">{friend.subtitle}</span>}
-                        </span>
-                        <IconUserGroup size="small" />
-                      </div>
                     ))}
                   </div>
                 )}

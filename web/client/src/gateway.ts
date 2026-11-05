@@ -23,6 +23,8 @@ export interface GatewayHandlers {
   onFiles?: (msg: FilesMessage) => void;
   /** myTeamSpeak 账号状态：游客、登录中、已登录或失败。 */
   onAccount?: (state: AccountState) => void;
+  /** 网关愿意让这台浏览器记住这次登录：把 resume 换成 HttpOnly cookie（见 account.ts）。 */
+  onRemember?: (resume: string) => void;
   /** 云书签。 */
   onBookmarks?: (msg: BookmarksMessage) => void;
   /** 好友列表。 */
@@ -150,6 +152,9 @@ export class Gateway {
             break;
           case 'account':
             this.handlers.onAccount?.(m as unknown as AccountState);
+            break;
+          case 'remember':
+            if (typeof m.resume === 'string') this.handlers.onRemember?.(m.resume);
             break;
           case 'bookmarks':
             this.handlers.onBookmarks?.(m as unknown as BookmarksMessage);

@@ -84,7 +84,7 @@ src/
 | `huixiang.recent` | 最近连过的地址，最多 8 条 |
 | `huixiang.micGain` / `huixiang.volumes` | 麦克风增益、按 uid 记的成员音量 |
 
-myTeamSpeak 的邮箱、密码、会话令牌、书签密钥和云书签内容**都不进 localStorage**：登录会话只随这条 WebSocket 活在内存里，刷新或关页后要重新登录。
+myTeamSpeak 的邮箱、密码、会话令牌、书签密钥和云书签内容**都不进 localStorage**：登录会话只保存在网关内存里。浏览器只留一枚 `huixiang_account` 的 `HttpOnly` cookie（随机 id，JS 读不到），用于自动恢复登录；默认 30 天后过期，退出登录会立即清掉。
 
 ## 测试脚本
 
@@ -114,7 +114,7 @@ FAKE_MIC=1 node test/shot.mjs http://127.0.0.1:8080/ shot.png 3000 "..."
 - 头像可在连接页或右栏账号卡里设置/删除：`account.ts` 先把图片裁成 320×320，压到 512 KB 内的 PNG，再 `POST /account/avatar`。
 - 频道里成员头像优先用服务器头像（`/avatar/<avatarToken>/<id>?v=<flag>`），其次对方公开的 myTS 头像，失败退回首字母；自己登录时优先用账号头像。
 - 好友只做列表，不做云聊天；登录后连接会带 myTeamSpeak 语音身份，要完全匿名先退出账号。
-- **刷新即退出**：账号会话只存在当前标签页的 WebSocket 里，浏览器不保存令牌或密码。
+- **记住登录**：密码登录成功后网关发一条 `remember` 消息，`account.ts` 把它换成 `HttpOnly` cookie（30 天）；之后打开或刷新页面会自动连上网关并恢复登录，退出登录则删掉 cookie。密码、令牌和书签密钥都不进浏览器存储。
 
 ## 还没做
 

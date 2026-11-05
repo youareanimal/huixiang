@@ -25,7 +25,9 @@ Android 应用的版本记录在仓库根目录的 [CHANGELOG.md](../CHANGELOG.m
 ### 网页版 myTeamSpeak 账号（未发布）
 
 - 网关新增 `AccountSession`，把 myTeamSpeak 登录、云书签、好友列表和账号头像接到网页版；登录与语音连接解耦，可以只登录不连服务器，离开服务器也不会退出账号。
-- 账号会话只存在网关内存和当前标签页的 WebSocket 里：浏览器不保存密码、令牌或书签密钥，刷新/关页后重新登录；退出登录会撤销网关创建的 myTeamSpeak 会话。
+- 账号会话只存在网关内存里：浏览器不保存密码、令牌或书签密钥；退出登录会撤销网关创建的 myTeamSpeak 会话。
+- 新增「记住登录」：密码登录成功后，网关把会话（令牌、书签密钥、语音身份材料）留在自己的内存表 `RememberedAccounts`，只把一枚随机 id 交给浏览器，落在 `huixiang_account` 这个 `HttpOnly` + `SameSite=Lax` 的 cookie 里（JS 读不到）。之后打开或刷新页面会自动恢复登录和云书签，不必再输密码；有效期 30 天，`ACCOUNT_REMEMBER_DAYS` 可改，设为 0 关闭。网关重启、会话在别处被撤销或 id 过期后仍需重新登录，此时前端会顺手删掉失效 cookie；只有显式「退出登录」才提前作废（`DELETE /account/resume`），关标签页不影响。
+- 新增 `POST /account/resume`：用 remember 消息里的 id 换 cookie，只认网关自己发出、尚未过期的 id；`DELETE /account/resume` 忘掉会话并回 `Max-Age=0`。cookie 在 HTTPS（或反代 `X-Forwarded-Proto: https`）下带 `Secure`。
 - 登录后连接会携带 `MyTsVoiceIdentity`，服务器可以显示账号徽章；连接成功后再拉取签名证书、头像和徽章（`updatemytsdata`）。连接后再登录不会追溯，重新连接才生效。
 - 云书签由 `MyTsBookmarks` 在网关内解密，地址、昵称和服务器密码随 `bookmarks` 消息下发；密码只用于填隐藏输入框，不显示、不写 localStorage。
 - 好友列表用 `MyTsAccount.contacts()`，并用公开 Matrix 资料补显示名；这一版不做云聊天和在线状态。

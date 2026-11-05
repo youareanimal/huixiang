@@ -14,6 +14,7 @@ import io.ktor.server.plugins.origin
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.path
 import io.ktor.server.request.receive
+import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -124,6 +125,30 @@ private val openPerIp = ConcurrentHashMap<String, AtomicInteger>()
  * names; this one dies with the tab, in [WebSession.fileSessions].
  */
 private const val FILE_TOKEN = "X-File-Token"
+
+/**
+ * The cookie that lets a browser come back to a signed-in account.
+ *
+ * It holds a random id, never a myTeamSpeak token, and it is HttpOnly so no script — not this app's, not an
+ * injected one — can read it. The session it names lives in [RememberedAccounts], in this process's memory.
+ */
+private const val ACCOUNT_COOKIE = "huixiang_account"
+
+/** Cookie syntax is strict; an id is 48 hex characters, so anything outside this alphabet is not ours. */
+private fun validResumeId(id: String): Boolean =
+    id.length in 8..64 && id.all { it in '0'..'9' || it in 'a'..'z' || it in 'A'..'Z' }
+
+/** Behind Nginx the socket is plain HTTP; the header is what says the browser saw HTTPS. */
+private fun isSecure(call: ApplicationCall): Boolean =
+    call.request.origin.scheme == "https" ||
+        call.request.headers["X-Forwarded-Proto"]?.equals("https", ignoreCase = true) == true
+
+private fun accountCookie(call: ApplicationCall, id: String, maxAgeSeconds: Long): String =
+    "$ACCOUNT_COOKIE=$id; Path=/; HttpOnly; SameSite=Lax; Max-Age=$maxAgeSeconds" +
+        if (isSecure(call)) "; Secure" else ""
+
+private fun forgottenAccountCookie(call: ApplicationCall): String =
+    "$ACCOUNT_COOKIE=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0" + if (isSecure(call)) "; Secure" else ""
 
 fun main() {
     val port = System.getenv("PORT")?.toIntOrNull() ?: 8080
@@ -253,6 +278,42 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
             else call.respond(HttpStatusCode.BadRequest, AccountSession.avatarErrorText(error))
         }
 
+        /**
+         * 把「记住我」的 id 换成 HttpOnly cookie。只认网关自己刚发出去、还没过期的 id，其余一概拒绝：
+         * 这个端点不能让任何人凭空拿到一个登录 cookie。
+         */
+        post("/account/resume") {
+            if (!access.originAllowed(call)) {
+                call.respond(HttpStatusCode.Forbidden, "origin not allowed")
+                return@post
+            }
+            if (!RememberedAccounts.enabled) {
+                call.respond(HttpStatusCode.NotFound, "登录记忆已关闭")
+                return@post
+            }
+            val id = call.receiveText().trim()
+            if (!validResumeId(id) || !RememberedAccounts.contains(id)) {
+                call.respond(HttpStatusCode.NotFound, "登录已过期")
+                return@post
+            }
+            call.response.headers.append(
+                HttpHeaders.SetCookie,
+                accountCookie(call, id, RememberedAccounts.ttlSeconds),
+            )
+            call.respond(HttpStatusCode.NoContent)
+        }
+
+        /** 显式退出登录：忘掉 cookie 指向的会话，并让浏览器删掉 cookie。 */
+        delete("/account/resume") {
+            if (!access.originAllowed(call)) {
+                call.respond(HttpStatusCode.Forbidden, "origin not allowed")
+                return@delete
+            }
+            call.request.cookies[ACCOUNT_COOKIE]?.let { RememberedAccounts.drop(it) }
+            call.response.headers.append(HttpHeaders.SetCookie, forgottenAccountCookie(call))
+            call.respond(HttpStatusCode.NoContent)
+        }
+
         /** What a front end needs to know before it asks for a token: whether one is needed at all. */
         get("/auth") {
             call.respondText(
@@ -329,6 +390,10 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
             }
             val out = Channel<Frame>(capacity = 256)
             val sender = launch { for (f in out) send(f) }
+            // 浏览器若带着「记住我」cookie，就在这里把它换成账号快照；过期或未知的 id 当没带处理。
+            val remembered = call.request.cookies[ACCOUNT_COOKIE]
+                ?.takeIf { RememberedAccounts.enabled }
+                ?.let { id -> RememberedAccounts.get(id)?.let { id to it } }
             val session = WebSession(
                 sink = object : WebSession.Sink {
                     override fun text(json: String) {
@@ -344,6 +409,7 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
                 // info 而不是 debug：连接、出错、每次串流的开合都在这里，出问题时这是唯一的现场
                 log = { log.info("[$ip] $it") },
                 history = history,
+                remembered = remembered,
             )
             try {
                 // The password travels in a message, not in the URL, so it stays out of proxy and server logs.
@@ -356,6 +422,8 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
                     }
                     out.trySend(Frame.Text("""{"t":"ready"}"""))
                 }
+                // 口令这一关过了，才把 cookie 记住的登录接上。
+                session.resumeRemembered()
                 for (frame in incoming) {
                     when (frame) {
                         is Frame.Text -> onText(session, frame.readText(), ip)

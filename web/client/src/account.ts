@@ -122,3 +122,32 @@ export async function removeAccountAvatar(token: string): Promise<string | null>
     return '删除头像失败，检查网络后再试';
   }
 }
+
+// ====== 记住登录 ======
+//
+// 网关在密码登录成功后发一条 remember 消息，带着一个随机 id。这里把它换成 HttpOnly cookie：
+// 之后 JavaScript 再也读不到它，但浏览器每次打开页面都会自动带上，网关据此恢复登录。
+
+/** 把网关发的 resume id 换成 cookie。失败不打扰用户——本次登录本身仍然有效。 */
+export async function rememberAccount(resume: string): Promise<void> {
+  if (!resume) return;
+  try {
+    await fetch('/account/resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      credentials: 'same-origin',
+      body: resume,
+    });
+  } catch {
+    /* 记不住下次再输一遍密码，不影响这次 */
+  }
+}
+
+/** 显式退出登录时调用：让网关忘掉会话，并让浏览器删掉 cookie。 */
+export async function forgetAccount(): Promise<void> {
+  try {
+    await fetch('/account/resume', { method: 'DELETE', credentials: 'same-origin' });
+  } catch {
+    /* cookie 到期也会自己失效 */
+  }
+}
