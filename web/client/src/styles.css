@@ -424,6 +424,40 @@ body {
   font-weight: 400;
 }
 
+/* 消息通知开关。窄屏不跟着「全服人数」一起隐藏：收消息提醒在手机上更要紧 */
+.notice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bg-app);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notice-btn:hover:not(:disabled) {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.notice-btn.is-on {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+}
+
+.notice-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .user-chip {
   display: inline-flex;
   align-items: center;

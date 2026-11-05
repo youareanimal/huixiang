@@ -236,6 +236,7 @@ const KEY = {
   nickname: 'huixiang.nickname',
   micGain: 'huixiang.micGain',
   volumes: 'huixiang.volumes',
+  notify: 'huixiang.notify',
 };
 
 export const store = {
@@ -299,6 +300,13 @@ export const store = {
   },
   setVolumes(v: Record<string, number>) {
     localStorage.setItem(KEY.volumes, JSON.stringify(v));
+  },
+  /** 是否开启桌面消息通知。跟浏览器权限绑着，所以只存本地，不跟账号走。 */
+  notify(): boolean {
+    return localStorage.getItem(KEY.notify) === '1';
+  },
+  setNotify(v: boolean) {
+    localStorage.setItem(KEY.notify, v ? '1' : '0');
   },
 };
 
