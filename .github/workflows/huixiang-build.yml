@@ -75,6 +75,7 @@ jobs:
             '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
 
       - name: Build unsigned upgrade APKs
+        if: github.event_name != 'pull_request'
         env:
           HUIXIANG_UPDATE_HOST: ${{ secrets.PI_SSH_HOST }}
         run: |
@@ -90,6 +91,7 @@ jobs:
           python3 scripts/collect-ci-release.py
 
       - name: Sign with original upgrade key
+        if: github.event_name != 'pull_request'
         env:
           KEYSTORE_BASE64: ${{ secrets.HUIXIANG_KEYSTORE_BASE64 }}
           HUIXIANG_STORE_PASSWORD: ${{ secrets.HUIXIANG_STORE_PASSWORD }}
@@ -107,9 +109,11 @@ jobs:
             huixiang-build python3 scripts/sign-ci-release.py
 
       - name: Archive matching source
+        if: github.event_name != 'pull_request'
         run: git archive --format=zip --prefix=huixiang/ -o "dist/HuiXiang-$VERSION-source.zip" HEAD
 
       - name: Prepare online update package
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -127,6 +131,7 @@ jobs:
           cp "dist/HuiXiang-$VERSION-SHA256SUMS.txt" dist/update-site/
 
       - name: Upload online update package
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: HuiXiang-${{ env.VERSION }}-online-update
@@ -135,6 +140,7 @@ jobs:
           retention-days: 30
 
       - name: Upload build outputs
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: HuiXiang-${{ env.VERSION }}-signed

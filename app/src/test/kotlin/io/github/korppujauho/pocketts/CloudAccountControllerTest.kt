@@ -28,10 +28,14 @@ class CloudAccountControllerTest {
     private fun authenticated() = CloudReply(200, byteArrayOf(40, 0xc8.toByte(), 1) + text(2, "fixture-token") + text(8, "Fixture"))
     private fun friends() = CloudReply(200, bytes(1,
         text(1, "Friend") + text(2, "好友备注") + text(3, "@friend:chat-2.tmspk.net")) + byteArrayOf(18, 2, 8, 1))
-    private fun controller(store: CloudAccountStore, transport: CloudTransport, profile: Boolean = false) =
-        CloudAccountController(context, CloudTransport { method, url, headers, body ->
-            if (!profile && url.endsWith("/user")) CloudReply(503, byteArrayOf()) else transport.request(method, url, headers, body)
-        }, Dispatchers.Unconfined, store)
+    private fun controller(
+        store: CloudAccountStore,
+        transport: CloudTransport,
+        profile: Boolean = false,
+        onMyTsIdentityChanged: (String) -> Unit = {},
+    ) = CloudAccountController(context, CloudTransport { method, url, headers, body ->
+        if (!profile && url.endsWith("/user")) CloudReply(503, byteArrayOf()) else transport.request(method, url, headers, body)
+    }, Dispatchers.Unconfined, store, onMyTsIdentityChanged)
 
     @Test fun olderAccountsGainEmailAndAvatarWithoutChatLoginAndKeepCacheWhenProfileIsUnavailable() {
         val saved = store()
@@ -119,6 +123,37 @@ class CloudAccountControllerTest {
             restored.refresh()
             assertNull(restored.state.value.cloudError)
         } finally { restored.close() }
+    }
+
+    @Test fun successfulLoginRequestsVoiceReconnectAfterSavingIdentityAndRejectedLoginDoesNot() {
+        val saved = store()
+        var rejectLogin = false
+        val refreshRequests = mutableListOf<String>()
+        val c = controller(saved, CloudTransport { _, url, _, _ ->
+            when {
+                url.endsWith("/authentication") -> if (rejectLogin)
+                    CloudReply(200, byteArrayOf(40, 0xca.toByte(), 1)) else authenticated()
+                url.endsWith("/tschat") -> friends()
+                else -> CloudReply(503, byteArrayOf())
+            }
+        }, onMyTsIdentityChanged = { nickname ->
+            assertEquals("fixture-token", saved.identity()!!.token)
+            refreshRequests += nickname
+        })
+        try {
+            c.loginAccount("fixture@example.com", "fixture-password", "")
+            assertEquals(listOf("Fixture"), refreshRequests)
+            rejectLogin = true
+            c.loginAccount("wrong@example.com", "wrong-password", "")
+            assertEquals(listOf("Fixture"), refreshRequests)
+            assertEquals("fixture-token", saved.identity()!!.token)
+        } finally { c.close() }
+    }
+
+    @Test fun signedIdentifierSessionExpiryIsRecognizedWithoutChangingOtherTschatStatusCodes() {
+        assertTrue(myTsSessionExpired("MYTS_SIGNED_IDENTIFIER_${MyTsChatTag.SIGNED_IDENTIFIER_SESSION_EXPIRED}"))
+        assertFalse(myTsSessionExpired("MYTS_SIGNED_IDENTIFIER_3"))
+        assertTrue(myTsSessionExpired("MYTS_CHAT_${MyTsAccount.TSCHAT_SESSION_EXPIRED}"))
     }
 
     @Test fun keyValidationFailureRemainsSpecificAfterClosingTheAccountPage() {
