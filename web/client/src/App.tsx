@@ -19,7 +19,7 @@ import {
   type Member,
   type State,
 } from './protocol';
-import { removeAccountAvatar, uploadAccountAvatar } from './account';
+import { forgetAccount, rememberAccount, removeAccountAvatar, uploadAccountAvatar } from './account';
 import { appendLine, loadPage, mergeLines, serverKey } from './chatHistory';
 import { clampGain, DEFAULT_GAIN } from './audio/gain';
 import { TalkingTracker } from './talking';
@@ -44,6 +44,8 @@ function gatewayUrl(): string {
 
 export default function App() {
   const [tokenNeeded, setTokenNeeded] = useState(false);
+  // 口令要求是否已经问过网关。自动恢复登录要等它，否则会拿空口令白连一次。
+  const [tokenChecked, setTokenChecked] = useState(false);
   const [token, setToken] = useState(() => store.token());
   const [state, setState] = useState<State | null>(null);
   const [chat, setChat] = useState<ChatLine[]>([]);
@@ -97,7 +99,9 @@ export default function App() {
   const stateRef = useRef<State | null>(null);
 
   useEffect(() => {
-    void tokenRequired().then(setTokenNeeded);
+    void tokenRequired()
+      .then(setTokenNeeded)
+      .finally(() => setTokenChecked(true));
   }, []);
 
   // 离开页面时把连接和麦克风都收掉，别让服务端留着一条僵尸会话
@@ -216,7 +220,12 @@ export default function App() {
           if (server) for (const l of msg.lines) appendLine(server, msg.channel, l);
         },
         onFiles: setFiles,
-        onAccount: setAccount,
+        onAccount: (s) => {
+          setAccount(s);
+          // 记住的登录已经失效（过期或被别的设备撤销）：顺手删掉 cookie，别每次开页都白试一次。
+          if (s.phase === 'guest' && s.error === 'MYTS_103') void forgetAccount();
+        },
+        onRemember: (resume) => void rememberAccount(resume),
         onBookmarks: setBookmarks,
         onContacts: setFriends,
         onVoice: (codec, clientId, opus) => {
@@ -252,6 +261,18 @@ export default function App() {
     },
     [talking],
   );
+
+  // 页面一打开就把网关连上：浏览器若还带着「记住我」cookie，网关会在这条连接上恢复账号登录，
+  // 不用等用户点连接。口令必需的部署里，没填口令就不试，免得白挨一次 1008 拒绝。
+  const booted = useRef(false);
+  useEffect(() => {
+    if (!tokenChecked || booted.current) return;
+    if (tokenNeeded && !store.token().trim()) return;
+    booted.current = true;
+    void openGateway(tokenNeeded ? store.token() : '').catch(() => {
+      /* 自动恢复失败不该打扰用户：手动点连接时还会再试一次 */
+    });
+  }, [tokenChecked, tokenNeeded, openGateway]);
 
   const disconnect = useCallback(() => {
     talking.reset();
@@ -347,6 +368,8 @@ export default function App() {
   );
 
   const accountLogout = useCallback(() => {
+    // 显式退出：网关丢掉会话，浏览器删掉 cookie，下次打开就要重新输密码。
+    void forgetAccount();
     const g = gatewayRef.current;
     if (g?.isOpen) g.accountLogout();
     else setAccount(guestAccount());
@@ -593,14 +616,11 @@ export default function App() {
           error={error}
           account={account}
           bookmarks={bookmarks}
-          friends={friends}
           onConnect={connect}
           onDismissError={() => setError(null)}
           onAccountLogin={accountLogin}
           onAccountLogout={accountLogout}
           onAccountRefresh={accountRefresh}
-          onAvatarChange={changeAccountAvatar}
-          onAvatarRemove={removeAccountAvatarNow}
         />
       );
     }

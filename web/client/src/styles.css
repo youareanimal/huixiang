@@ -180,13 +180,6 @@ body {
   line-height: 1.4;
 }
 
-.connect-note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 20px;
-  color: var(--text-3);
-}
-
 .field {
   display: flex;
   flex-direction: column;
@@ -2553,10 +2546,6 @@ button.files-name:hover {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-.account-tools {
-  margin-top: -4px;
 }
 
 .account-login {

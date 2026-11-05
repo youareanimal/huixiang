@@ -35,6 +35,12 @@ class WebSession(
     private val sink: Sink,
     /** 频道聊天的历史；网关里的同一份，按服务器地址分档（见 [ChannelHistory]）。 */
     private val history: ChannelHistory,
+    /**
+     * 浏览器「记住我」cookie 指向的账号快照（id + 内容）。新标签页打开时凭它自动恢复登录，
+     * 不需要用户再输一次密码；空表示这个标签页没有可恢复的登录。恢复动作由 [resumeRemembered]
+     * 在口令校验通过之后触发，免得未认证的连接看到账号信息。
+     */
+    private val remembered: Pair<String, RememberedAccount>? = null,
     private val log: (String) -> Unit = {},
 ) : TsClient.Listener {
 
@@ -121,7 +127,11 @@ class WebSession(
         push = { sink.text(it) },
         fileToken = fileId,
         log = { log("account: $it") },
+        onSignedIn = { rememberNow() },
     )
+
+    /** The remembered-account id this tab's cookie stands for; null until a password login is remembered. */
+    @Volatile private var rememberedId: String? = remembered?.first
 
     /** Downloaded server avatars, by "uid|flag"; the flag changes whenever the picture does. */
     private data class CachedAvatar(val bytes: ByteArray, val type: String)
@@ -241,11 +251,40 @@ class WebSession(
 
     // ====== Account: independent of the voice connection ======
 
+    /**
+     * 恢复 cookie 里记住的登录。必须在口令校验通过之后调用——放在 init 里会让没带口令的连接
+     * 也能收到账号信息（用户名、邮箱、头像）。
+     */
+    fun resumeRemembered() {
+        remembered?.let { (_, saved) -> account.resume(saved) }
+    }
+
     fun accountLogin(email: String, password: String, otp: String) = account.login(email, password, otp)
 
-    fun accountLogout() = account.logout()
+    fun accountLogout() {
+        // 显式退出登录才真正忘掉这台浏览器；关标签页/刷新不影响记住的登录。
+        rememberedId?.let { RememberedAccounts.drop(it) }
+        rememberedId = null
+        account.logout()
+    }
 
     fun accountRefresh() = account.refresh()
+
+    /**
+     * 密码登录成功后把会话存进 [RememberedAccounts]，并把新 id 告诉浏览器（前端拿它换 HttpOnly cookie）。
+     * 已有快照（比如这个标签页本来就是从 cookie 恢复来的）只更新内容，不重复下发 id。
+     */
+    private fun rememberNow() {
+        val saved = account.remember() ?: return
+        val existing = rememberedId
+        if (existing != null && RememberedAccounts.contains(existing)) {
+            RememberedAccounts.update(existing, saved)
+            return
+        }
+        val id = RememberedAccounts.put(saved) ?: return
+        rememberedId = id
+        sink.text(Json.write(linkedMapOf("t" to "remember", "resume" to id)))
+    }
 
     /** Blocks on an HTTPS round trip; callers run it off Netty's event loop. */
     fun accountSetAvatar(png: ByteArray): String? = account.setAvatar(png)

@@ -127,5 +127,20 @@ if [ -n "$TOKEN" ]; then
   echo
 fi
 
+echo
+echo "[5] 记住登录（/account/resume）"
+S=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -X POST --data 'deadbeefdeadbeef' "$BASE/account/resume" 2>/dev/null)
+[ "$S" = "404" ] && ok "未知 id 被拒绝（404）" || bad "未知 id 返回 $S（期望 404）——端点没生效或网关不需要重启？"
+HDRS=$(curl -s -D - -o /dev/null --max-time 8 -X DELETE "$BASE/account/resume" 2>/dev/null)
+if echo "$HDRS" | grep -qi '^set-cookie:.*huixiang_account='; then
+  ok "显式退出会清掉 huixiang_account cookie"
+  if [ "$SCHEME" = "https" ]; then
+    echo "$HDRS" | grep -qi '^set-cookie:.*secure' && ok "HTTPS 下 cookie 带 Secure" \
+      || bad "HTTPS 下 cookie 没带 Secure —— Nginx 缺 X-Forwarded-Proto 头"
+  fi
+else
+  bad "DELETE /account/resume 没有回 Set-Cookie"
+fi
+
 printf '通过 %d 项，失败 %d 项\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ] || exit 1
