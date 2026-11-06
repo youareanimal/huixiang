@@ -86,6 +86,12 @@ interface Props {
   /** 这个浏览器/环境是否支持通知（http 非 localhost 就不支持）。 */
   notifySupported: boolean;
   onToggleNotify: () => void;
+  /** 自己当前是否暂离。 */
+  away: boolean;
+  /** 自己的离开留言。 */
+  awayMessage: string;
+  onToggleAway: (away: boolean) => void;
+  onSetAwayMessage: (message: string) => void;
   onMicMode: (mode: MicMode) => void;
   onPttHold: (held: boolean) => void;
   onJoinChannel: (cid: number, password?: string) => void;
@@ -166,6 +172,10 @@ export default function ServerPage({
   notifyOn,
   notifySupported,
   onToggleNotify,
+  away,
+  awayMessage,
+  onToggleAway,
+  onSetAwayMessage,
   onMicMode,
   onPttHold,
   onJoinChannel,
@@ -699,6 +709,10 @@ export default function ServerPage({
         notifyOn={notifyOn}
         notifySupported={notifySupported}
         onToggleNotify={onToggleNotify}
+        away={away}
+        awayMessage={awayMessage}
+        onToggleAway={onToggleAway}
+        onSetAwayMessage={onSetAwayMessage}
         onRename={onRename}
         onAccountRefresh={onAccountRefresh}
         onAccountLogout={onAccountLogout}

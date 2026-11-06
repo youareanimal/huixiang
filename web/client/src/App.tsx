@@ -811,6 +811,18 @@ export default function App() {
     store.setMutePref(st.inputMuted, muted);
   }, []);
 
+  /** 暂离：不本地记状态，交给服务器，确认后经 state 的 away 推回。 */
+  const toggleAway = useCallback((next: boolean) => {
+    const s = stateRef.current;
+    gatewayRef.current?.setAway(next, s?.awayMessage ?? '');
+  }, []);
+
+  const setAwayMessage = useCallback((message: string) => {
+    const s = stateRef.current;
+    if (!s?.away) return;
+    gatewayRef.current?.setAway(true, message);
+  }, []);
+
   const toggleInput = useCallback(async () => {
     if (micOn) {
       micRef.current?.stop();
@@ -938,6 +950,10 @@ export default function App() {
         notifyOn={notifyOn}
         notifySupported={notifySupported()}
         onToggleNotify={toggleNotify}
+        away={state.away}
+        awayMessage={state.awayMessage}
+        onToggleAway={toggleAway}
+        onSetAwayMessage={setAwayMessage}
         onMicMode={setMicMode}
         onPttHold={setPttHeld}
         onJoinChannel={joinChannel}
@@ -994,6 +1010,8 @@ export default function App() {
     streamState,
     notifyOn,
     toggleNotify,
+    toggleAway,
+    setAwayMessage,
     connect,
     joinChannel,
     loadMoreHistory,

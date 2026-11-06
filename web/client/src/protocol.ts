@@ -101,6 +101,10 @@ export interface State {
   ownChannel: number;
   inputMuted: boolean;
   outputMuted: boolean;
+  /** 自己当前是否暂离（Away），由服务器的 client_away 同步而来。 */
+  away: boolean;
+  /** 自己的离开留言（可为空）。 */
+  awayMessage: string;
   clientCount: number;
   /**
    * 文件传输的会话令牌：HTTP 端点靠它认出「这是哪个标签页的会话」，所以只能给这一个页面用。

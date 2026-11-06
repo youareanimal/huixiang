@@ -15,6 +15,10 @@ interface Props {
   notifyOn: boolean;
   notifySupported: boolean;
   onToggleNotify: () => void;
+  away: boolean;
+  awayMessage: string;
+  onToggleAway: (away: boolean) => void;
+  onSetAwayMessage: (message: string) => void;
   onRename: (name: string) => void;
   onAccountRefresh: () => void;
   onAccountLogout: () => void;
@@ -38,6 +42,10 @@ export default function SettingsPanel({
   notifyOn,
   notifySupported,
   onToggleNotify,
+  away,
+  awayMessage,
+  onToggleAway,
+  onSetAwayMessage,
   onRename,
   onAccountRefresh,
   onAccountLogout,
@@ -47,11 +55,16 @@ export default function SettingsPanel({
   const signedIn = account.phase === 'signedIn';
   const avatarInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(nickname);
+  const [awayMsg, setAwayMsg] = useState(awayMessage);
 
   // 每次打开或外部昵称变化，把输入框对齐到当前值
   useEffect(() => {
     setName(nickname);
   }, [nickname, open]);
+
+  useEffect(() => {
+    setAwayMsg(awayMessage);
+  }, [awayMessage, open]);
 
   const version = server?.version?.replace(/\[Build:[^\]]*\]/gi, '').trim() || '';
   const versionLine = [server?.platform, version].filter(Boolean).join(' · ');
@@ -146,6 +159,29 @@ export default function SettingsPanel({
               保存
             </button>
           </div>
+        </section>
+
+        <section className="settings-section">
+          <h3 className="settings-h">状态</h3>
+          <div className="settings-row settings-row-between">
+            <div>
+              <div className="settings-label">暂离（Away）</div>
+              <div className="settings-desc">开启后别人会看到你处于「离开」状态</div>
+            </div>
+            <Switch checked={away} onChange={onToggleAway} />
+          </div>
+          {away && (
+            <div className="settings-row" style={{ marginTop: 10 }}>
+              <Input
+                value={awayMsg}
+                onChange={setAwayMsg}
+                maxLength={120}
+                placeholder="离开留言（可选）"
+                onEnterPress={() => onSetAwayMessage(awayMsg.trim())}
+                onBlur={() => onSetAwayMessage(awayMsg.trim())}
+              />
+            </div>
+          )}
         </section>
 
         <section className="settings-section">

@@ -306,6 +306,11 @@ export class Gateway {
     this.send({ t: 'mute', input, output });
   }
 
+  /** 设置 / 取消暂离（message 为离开留言，可空）。状态由服务器经 state 推回。 */
+  setAway(away: boolean, message = '') {
+    this.send({ t: 'away', away, message });
+  }
+
   // ====== 频道管理：建 / 删 / 改 / 踢 / 封（结果从 onChanOp 回来） ======
 
   createChannel(patch: ChannelCreate) {
