@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input, InputNumber, Modal, Select, Spin, Switch } from '@douyinfe/semi-ui';
-import { IconBell, IconBellStroked, IconClose, IconEdit, IconFolder, IconMenu, IconPlus, IconUserGroup } from '@douyinfe/semi-icons';
+import { IconClose, IconFolder, IconMenu, IconPlus, IconSetting, IconUserGroup } from '@douyinfe/semi-icons';
 import type {
   AccountState,
   ChannelCreate,
@@ -27,6 +27,7 @@ import ControlBar from './ControlBar';
 import FilesPanel from './FilesPanel';
 import FriendsPanel from './FriendsPanel';
 import ServerInfoPanel from './ServerInfo';
+import SettingsPanel from './SettingsPanel';
 import Stage from './Stage';
 import StreamPanel from './StreamPanel';
 import UserAvatar from './UserAvatar';
@@ -196,8 +197,7 @@ export default function ServerPage({
   onAvatarRemove,
 }: Props) {
   const pttMode = micMode === 'ptt';
-  const [renaming, setRenaming] = useState(false);
-  const [newName, setNewName] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [passwordFor, setPasswordFor] = useState<ChannelNode | null>(null);
   const [password, setPassword] = useState('');
   const [joiningChannel, setJoiningChannel] = useState<number | null>(null);
@@ -410,20 +410,13 @@ export default function ServerPage({
         <div className="head-right">
           <button
             type="button"
-            className={`notice-btn${notifyOn ? ' is-on' : ''}`}
-            onClick={onToggleNotify}
-            disabled={!notifySupported}
-            aria-pressed={notifyOn}
-            title={
-              notifySupported
-                ? notifyOn
-                  ? '消息通知已开启：收到新消息时弹系统通知（点此关闭）'
-                  : '收到新消息时弹系统通知（点此开启）'
-                : '当前环境不支持通知，需要用 HTTPS 或 localhost 打开'
-            }
+            className={`notice-btn${settingsOpen ? ' is-on' : ''}`}
+            onClick={() => setSettingsOpen(true)}
+            aria-pressed={settingsOpen}
+            title="设置：账号、昵称、通知、关于"
           >
-            {notifyOn ? <IconBell size="small" /> : <IconBellStroked size="small" />}
-            <span>通知</span>
+            <IconSetting size="small" />
+            <span>设置</span>
           </button>
           {account.phase === 'signedIn' && (
             <button
@@ -444,11 +437,8 @@ export default function ServerPage({
           <button
             type="button"
             className="user-chip"
-            onClick={() => {
-              setNewName(state.nickname);
-              setRenaming(true);
-            }}
-            title="改昵称"
+            onClick={() => setSettingsOpen(true)}
+            title="个人设置"
           >
             <UserAvatar
               name={state.nickname}
@@ -457,7 +447,7 @@ export default function ServerPage({
               style={{ width: 24, height: 24 }}
             />
             <span className="user-chip-name">{state.nickname}</span>
-            <IconEdit size="small" />
+            <IconSetting size="small" />
           </button>
         </div>
       </header>
@@ -659,13 +649,8 @@ export default function ServerPage({
             address={state.address}
             clientCount={state.clientCount}
             channelCount={countChannels(state.tree)}
-            account={account}
             pingGateway={pingGateway}
             pingServer={pingServer}
-            onAccountLogout={onAccountLogout}
-            onAccountRefresh={onAccountRefresh}
-            onAvatarChange={onAvatarChange}
-            onAvatarRemove={onAvatarRemove}
           />
         </div>
       )}
@@ -702,27 +687,24 @@ export default function ServerPage({
         onClose={() => setFilesOpen(false)}
       />
 
-      <Modal
-        title="改昵称"
-        visible={renaming}
-        onCancel={() => setRenaming(false)}
-        onOk={() => {
-          onRename(newName);
-          setRenaming(false);
-        }}
-        okText="改"
-        cancelText="算了"
-      >
-        <Input
-          value={newName}
-          onChange={setNewName}
-          maxLength={30}
-          onEnterPress={() => {
-            onRename(newName);
-            setRenaming(false);
-          }}
-        />
-      </Modal>
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        account={account}
+        nickname={state.nickname}
+        server={state.server ?? null}
+        address={state.address}
+        pingGateway={pingGateway}
+        pingServer={pingServer}
+        notifyOn={notifyOn}
+        notifySupported={notifySupported}
+        onToggleNotify={onToggleNotify}
+        onRename={onRename}
+        onAccountRefresh={onAccountRefresh}
+        onAccountLogout={onAccountLogout}
+        onAvatarChange={onAvatarChange}
+        onAvatarRemove={onAvatarRemove}
+      />
 
       <Modal
         title={`「${passwordFor?.display || passwordFor?.name || ''}」有密码`}
