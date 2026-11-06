@@ -7,7 +7,6 @@ on:
     # 只有真正喂给 Android 构建的输入变了，才值得跑那套八分钟的打包、签名与更新包。
     # 这里用白名单，而不是 paths-ignore：后者的语义是「所有改动文件都命中忽略才跳过」，
     # 顺手改一行 CHANGELOG.md 就会把整条流水线拉起来（PR #29 就是这么发生的）。
-    # 网页版（web/**）由 .github/workflows/web.yml 检查。
     # 发版 tag 不受影响：发版提交必然改 app/build.gradle.kts 的版本号，命中 app/**。
     paths: &android-paths
       - "app/**"

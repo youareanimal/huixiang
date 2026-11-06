@@ -2,6 +2,8 @@
 
 非官方 TeamSpeak 3 / 6 客户端。一套协议实现，两个端：Android 应用，和跑在浏览器里的网页版。
 
+> **网页版已拆分到独立仓库：[huixiang-web](https://github.com/MaXin-noob/huixiang-web)**。本仓库现在只维护 Android 应用与共享的 `tsproto` 协议实现。
+
 ## 两个端
 
 | | Android | 网页版 |
@@ -26,18 +28,18 @@
 - 谁在说话：头像亮起 + 电平条，按收到的语音帧判断，不依赖服务器状态
 - 在线更新（Android）
 
-网页版的实现细节、协议、部署方式见 [web/README.md](web/README.md)。
+网页版已拆分到 [huixiang-web](https://github.com/MaXin-noob/huixiang-web)，实现细节、协议、部署方式与开发计划见其 README。
 
 ## 结构
 
 ```
 app/            Android 应用：Compose 界面、音频、WebRTC
 tsproto/        TeamSpeak 协议，纯 Kotlin/JVM，两端共用同一份
-web/gateway/    网页版网关：Ktor + WebSocket，代持 UDP 连接
-web/client/     网页前端：React + TypeScript + Vite
 scripts/        构建、发布、版本与部署脚本
 docs/           设计、验证与研究文档
 ```
+
+网页版（网关 + 前端）已拆分到独立仓库 [huixiang-web](https://github.com/MaXin-noob/huixiang-web)。
 
 ## 构建
 
@@ -52,16 +54,7 @@ scripts/dev.sh apk                                    # 产物在 dist/
 发行包由 GitHub Actions 构建，用 Secrets 里的原证书签名，不自动发布 Release。
 完整约定见 [DEVELOPING.md](DEVELOPING.md)。
 
-网页版（JDK 21，不需要 Android SDK，命令都在仓库根执行）：
-
-```bash
-cd web/client && npm install && npm run build && cd ../..      # 前端产物到 web/client/dist
-
-WEB_DIST="$PWD/web/client/dist" ./gradlew -p web/gateway run   # 网关，默认 8080
-```
-
-浏览器打开 `http://127.0.0.1:8080`。不设 `WEB_DIST` 时网关只提供 `/ws`，没有页面。
-对外部署要加 TLS、来源白名单和访问口令，见 [web/deploy/DEPLOY.md](web/deploy/DEPLOY.md)。
+网页版已拆分到独立仓库 [huixiang-web](https://github.com/MaXin-noob/huixiang-web)，构建、运行与对外部署见其 README 与 deploy 目录。
 
 ## 隐私
 
