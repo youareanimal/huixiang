@@ -682,6 +682,10 @@ export default function ServerPage({
         onMicGain={onMicGain}
         onToggleInput={onToggleInput}
         onToggleOutput={onToggleOutput}
+        away={away}
+        awayMessage={awayMessage}
+        onToggleAway={onToggleAway}
+        onSetAwayMessage={onSetAwayMessage}
         onMicMode={onMicMode}
         onPttHold={onPttHold}
         onDisconnect={onDisconnect}
@@ -709,10 +713,6 @@ export default function ServerPage({
         notifyOn={notifyOn}
         notifySupported={notifySupported}
         onToggleNotify={onToggleNotify}
-        away={away}
-        awayMessage={awayMessage}
-        onToggleAway={onToggleAway}
-        onSetAwayMessage={onSetAwayMessage}
         onRename={onRename}
         onAccountRefresh={onAccountRefresh}
         onAccountLogout={onAccountLogout}

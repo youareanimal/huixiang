@@ -11,6 +11,7 @@ import type { MicMode } from '../protocol';
 import type { ShareKind } from '../stream';
 import { gainPercent } from '../audio/gain';
 import VolumePopover from './VolumePopover';
+import AwayPopover from './AwayPopover';
 
 const MIC_MODES: Array<{ key: MicMode; label: string; hint: string }> = [
   { key: 'auto', label: '自动', hint: '检测到你在说话才发送，安静时不占用带宽' },
@@ -37,6 +38,12 @@ interface Props {
   onMicGain: (v: number) => void;
   onToggleInput: () => void;
   onToggleOutput: () => void;
+  /** 自己是否暂离。 */
+  away: boolean;
+  /** 离开留言。 */
+  awayMessage: string;
+  onToggleAway: (away: boolean) => void;
+  onSetAwayMessage: (message: string) => void;
   onMicMode: (mode: MicMode) => void;
   onPttHold: (held: boolean) => void;
   onDisconnect: () => void;
@@ -63,6 +70,10 @@ export default function ControlBar({
   onMicGain,
   onToggleInput,
   onToggleOutput,
+  away,
+  awayMessage,
+  onToggleAway,
+  onSetAwayMessage,
   onMicMode,
   onPttHold,
   onDisconnect,
@@ -160,6 +171,23 @@ export default function ControlBar({
           {outputMuted ? <IconVolumnSilent /> : <IconVolume2 />}
           <span>{outputMuted ? '已静音' : '声音'}</span>
         </button>
+
+        <AwayPopover
+          away={away}
+          awayMessage={awayMessage}
+          onToggleAway={onToggleAway}
+          onSetAwayMessage={onSetAwayMessage}
+        >
+          <button
+            type="button"
+            className={`ghost-btn away-btn${away ? ' is-on' : ''}`}
+            title={away ? '离开中，点此修改暂离设置' : '设置暂离状态'}
+            aria-pressed={away}
+          >
+            <span className={`away-dot${away ? ' is-on' : ''}`} aria-hidden="true" />
+            <span>{away ? '离开中' : '暂离'}</span>
+          </button>
+        </AwayPopover>
 
         {sharing ? (
           <button type="button" className="ghost-btn is-live" onClick={onStopShare} title="停止直播">
