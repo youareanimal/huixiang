@@ -780,6 +780,7 @@ private fun onText(session: WebSession, text: String, ip: String) {
             session.setInputMuted(m["input"] == true)
             session.setOutputMuted(m["output"] == true)
         }
+        "away" -> session.setAway(m["away"] == true, (m["message"] as? String).orEmpty())
         "person" -> session.personDetails((m["clid"] as? Number)?.toInt() ?: return)
         "channel" -> onChannel(session, m)
         "stream" -> onStream(session, m)

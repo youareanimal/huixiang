@@ -416,6 +416,21 @@ class WebSession(
         dirty.set(true)
     }
 
+    /**
+     * 设置 / 取消暂离（含离开留言）。服务器确认后会用 notifyclientupdated 把 client_away
+     * 推回来，模型更新后随快照带到前端；前端不本地记状态，一切以服务器为准。
+     */
+    fun setAway(away: Boolean, message: String) {
+        val c = client ?: return
+        c.post {
+            if (c.state != TsClient.State.CONNECTED) return@post
+            c.sendCommand(
+                Commands.build("clientupdate", "client_away" to away, "client_away_message" to message)
+            )
+        }
+        dirty.set(true)
+    }
+
     // ====== 频道管理：建 / 删 / 改 / 踢 / 封（权限由服务器判定，失败以中文回到页面） ======
 
     fun createChannel(
@@ -1016,6 +1031,8 @@ class WebSession(
             "ownChannel" to (model.ownChannel?.id ?: 0),
             "inputMuted" to inputMuted,
             "outputMuted" to outputMuted,
+            "away" to (model.clients[model.ownClientId]?.away ?: false),
+            "awayMessage" to (model.clients[model.ownClientId]?.awayMessage ?: ""),
             "clientCount" to model.clients.values.count { it.type == 0 },
             "fileToken" to fileId,
             "avatarToken" to avatarId,
