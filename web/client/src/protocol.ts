@@ -18,12 +18,33 @@ export interface Member {
   streaming: boolean;
   channelGroup: string;
   serverGroups: string[];
+  /** 身份组图标 id（频道组 → 服务器组 → 自己的图标，按服务器顺序）；<1000 为内置。 */
+  badges?: number[];
   /** 服务器头像的哈希；空表示没有。地址走网关的 /avatar 端点。 */
   avatar?: string;
   /** 服务器直接给出的头像文件名，来自 client_base64HashClientUID。 */
   avatarName?: string;
   /** 对方公开的 myTeamSpeak 头像 https 地址；空表示没有。 */
   myTeamSpeakAvatar?: string;
+}
+
+/**
+ * 服务器对某人公开字段的补充查询结果（对应 TeamSpeak 的 clientgetvariables）。
+ * 这些字段服务器平时不随快照推送，只有点了头像要看资料卡时才单独问一次；
+ * 服务器没给的字段就是空串/缺失，前端只显示本地已经知道的那部分。
+ */
+export interface PersonDetails {
+  id: number;
+  /** 客户端自报的描述（可能是签名或状态短语）。 */
+  description?: string;
+  /** 地区代码，如 CN。 */
+  country?: string;
+  /** 客户端平台，如 Windows / Android。 */
+  platform?: string;
+  /** 客户端版本，如 5.3.6。 */
+  version?: string;
+  /** 连接时刻（Unix 秒）；0 或缺失表示服务器没给。 */
+  connectionTime?: number;
 }
 
 export interface ChannelNode {
@@ -34,6 +55,8 @@ export interface ChannelNode {
   spacer: boolean;
   password: boolean;
   topic: string;
+  /** 频道图标 id：0 无；1..999 内置（盾牌色）；1000+ 是服务器文件 /icon_<id>。 */
+  iconId?: number;
   codec: number;
   neededTalkPower: number;
   maxClients: number;

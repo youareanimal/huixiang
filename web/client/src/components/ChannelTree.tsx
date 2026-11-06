@@ -9,10 +9,10 @@ import {
   IconMicrophoneOff,
   IconMore,
   IconPlus,
-  IconVolume2,
   IconVolumnSilent,
 } from '@douyinfe/semi-icons';
 import type { ChannelNode, Member } from '../protocol';
+import ChannelIcon from './ChannelIcon';
 
 interface Props {
   tree: ChannelNode[];
@@ -24,6 +24,8 @@ interface Props {
   onCreateChannel: (parent: number) => void;
   onEditChannel: (channel: ChannelNode) => void;
   onDeleteChannel: (channel: ChannelNode) => void;
+  /** 头像令牌：频道图标地址里带它（<img> 不能带 header）。 */
+  avatarToken?: string;
   /** 成员管理（可选）：别的频道里的人也能踢 / 封 */
   onKick?: (member: Member) => void;
   onBan?: (member: Member) => void;
@@ -50,8 +52,10 @@ function PersonRow({
   member,
   onKick,
   onBan,
+  token,
 }: {
   member: Member;
+  token?: string;
   onKick?: (m: Member) => void;
   onBan?: (m: Member) => void;
 }) {
@@ -61,6 +65,13 @@ function PersonRow({
       <span className="person-name" title={member.nickname}>
         {member.nickname}
       </span>
+      {member.badges && member.badges.length > 0 && (
+        <span className="person-badges">
+          {member.badges.map((id) => (
+            <ChannelIcon key={id} iconId={id} token={token} silent />
+          ))}
+        </span>
+      )}
       <span className="person-marks">
         {member.priority && (
           <span className="mark mark-priority" title="优先发言人">
@@ -107,6 +118,7 @@ export default function ChannelTree({
   onCreateChannel,
   onEditChannel,
   onDeleteChannel,
+  avatarToken,
   onKick,
   onBan,
 }: Props) {
@@ -204,7 +216,7 @@ export default function ChannelTree({
               <span className="chan-caret-space" />
             )}
             <span className="chan-icon">
-              <IconVolume2 size="small" />
+              <ChannelIcon iconId={channel.iconId} token={avatarToken} />
             </span>
             <span className="chan-name" title={channel.topic || channel.display}>
               {channel.display || channel.name}
@@ -230,7 +242,7 @@ export default function ChannelTree({
             {people.length > 0 && !here && (
               <div className="chan-people" style={{ paddingLeft: 8 + depth * 12 + 22 }}>
                 {people.map((m) => (
-                  <PersonRow key={m.id} member={m} onKick={onKick} onBan={onBan} />
+                  <PersonRow key={m.id} member={m} token={avatarToken} onKick={onKick} onBan={onBan} />
                 ))}
               </div>
             )}

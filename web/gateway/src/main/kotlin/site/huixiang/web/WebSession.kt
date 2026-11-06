@@ -395,6 +395,15 @@ class WebSession(
         c.sendCommand(Commands.build("clientupdate", "client_nickname" to name))
     }
 
+    /**
+     * 前端要看某人的资料卡：单独问一次服务器（clientgetvariables），只把服务器愿意公开的字段回给前端。
+     * 用 return_code=person-<clid> 认这一条应答；服务器拒绝（2568）时不会带这个 return_code，前端就只看本地快照。
+     */
+    fun personDetails(clid: Int) {
+        val c = client ?: return
+        c.sendCommand(Commands.build("clientgetvariables", "clid" to clid, "return_code" to "person-$clid"))
+    }
+
     fun setInputMuted(muted: Boolean) {
         inputMuted = muted
         syncMutes()
@@ -884,6 +893,29 @@ class WebSession(
                     log("$address: server error $id ${cmd["msg"]}")
                 }
             }
+            // 某人的资料卡：只认我们主动问过的那条应答（return_code=person-<clid>），
+            // 把服务器愿意公开的字段转给前端补全（版本、平台、地区、在线时长、描述）。
+            "clientvariables" -> {
+                val rc = cmd["return_code"].orEmpty()
+                if (rc.startsWith("person-")) {
+                    for (g in cmd.groups) {
+                        val id = g["clid"]?.toIntOrNull() ?: continue
+                        sink.text(
+                            Json.write(
+                                mapOf(
+                                    "t" to "person",
+                                    "id" to id,
+                                    "description" to g["client_description"].orEmpty(),
+                                    "country" to g["client_country"].orEmpty(),
+                                    "platform" to g["client_platform"].orEmpty(),
+                                    "version" to g["client_version"].orEmpty(),
+                                    "connectionTime" to (g["client_connection_start_time"]?.toLongOrNull() ?: 0L),
+                                )
+                            )
+                        )
+                    }
+                }
+            }
         }
         if (model.apply(cmd)) dirty.set(true)
         // 连上时被直接丢进某个频道的话，密码到这里才有频道 id 可挂
@@ -1055,6 +1087,26 @@ class WebSession(
         else -> "image/jpeg"
     }
 
+    /**
+     * 频道 / 身份组 / 服务器的图标文件：id 对应的 /icon_<id> 在服务器自己的文件区（channel 0），
+     * 和头像走同一条文件传输。id 在 1..999 是 TeamSpeak 内置图标、没有文件，前端自己画。
+     * 服务器没开文件传输或没有这个图标时返回 null，前端退回默认图标。
+     */
+    fun icon(id: Long): Pair<ByteArray, String>? {
+        val path = Pictures.iconFileName(id) ?: return null
+        val key = "icon:$path"
+        synchronized(avatarCache) { avatarCache[key] }?.let { return it.bytes to it.type }
+        val transfer = ft ?: return null
+        val bytes = try {
+            transfer.download(0, path, Pictures.ICON_MAX_BYTES)
+        } catch (e: Exception) {
+            return null
+        }
+        val type = Pictures.type(bytes, svgAllowed = true) ?: return null
+        rememberAvatar(key, CachedAvatar(bytes, type.mime))
+        return bytes to type.mime
+    }
+
     /** The banner bytes for [byBanner], or null when this session has none (yet). */
     fun bannerData(): Pair<ByteArray, String>? = banner?.let { it to bannerType }
 
@@ -1075,6 +1127,7 @@ class WebSession(
             else -> "temporary"
         },
         "order" to n.channel.order,
+        "iconId" to n.channel.iconId,
         "neededTalkPower" to n.channel.neededTalkPower,
         "maxClients" to n.channel.maxClients,
         "clients" to n.clients.map { client(it) },
@@ -1098,5 +1151,6 @@ class WebSession(
         "myTeamSpeakAvatar" to c.myTeamSpeakAvatar,
         "channelGroup" to (model.channelGroups[c.channelGroup]?.name ?: ""),
         "serverGroups" to c.serverGroups.mapNotNull { model.serverGroups[it]?.name },
+        "badges" to model.badges(c),
     )
 }

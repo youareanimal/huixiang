@@ -283,6 +283,26 @@ fun Application.gateway(dist: File, access: Access, history: ChannelHistory) {
         }
 
         /**
+         * 频道 / 身份组 / 服务器的图标。地址里带本标签页的 avatar 令牌（和头像共用），只读图标文件。
+         * 内置图标（1..999）没有文件，前端自己画，不会走到这里。
+         */
+        get("/icon/{token}/{id}") {
+            val session = call.parameters["token"]?.takeIf { it.length in 16..64 }?.let { WebSession.byAvatar(it) }
+            if (session == null) {
+                call.respond(HttpStatusCode.NotFound, "no icon")
+                return@get
+            }
+            val id = call.parameters["id"]?.toLongOrNull()
+            val icon = if (id == null) null else withContext(Dispatchers.IO) { session.icon(id) }
+            if (icon == null) {
+                call.respond(HttpStatusCode.NotFound, "no icon")
+                return@get
+            }
+            call.response.header("Cache-Control", "public, max-age=86400, immutable")
+            call.respondBytes(icon.first, io.ktor.http.ContentType.parse(icon.second))
+        }
+
+        /**
          * Best-effort friend avatar: the browser passes the friend's Matrix id and gets a small thumbnail, or
          * 404 when that friend never set a Matrix avatar (the panel then shows the name's initial).
          */
@@ -760,6 +780,7 @@ private fun onText(session: WebSession, text: String, ip: String) {
             session.setInputMuted(m["input"] == true)
             session.setOutputMuted(m["output"] == true)
         }
+        "person" -> session.personDetails((m["clid"] as? Number)?.toInt() ?: return)
         "channel" -> onChannel(session, m)
         "stream" -> onStream(session, m)
         "file" -> onFile(session, m)

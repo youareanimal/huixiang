@@ -3323,3 +3323,198 @@ button.files-name:hover {
   font-size: 13px;
   line-height: 1.6;
 }
+
+
+/* ====== 用户资料卡（悬停头像时浮出） ====== */
+
+.user-card {
+  width: 250px;
+}
+
+.user-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.user-card-avatar {
+  position: relative;
+  overflow: hidden;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  flex: 0 0 auto;
+  user-select: none;
+}
+
+.user-card-avatar > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.user-card-ident {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.user-card-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-card-me {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-4);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.user-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.uc-badge {
+  font-size: 10.5px;
+  line-height: 1.7;
+  padding: 0 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.uc-online {
+  color: #0e9e86;
+  background: rgba(20, 184, 154, 0.14);
+}
+
+.uc-away {
+  color: #b26a00;
+  background: rgba(222, 138, 43, 0.16);
+}
+
+.uc-live {
+  color: #c2410c;
+  background: rgba(226, 84, 42, 0.14);
+}
+
+.uc-mute,
+.uc-priority {
+  color: var(--text-3);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.user-card-rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.uc-row dt {
+  flex: 0 0 48px;
+  color: var(--text-4);
+}
+
+.uc-row dd {
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.uc-uid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.uc-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.uc-group {
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(108, 75, 246, 0.1);
+  color: #6c4bf6;
+  white-space: nowrap;
+}
+
+.user-card-desc {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 频道图标：服务器图标文件 / 内置盾牌 / 默认语音图标 */
+.chan-icon-img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 3px;
+  display: block;
+}
+
+.chan-icon-svg {
+  display: block;
+}
+
+/* 身份组徽章：成员名旁的一排小图标 */
+.tile-badges,
+.person-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.tile-badges .chan-icon-img,
+.person-badges .chan-icon-img {
+  width: 14px;
+  height: 14px;
+}
+
+.tile-badges .chan-icon-svg,
+.person-badges .chan-icon-svg {
+  width: 13px;
+  height: 13px;
+}
