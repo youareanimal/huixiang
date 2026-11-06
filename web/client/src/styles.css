@@ -3518,3 +3518,96 @@ button.files-name:hover {
   width: 13px;
   height: 13px;
 }
+
+/* 统一设置面板 */
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-h {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2, #555);
+  letter-spacing: 0.02em;
+}
+
+.settings-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-account-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-account-name {
+  font-weight: 600;
+  color: var(--text-1, #222);
+}
+
+.settings-account-sub {
+  font-size: 12px;
+  color: var(--text-4, #999);
+}
+
+.settings-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-row-between {
+  justify-content: space-between;
+}
+
+.settings-label {
+  color: var(--text-1, #222);
+}
+
+.settings-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-4, #999);
+}
+
+.settings-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.settings-kv {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.settings-kv dt {
+  min-width: 56px;
+  color: var(--text-4, #999);
+}
+
+.settings-kv dd {
+  margin: 0;
+  color: var(--text-1, #222);
+}
