@@ -15,6 +15,7 @@ import type {
   Friend,
   Member,
   MicMode,
+  PersonDetails,
   State,
 } from '../protocol';
 import { eachMember, findChannel, findMember } from '../protocol';
@@ -111,6 +112,9 @@ interface Props {
   /** 成员管理：踢 / 封（非自己） */
   onKickMember: (member: Member, reason: string) => void;
   onBanMember: (member: Member, seconds: number, reason: string) => void;
+  /** 用户资料卡：按 clientId 缓存的补充资料（服务器公开字段），以及向服务器补问一次的请求。 */
+  personDetails: Record<number, PersonDetails>;
+  onPerson: (clientId: number) => void;
   onAccountLogout: () => void;
   onAccountRefresh: () => void;
   onAvatarChange: (file: File) => void;
@@ -184,6 +188,8 @@ export default function ServerPage({
   onDeleteChannel,
   onKickMember,
   onBanMember,
+  personDetails,
+  onPerson,
   onAccountLogout,
   onAccountRefresh,
   onAvatarChange,
@@ -558,6 +564,7 @@ export default function ServerPage({
               onCreateChannel={openCreateChannel}
               onEditChannel={openEditChannel}
               onDeleteChannel={setDeleteTarget}
+              avatarToken={avatarToken}
               onKick={setKickTarget}
               onBan={setBanTarget}
             />
@@ -624,6 +631,8 @@ export default function ServerPage({
                 onVolume={onMemberVolume}
                 onKick={setKickTarget}
                 onBan={setBanTarget}
+                personDetails={personDetails}
+                onPerson={onPerson}
               />
             )}
 

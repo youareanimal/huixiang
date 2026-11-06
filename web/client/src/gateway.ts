@@ -13,6 +13,7 @@ import type {
   ContactsMessage,
   FilesMessage,
   HistoryMessage,
+  PersonDetails,
   State,
 } from './protocol';
 import type { StreamEvent } from './stream';
@@ -54,6 +55,8 @@ export interface GatewayHandlers {
   onRoundTrip?: (ms: number) => void;
   /** 网关到 TeamSpeak 服务器的 UDP 往返（毫秒），由服务器每秒的 keepalive ping 算出。 */
   onServerPing?: (ms: number) => void;
+  /** 某人的资料卡补充字段（点了头像才查）；服务器可能什么都不给。 */
+  onPerson?: (person: PersonDetails) => void;
   /** 服务端关了连接：1008 多半是口令不对或来源不被允许。 */
   onClose?: (code: number, reason: string) => void;
   onError?: (message: string) => void;
@@ -197,6 +200,9 @@ export class Gateway {
           case 'chanOp':
             this.handlers.onChanOp?.(m as unknown as ChannelOpResult);
             break;
+          case 'person':
+            this.handlers.onPerson?.(m as unknown as PersonDetails);
+            break;
         }
       };
 
@@ -289,6 +295,11 @@ export class Gateway {
 
   rename(name: string) {
     this.send({ t: 'rename', name });
+  }
+
+  /** 要某人的资料卡补充字段（服务器公开的那部分）；答案从 `onPerson` 回来。 */
+  requestPerson(clid: number) {
+    this.send({ t: 'person', clid });
   }
 
   setMuted(input: boolean, output: boolean) {

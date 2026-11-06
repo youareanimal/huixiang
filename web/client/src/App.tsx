@@ -24,6 +24,7 @@ import {
   type Friend,
   type Member,
   type MicMode,
+  type PersonDetails,
   type State,
 } from './protocol';
 import { forgetAccount, rememberAccount, removeAccountAvatar, uploadAccountAvatar } from './account';
@@ -78,6 +79,8 @@ export default function App() {
   const [cloud, setCloud] = useState<CloudState>(() => emptyCloud());
   const [cloudChat, setCloudChat] = useState<CloudChat | null>(null);
   const [cloudNotice, setCloudNotice] = useState<string | null>(null);
+  // 用户资料卡的补充字段：按 clientId 缓存；服务器没给就只显示快照里已有的。
+  const [personDetails, setPersonDetails] = useState<Record<number, PersonDetails>>({});
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 延迟拆成两段：浏览器↔网关、网关↔服务器（TeamSpeak 的 UDP ping）
@@ -313,6 +316,7 @@ export default function App() {
             presenceBaseline.current = null;
             stateRef.current = null;
             setState(null);
+            setPersonDetails({});
             setConnecting(false);
             setPing((p) => (p.server == null ? p : { ...p, server: null }));
             return;
@@ -444,6 +448,7 @@ export default function App() {
           if (r.ok) Toast.success(`${r.label}成功`);
           else Toast.error(`${r.label}失败：${r.error ?? '未知错误'}`);
         },
+        onPerson: (p) => setPersonDetails((prev) => ({ ...prev, [p.id]: p })),
         onClose: (code, reason) => {
           // 掉线/关页前记一笔开关，重连后恢复
           {
@@ -458,6 +463,7 @@ export default function App() {
           setState(null);
           setChat([]);
           setFiles(null);
+          setPersonDetails({});
           setPing({ gateway: null, server: null });
           setAccount(guestAccount());
           setBookmarks(emptyBookmarks());
@@ -514,6 +520,7 @@ export default function App() {
     setState(null);
     setChat([]);
     setFiles(null);
+    setPersonDetails({});
     setPing({ gateway: null, server: null });
     setConnecting(false);
   }, [talking]);
@@ -868,6 +875,8 @@ export default function App() {
     (member: Member, seconds: number, reason: string) => gatewayRef.current?.banClient(member.id, seconds, reason),
     [],
   );
+  // 资料卡：向服务器补问某人的公开字段（答案从 onPerson 回来并缓存）
+  const requestPerson = useCallback((clientId: number) => gatewayRef.current?.requestPerson(clientId), []);
 
   const content = useMemo(() => {
     if (!state) {
@@ -952,6 +961,8 @@ export default function App() {
         onDeleteChannel={deleteChannel}
         onKickMember={kickMember}
         onBanMember={banMember}
+        personDetails={personDetails}
+        onPerson={requestPerson}
       />
     );
   }, [
@@ -1015,6 +1026,8 @@ export default function App() {
     deleteChannel,
     kickMember,
     banMember,
+    personDetails,
+    requestPerson,
   ]);
 
   return (
