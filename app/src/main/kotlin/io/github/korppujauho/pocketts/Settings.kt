@@ -72,6 +72,31 @@ class Settings(private val context: Context) {
         context.getString(R.string.identity_not_valid)
     }
 
+    /** Account-scoped cloud identity; the existing local identity is never replaced. */
+    private fun cloudIdentitySlot(email: String): String {
+        val normalized = email.trim().lowercase(java.util.Locale.ROOT)
+        require(normalized.isNotBlank())
+        val hash = java.security.MessageDigest.getInstance("SHA-256").digest(normalized.toByteArray(Charsets.UTF_8))
+        return "cloud-identity-" + hash.joinToString("") { "%02x".format(it) }
+    }
+    fun saveCloudIdentity(email: String, identity: Identity) {
+        val slot = cloudIdentitySlot(email)
+        val sealed = Secrets.box.seal(identity.export(), "settings/$slot")
+        check(SecretBox.isSealed(sealed))
+        check(secrets.edit().putString(slot, sealed).commit())
+    }
+    fun cloudIdentity(email: String): Identity? {
+        if (email.isBlank()) return null
+        val slot = cloudIdentitySlot(email)
+        val stored = secrets.getString(slot, null) ?: return null
+        if (!SecretBox.isSealed(stored)) throw IdentityUnreadable(context.getString(R.string.identity_unreadable))
+        val saved = try { Secrets.box.open(stored, "settings/$slot") }
+            catch (_: Exception) { throw IdentityUnreadable(context.getString(R.string.identity_unreadable)) }
+        return try { Identity.import(saved) } catch (_: Exception) {
+            throw IdentityUnreadable(context.getString(R.string.identity_unreadable))
+        }
+    }
+
     /** Why the saved identity can't be used, when it can't (it's then left as it is, not replaced by a new one). */
     fun identityProblem(): String? = try {
         secrets.getSecret("identity", IDENTITY, old = prefs)

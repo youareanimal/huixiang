@@ -369,10 +369,12 @@ object Session : TsClient.Listener {
         CallWatcher.start(app, ::onPhoneCall)
         ConnectionService.start(app, app.getString(R.string.notification_connecting, address))
         worker.execute {
+            val syncedAccount = try { CloudAccountStore(cloudSecretPrefs(app)).identity() } catch (_: Exception) { null }
             val identity = try {
-                Settings(app).identity() // made on first use, which takes a moment
-            } catch (e: Settings.IdentityUnreadable) {
-                finish(e.message)
+                val settings = Settings(app)
+                syncedAccount?.let { settings.cloudIdentity(it.email) } ?: settings.identity()
+            } catch (_: Exception) {
+                finish(app.getString(R.string.identity_unreadable))
                 return@execute
             }
             val target = ServerAddress.resolve(typed, AndroidDns, ServerAddress.MyTeamSpeakNicknames) { AppLog.log(it) }
@@ -386,7 +388,7 @@ object Session : TsClient.Listener {
             }
             startAudio()
             val accountIdentity = try {
-                voiceAccount = CloudAccountStore(cloudSecretPrefs(app)).identity()
+                voiceAccount = syncedAccount
                 voiceAccount?.let { MyTsVoiceIdentity.fromSession(it) }
             } catch (_: Exception) {
                 voiceAccount = null

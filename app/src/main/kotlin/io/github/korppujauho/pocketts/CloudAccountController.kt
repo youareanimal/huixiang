@@ -38,7 +38,10 @@ class CloudAccountController(
     private val store: CloudAccountStore = CloudAccountStore(cloudSecretPrefs(context.applicationContext)),
     private val onMyTsIdentityChanged: (String) -> Unit = {},
 ) {
+    data class SyncedIdentity(val id: String, val name: String, val nickname: String, val ts6Uid: String)
     data class State(
+        val syncedIdentities: List<SyncedIdentity> = emptyList(), val syncedIdentityLoading: Boolean = false,
+        val syncedIdentityError: String? = null, val selectedSyncedUid: String = "",
         val restored: Boolean = true,
         val hasAccount: Boolean = false, val username: String = "", val busy: Boolean = false,
         val error: String? = null, val contactError: String? = null, val sessionExpired: Boolean = false,
@@ -72,6 +75,9 @@ class CloudAccountController(
     private var contactsJob: Job? = null
     private var bookmarksJob: Job? = null
     private var profileJob: Job? = null
+    private var syncedIdentityJob: Job? = null
+    private val syncedIdentityGeneration = java.util.concurrent.atomic.AtomicLong()
+    @Volatile private var syncedIdentityEntries: List<MyTsIdentities.Entry> = emptyList()
     private val contactGeneration = java.util.concurrent.atomic.AtomicLong()
     private val bookmarkGeneration = java.util.concurrent.atomic.AtomicLong()
     private val profileGeneration = java.util.concurrent.atomic.AtomicLong()
@@ -114,7 +120,7 @@ class CloudAccountController(
             if (!mutable.value.bookmarksLoaded && current.syncKey == null && mutable.value.bookmarkError == null)
                 mutable.update { it.copy(bookmarkError = current.bookmarkKeyError ?: "BOOKMARK_KEY_REQUIRED") }
         }
-        if (mutable.value.hasAccount) { refreshContacts(); refreshBookmarks(); refreshProfile() }
+        if (mutable.value.hasAccount) { refreshContacts(); refreshBookmarks(); refreshProfile(); refreshSyncedIdentities() }
     } }
 
     /** 0.2 preview builds before the separate file used this preferences file. Never import a plaintext entry. */
@@ -336,8 +342,41 @@ class CloudAccountController(
         } finally { mutable.update { it.copy(avatarBusy = false) } }
     }
     private fun cancelAccountLoads() {
+        syncedIdentityGeneration.incrementAndGet(); syncedIdentityJob?.cancel(); syncedIdentityEntries = emptyList()
         contactGeneration.incrementAndGet(); bookmarkGeneration.incrementAndGet(); profileGeneration.incrementAndGet()
         contactsJob?.cancel(); bookmarksJob?.cancel(); profileJob?.cancel()
+    }
+
+    fun refreshSyncedIdentities() {
+        syncedIdentityJob?.cancel()
+        val current = identity ?: return
+        val generation = syncedIdentityGeneration.incrementAndGet()
+        syncedIdentityJob = scope.launch {
+            fun currentRequest() = identity === current && syncedIdentityGeneration.get() == generation
+            mutable.update { it.copy(syncedIdentityLoading = true, syncedIdentityError = null) }
+            try {
+                val entries = MyTsIdentities(http).read(current)
+                if (!currentRequest()) return@launch
+                syncedIdentityEntries = entries
+                val selected = try { Settings(app).cloudIdentity(current.email) } catch (_: Exception) { null }
+                val selectedUid = selected?.let { java.util.Base64.getEncoder().encodeToString(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(it.publicKeyString.toByteArray(Charsets.US_ASCII))) }.orEmpty()
+                mutable.update { it.copy(syncedIdentities = entries.map { entry ->
+                    SyncedIdentity(entry.id, entry.name, entry.nickname, entry.ts6Uid)
+                }, selectedSyncedUid = selectedUid, syncedIdentityError = null) }
+            } catch (e: CancellationException) { throw e }
+            catch (e: CloudFailure) { if (currentRequest()) mutable.update { it.copy(syncedIdentityError = e.code) } }
+            catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(syncedIdentityError = "IDENTITY_INVALID_REPLY") } }
+            finally { if (currentRequest()) mutable.update { it.copy(syncedIdentityLoading = false) } }
+        }
+    }
+
+    fun selectSyncedIdentity(id: String) = operation {
+        val current = identity ?: throw CloudFailure("MYTS_103")
+        val entry = syncedIdentityEntries.singleOrNull { it.id == id } ?: throw CloudFailure("IDENTITY_NOT_FOUND")
+        if (current.email.isBlank()) throw CloudFailure("IDENTITY_ACCOUNT_MISSING")
+        Settings(app).saveCloudIdentity(current.email, entry.identity)
+        mutable.update { it.copy(selectedSyncedUid = entry.ts6Uid, notice = "账号身份已选定，下次连接服务器时使用。原有本机身份已保留。") }
     }
 
     private fun loadBookmarks() {
@@ -441,6 +480,7 @@ class CloudAccountController(
         refreshBookmarks()
         refreshContacts()
         refreshProfile()
+        refreshSyncedIdentities()
     }
 
     /** Existing authenticated sessions only need a fresh sync; avoid re-logging on slow networks. */
