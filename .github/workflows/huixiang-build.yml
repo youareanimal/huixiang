@@ -73,6 +73,26 @@ jobs:
             -Pkotlin.compiler.execution.strategy=in-process \
             '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
 
+      - name: Build debug APK for pull request
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm \
+            -v "$PWD":/work -v "$PWD/out":/out -v "$PWD/.ci-gradle":/gradle \
+            -e POCKETTS_BUILD_ROOT=/out \
+            huixiang-build ./gradlew --no-daemon --console=plain \
+            :app:assembleDebug --max-workers=2 \
+            -Pkotlin.compiler.execution.strategy=in-process \
+            '-Dorg.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8 -XX:ActiveProcessorCount=2'
+
+      - name: Upload debug APK
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: HuiXiang-debug-${{ github.sha }}
+          path: out/app/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Build unsigned upgrade APKs
         if: github.event_name != 'pull_request'
         env:
