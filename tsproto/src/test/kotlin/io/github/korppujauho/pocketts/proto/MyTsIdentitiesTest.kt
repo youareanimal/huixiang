@@ -60,12 +60,13 @@ class MyTsIdentitiesTest {
         assertFailsWith<CloudFailure> { api.read(MyTsAccount.Session("fixture", "sample")) }
     }
     @Test fun automaticIdentityRequiresExactlyOneMatchingName() {
-        val cipher = blob(plaintext("defult"))
+        val cipher = blob(plaintext("default"))
         val identity = reader(response(cipher)).defaultIdentity(session())
         assertEquals(fixtureIdentity.uid, identity.uid)
         val empty = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1))
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(empty).defaultIdentity(session()) }.code)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("默认")))).defaultIdentity(session()) }.code)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("defult")))).defaultIdentity(session()) }.code)
         val other = "00000000-0000-0000-0000-000000000456"
         val otherIdentity = Identity.generate(securityLevel = 0)
         fun otherPlain(name: String) = CloudProto.text(2, other) + CloudProto.integer(6, 1) + CloudProto.bytes(17,
@@ -76,6 +77,6 @@ class MyTsIdentitiesTest {
             return CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1) + CloudProto.bytes(3, detail2) + CloudProto.bytes(3, detail1))
         }
         assertEquals(fixtureIdentity.uid, reader(both("默认")).defaultIdentity(session()).uid)
-        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("defult")).defaultIdentity(session()) }.code)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("default")).defaultIdentity(session()) }.code)
     }
 }
