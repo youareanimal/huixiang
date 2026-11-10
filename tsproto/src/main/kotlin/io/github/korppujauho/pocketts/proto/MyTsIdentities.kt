@@ -17,7 +17,7 @@ class MyTsIdentities(private val http: CloudTransport = HttpsCloudTransport) {
         defaultEntry(read(session))?.identity ?: throw CloudFailure("IDENTITY_DEFAULT_UNAVAILABLE")
 
     companion object {
-        fun defaultEntry(entries: List<Entry>): Entry? = entries.filter { it.name == "default" }.singleOrNull()
+        fun defaultEntry(entries: List<Entry>): Entry? = entries.filter { it.name.equals("default", ignoreCase = true) }.singleOrNull()
     }
 
     fun read(session: MyTsAccount.Session): List<Entry> {

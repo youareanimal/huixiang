@@ -63,6 +63,8 @@ class MyTsIdentitiesTest {
         val cipher = blob(plaintext("default"))
         val identity = reader(response(cipher)).defaultIdentity(session())
         assertEquals(fixtureIdentity.uid, identity.uid)
+        assertEquals(fixtureIdentity.uid, reader(response(blob(plaintext("Default")))).defaultIdentity(session()).uid)
+        assertEquals(fixtureIdentity.uid, reader(response(blob(plaintext("DEFAULT")))).defaultIdentity(session()).uid)
         val empty = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1))
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(empty).defaultIdentity(session()) }.code)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("默认")))).defaultIdentity(session()) }.code)
@@ -78,5 +80,6 @@ class MyTsIdentitiesTest {
         }
         assertEquals(fixtureIdentity.uid, reader(both("默认")).defaultIdentity(session()).uid)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("default")).defaultIdentity(session()) }.code)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("Default")).defaultIdentity(session()) }.code)
     }
 }
