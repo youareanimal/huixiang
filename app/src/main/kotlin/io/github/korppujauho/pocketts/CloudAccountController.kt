@@ -41,6 +41,7 @@ class CloudAccountController(
     data class SyncedIdentity(val id: String, val name: String, val nickname: String, val ts6Uid: String)
     data class State(
         val syncedIdentities: List<SyncedIdentity> = emptyList(), val syncedIdentityLoading: Boolean = false,
+        val syncedIdentityLoaded: Boolean = false,
         val syncedIdentityError: String? = null, val selectedSyncedUid: String = "",
         val restored: Boolean = true,
         val hasAccount: Boolean = false, val username: String = "", val busy: Boolean = false,
@@ -352,19 +353,33 @@ class CloudAccountController(
         val generation = syncedIdentityGeneration.incrementAndGet()
         syncedIdentityJob = scope.launch {
             fun currentRequest() = identity === current && syncedIdentityGeneration.get() == generation
-            mutable.update { it.copy(syncedIdentityLoading = true, syncedIdentityError = null) }
+            mutable.update { it.copy(syncedIdentityLoading = true, syncedIdentityLoaded = false, syncedIdentityError = null) }
             try {
                 val entries = MyTsIdentities(http).read(current)
                 if (!currentRequest()) return@launch
-                val selectedUid = MyTsIdentities.defaultEntry(entries)?.ts6Uid.orEmpty()
+                val selectedId = Settings(app).selectedCloudIdentityId(current.email)
+                val selectedUid = MyTsIdentities.selectedEntry(entries, selectedId)?.ts6Uid.orEmpty()
                 mutable.update { if (!currentRequest()) it else it.copy(syncedIdentities = entries.map { entry ->
                     SyncedIdentity(entry.id, entry.name, entry.nickname, entry.ts6Uid)
                 }, selectedSyncedUid = selectedUid, syncedIdentityError = null) }
             } catch (e: CancellationException) { throw e }
             catch (e: CloudFailure) { if (currentRequest()) mutable.update { it.copy(syncedIdentityError = e.code) } }
             catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(syncedIdentityError = "IDENTITY_INVALID_REPLY") } }
-            finally { if (currentRequest()) mutable.update { it.copy(syncedIdentityLoading = false) } }
+            finally { if (currentRequest()) mutable.update { it.copy(syncedIdentityLoading = false, syncedIdentityLoaded = true) } }
         }
+    }
+
+    fun selectSyncedIdentity(id: String) = operation {
+        val current = identity ?: throw CloudFailure("MYTS_103")
+        val state = mutable.value
+        if (!state.syncedIdentityLoaded || state.syncedIdentityLoading || state.syncedIdentityError != null)
+            throw CloudFailure("IDENTITY_NOT_READY")
+        if (state.syncedIdentities.count { it.name == "Default" } == 1)
+            throw CloudFailure("IDENTITY_DEFAULT_AVAILABLE")
+        val entry = state.syncedIdentities.singleOrNull { it.id == id } ?: throw CloudFailure("IDENTITY_NOT_FOUND")
+        if (current.email.isBlank()) throw CloudFailure("IDENTITY_ACCOUNT_MISSING")
+        Settings(app).selectCloudIdentityId(current.email, entry.id)
+        if (identity === current) mutable.update { it.copy(selectedSyncedUid = entry.ts6Uid, notice = "已选择账号同步身份，下次连接时生效。") }
     }
 
     private fun loadBookmarks() {

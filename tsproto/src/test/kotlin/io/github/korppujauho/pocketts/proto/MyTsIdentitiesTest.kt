@@ -59,16 +59,18 @@ class MyTsIdentitiesTest {
         val api = MyTsIdentities(CloudTransport { _, _, _, _ -> error("unexpected network") })
         assertFailsWith<CloudFailure> { api.read(MyTsAccount.Session("fixture", "sample")) }
     }
-    @Test fun automaticIdentityRequiresExactlyOneMatchingName() {
-        val cipher = blob(plaintext("default"))
+    @Test fun prefersExactDefaultOtherwiseRequiresAnExplicitSyncedSelection() {
+        val cipher = blob(plaintext("Default"))
         val identity = reader(response(cipher)).defaultIdentity(session())
         assertEquals(fixtureIdentity.uid, identity.uid)
-        assertEquals(fixtureIdentity.uid, reader(response(blob(plaintext("Default")))).defaultIdentity(session()).uid)
-        assertEquals(fixtureIdentity.uid, reader(response(blob(plaintext("DEFAULT")))).defaultIdentity(session()).uid)
         val empty = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1))
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(empty).defaultIdentity(session()) }.code)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("默认")))).defaultIdentity(session()) }.code)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("defult")))).defaultIdentity(session()) }.code)
+        val lower = reader(response(blob(plaintext("default"))))
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { lower.defaultIdentity(session()) }.code)
+        assertEquals(fixtureIdentity.uid, lower.defaultIdentity(session(), fixtureId).uid)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { lower.defaultIdentity(session(), "missing") }.code)
         val other = "00000000-0000-0000-0000-000000000456"
         val otherIdentity = Identity.generate(securityLevel = 0)
         fun otherPlain(name: String) = CloudProto.text(2, other) + CloudProto.integer(6, 1) + CloudProto.bytes(17,
@@ -79,7 +81,8 @@ class MyTsIdentitiesTest {
             return CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1) + CloudProto.bytes(3, detail2) + CloudProto.bytes(3, detail1))
         }
         assertEquals(fixtureIdentity.uid, reader(both("默认")).defaultIdentity(session()).uid)
-        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("default")).defaultIdentity(session()) }.code)
+        assertEquals(fixtureIdentity.uid, reader(both("默认")).defaultIdentity(session(), other).uid)
         assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("Default")).defaultIdentity(session()) }.code)
+        assertEquals(otherIdentity.uid, reader(both("Default")).defaultIdentity(session(), other).uid)
     }
 }

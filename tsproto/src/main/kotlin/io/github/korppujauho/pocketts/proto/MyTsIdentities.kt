@@ -12,12 +12,14 @@ class MyTsIdentities(private val http: CloudTransport = HttpsCloudTransport) {
         override fun toString() = "MyTsIdentity(redacted)"
     }
 
-    /** The account must contain exactly one identity with the explicitly configured name. */
-    fun defaultIdentity(session: MyTsAccount.Session): Identity =
-        defaultEntry(read(session))?.identity ?: throw CloudFailure("IDENTITY_DEFAULT_UNAVAILABLE")
+    /** Prefer the exact Default identity; otherwise use only an explicitly selected synced item. */
+    fun defaultIdentity(session: MyTsAccount.Session, selectedId: String? = null): Identity =
+        selectedEntry(read(session), selectedId)?.identity ?: throw CloudFailure("IDENTITY_DEFAULT_UNAVAILABLE")
 
     companion object {
-        fun defaultEntry(entries: List<Entry>): Entry? = entries.filter { it.name.equals("default", ignoreCase = true) }.singleOrNull()
+        fun defaultEntry(entries: List<Entry>): Entry? = entries.filter { it.name == "Default" }.singleOrNull()
+        fun selectedEntry(entries: List<Entry>, selectedId: String?): Entry? =
+            defaultEntry(entries) ?: selectedId?.let { id -> entries.singleOrNull { it.id == id } }
     }
 
     fun read(session: MyTsAccount.Session): List<Entry> {

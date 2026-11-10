@@ -529,10 +529,10 @@
     <!-- The identity -->
     <string name="identity_not_valid">这不是 TeamSpeak 身份。</string>
     <string name="identity_unreadable">无法在这部手机上打开已保存的身份。请在「设置 › 高级 › TeamSpeak 身份」中导入你的身份，或在那里新建一个。</string>
-    <string name="identity_cloud_ambiguous">账号中没有唯一的 default 同步身份，请在官方客户端检查身份名称及同步状态。</string>
+    <string name="identity_cloud_ambiguous">账号中没有唯一的 Default 身份，请到“我 → 账号同步身份”选择其他同步身份。</string>
     <string name="identity_cloud_unavailable">账号身份同步失败，请检查网络或重新登录。</string>
-    <string name="identity_cloud_in_use">登录账号后自动使用名为 default 的同步身份，名称不区分大小写。</string>
-    <string name="identity_cloud_level_required">服务器需要身份安全等级 %1$d。请先在官方客户端提高 default 身份的安全等级并同步，再重试。</string>
+    <string name="identity_cloud_in_use">登录后优先使用名为 Default 的同步身份；没有时可在“我”中选择。</string>
+    <string name="identity_cloud_level_required">服务器需要身份安全等级 %1$d。请先在官方客户端提高所用身份的安全等级并同步，再重试。</string>
     <string name="identity_export_unreadable">无法读取身份，因此无法保存。</string>
     <string name="file_not_written">无法写入该文件。</string>
     <string name="file_not_opened">无法打开该文件。</string>
