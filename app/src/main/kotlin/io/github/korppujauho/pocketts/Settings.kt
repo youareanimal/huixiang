@@ -97,6 +97,14 @@ class Settings(private val context: Context) {
         }
     }
 
+    /** Only the public sync item id is remembered; the identity key always comes from this account's sync. */
+    fun selectedCloudIdentityId(email: String): String? = if (email.isBlank()) null
+        else prefs.getString("selected-" + cloudIdentitySlot(email), null)
+    fun selectCloudIdentityId(email: String, id: String) {
+        require(id.isNotBlank() && id.length <= 128)
+        check(prefs.edit().putString("selected-" + cloudIdentitySlot(email), id).commit())
+    }
+
     /** Why the saved identity can't be used, when it can't (it's then left as it is, not replaced by a new one). */
     fun identityProblem(): String? = try {
         secrets.getSecret("identity", IDENTITY, old = prefs)

@@ -145,6 +145,23 @@ class UpdateMirrorTest {
         } finally { u.close() }
     }
 
+    @Suppress("DEPRECATION")
+    @Test fun legacySystemSignaturesAreUsedWhenArchiveSigningInfoIsMissing() {
+        prepareSignatures()
+        val pm = context.packageManager
+        pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES).also {
+            it.signatures = arrayOf(Signature("1234")); shadowOf(pm).installPackage(it)
+        }
+        val archive = PackageInfo().also {
+            it.packageName = context.packageName; it.longVersionCode = code
+            it.signatures = arrayOf(Signature("1234")); it.signingInfo = null
+        }
+        shadowOf(pm).setPackageArchiveInfo(File(context.cacheDir, "updates/download.part.apk").path, archive)
+        val server = Server { url -> when(url) { pi.feedUrl -> Reply(feed(pi)); apk(pi) -> Reply(bytes); else -> error("Unexpected fallback") } }
+        val u = updater(server)
+        try { u.check(); u.download(); assertTrue(u.state.value.ready) } finally { u.close() }
+    }
+
     @Test fun failedPiDownloadOnlySwitchesToAnIdenticalVersionAbiSizeAndHash() {
         prepareSignatures()
         val server = Server { url -> when(url) {

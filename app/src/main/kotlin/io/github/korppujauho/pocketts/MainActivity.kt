@@ -384,7 +384,8 @@ private fun App() {
                                 { roomId = it; route = "ROOM" }, controller::diagnoseChatLogin)
                             HubTab.ME -> MeHub(account, state.voice, { route = "LOGIN" }, { logout = true },
                                 ::openSettings, { importer.launch(arrayOf("*/*")) }, { about = true },
-                                controller::refreshProfile, { route = "AVATAR" })
+                                controller::refreshProfile, { route = "AVATAR" },
+                                controller::refreshSyncedIdentities, { controller.selectSyncedIdentity(it) })
                         }
                     }
                 }
@@ -417,6 +418,13 @@ private fun App() {
             controller.forget(); logout = false; tabName = HubTab.SERVERS.name; home()
         }) { Text("退出账号") } },
         dismissButton = { TextButton(onClick = { logout = false }) { Text("取消") } })
+    var identityPromptDismissed by rememberSaveable(account.email) { mutableStateOf(false) }
+    if (entered && account.hasAccount && account.syncedIdentityLoaded && !account.syncedIdentityLoading &&
+        account.syncedIdentityError == null && account.selectedSyncedUid.isBlank() && !identityPromptDismissed) {
+        AccountIdentityDialog(account, { identityPromptDismissed = true }, controller::refreshSyncedIdentities) {
+            controller.selectSyncedIdentity(it); identityPromptDismissed = true
+        }
+    }
     if (about) AppUpdateDialog(update, { about = false }, updater::check, updater::download, updater::cancel,
         { updater.install(ctx) }, updater::automatic, updater::source)
     notice?.let { message -> AlertDialog(onDismissRequest = { notice = null }, text = { Text(message) }, confirmButton = { TextButton(onClick = { notice = null }) { Text("知道了") } }) }

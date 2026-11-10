@@ -381,7 +381,7 @@ object Session : TsClient.Listener {
             }
             val identity = try {
                 resolveVoiceIdentity(syncedAccount, hasStoredAccount,
-                    accountIdentity = { MyTsIdentities().defaultIdentity(it) },
+                    accountIdentity = { MyTsIdentities().defaultIdentity(it, Settings(app).selectedCloudIdentityId(it.email)) },
                     guestIdentity = { Settings(app).identity() })
             } catch (e: CloudFailure) {
                 finish(app.getString(if (e.code == "IDENTITY_DEFAULT_UNAVAILABLE") R.string.identity_cloud_ambiguous else R.string.identity_cloud_unavailable))

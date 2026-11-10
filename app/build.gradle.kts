@@ -26,8 +26,8 @@ android {
         applicationId = "app.shengqiao.ts"
         minSdk = 29
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.5.11"
+        versionCode = 25
+        versionName = "0.5.12"
         buildConfigField("String", "UPDATE_FEED_URL", "\"https://${updateHost}:8443/huixiang/latest.json\"")
         buildConfigField("String", "UPDATE_FALLBACK_FEED_URL", "\"https://huixiang-updates.pages.dev/latest.json\"")
         // Release builds target ARM64 phones only.
