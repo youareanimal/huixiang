@@ -94,6 +94,42 @@ class UpdateMirrorTest {
         try {
             u.check(); assertEquals(listOf(pi.feedUrl, cf.feedUrl), server.requests)
             assertEquals(cf, u.state.value.activeSource); assertNull(u.state.value.error)
+            assertTrue(u.state.value.sourceNotice!!.contains("直连更新源暂时不可用"))
+        } finally { u.close() }
+    }
+
+    @Test fun staleFallbackDoesNotClaimTheAppIsUpToDate() {
+        val server = Server { url -> when(url) {
+            pi.feedUrl -> Reply(status = 503)
+            cf.feedUrl -> Reply(feed(cf, version = BuildConfig.VERSION_CODE.toLong()))
+            else -> error("Unexpected request")
+        } }
+        val u = updater(server)
+        try {
+            u.check()
+            assertNull(u.state.value.release)
+            assertTrue(u.state.value.error!!.contains("无法确认是否为最新版本"))
+        } finally { u.close() }
+    }
+
+    @Test fun badPackageSignatureReportsTheRealErrorWithoutTryingAnotherSource() {
+        prepareSignatures()
+        val dir = File(context.cacheDir, "updates")
+        val wrong = SigningInfo().also { shadowOf(it).setSignatures(arrayOf(Signature("5678"))) }
+        val archive = PackageInfo().also { it.packageName = context.packageName; it.longVersionCode = code; it.signingInfo = wrong }
+        shadowOf(context.packageManager).setPackageArchiveInfo(File(dir, "download.part.apk").path, archive)
+        val server = Server { url -> when(url) {
+            pi.feedUrl -> Reply(feed(pi))
+            apk(pi) -> Reply(bytes)
+            else -> error("Signature failure must not switch update source")
+        } }
+        val u = updater(server)
+        try {
+            u.check(); u.download()
+            assertFalse(u.state.value.ready)
+            assertEquals("安装包签名不匹配，已停止安装。", u.state.value.error)
+            assertEquals(pi, u.state.value.activeSource)
+            assertEquals(listOf(pi.feedUrl, apk(pi)), server.requests)
         } finally { u.close() }
     }
 
