@@ -10,7 +10,8 @@ ARG BUILD_TOOLS=37.0.0
 ENV ANDROID_HOME=/opt/android-sdk
 ENV PATH=$PATH:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools
 
-RUN apt-get update \
+RUN sed -i 's|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://security.ubuntu.com|https://security.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources \
+ && apt-get update \
  && apt-get install -y --no-install-recommends unzip git curl ca-certificates python3 \
  && rm -rf /var/lib/apt/lists/*
 
