@@ -12,6 +12,10 @@ class MyTsIdentities(private val http: CloudTransport = HttpsCloudTransport) {
         override fun toString() = "MyTsIdentity(redacted)"
     }
 
+    /** Never guess between several account identities or silently create a new one. */
+    fun onlyIdentity(session: MyTsAccount.Session): Identity =
+        read(session).singleOrNull()?.identity ?: throw CloudFailure("IDENTITY_AMBIGUOUS")
+
     fun read(session: MyTsAccount.Session): List<Entry> {
         val key = session.syncKey ?: throw CloudFailure(session.bookmarkKeyError ?: "IDENTITY_KEY_REQUIRED")
         val nil = "00000000-0000-0000-0000-000000000000"

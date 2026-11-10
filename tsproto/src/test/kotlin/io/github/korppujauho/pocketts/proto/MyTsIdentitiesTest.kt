@@ -59,4 +59,18 @@ class MyTsIdentitiesTest {
         val api = MyTsIdentities(CloudTransport { _, _, _, _ -> error("unexpected network") })
         assertFailsWith<CloudFailure> { api.read(MyTsAccount.Session("fixture", "sample")) }
     }
+    @Test fun automaticIdentityRequiresExactlyOneSyncedIdentity() {
+        val cipher = blob(plaintext())
+        val identity = reader(response(cipher)).onlyIdentity(session())
+        assertEquals(fixtureIdentity.uid, identity.uid)
+        val empty = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1))
+        assertEquals("IDENTITY_AMBIGUOUS", assertFailsWith<CloudFailure> { reader(empty).onlyIdentity(session()) }.code)
+        val other = "00000000-0000-0000-0000-000000000456"
+        val otherPlain = CloudProto.text(2, other) + CloudProto.integer(6, 1) + CloudProto.bytes(17,
+            CloudProto.text(1, Identity.generate(securityLevel = 0).export()))
+        val detail1 = CloudProto.text(1, fixtureId) + CloudProto.bytes(3, cipher)
+        val detail2 = CloudProto.text(1, other) + CloudProto.bytes(3, blob(otherPlain))
+        val two = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1) + CloudProto.bytes(3, detail1) + CloudProto.bytes(3, detail2))
+        assertEquals("IDENTITY_AMBIGUOUS", assertFailsWith<CloudFailure> { reader(two).onlyIdentity(session()) }.code)
+    }
 }

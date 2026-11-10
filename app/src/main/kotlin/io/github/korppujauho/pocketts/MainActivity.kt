@@ -383,8 +383,7 @@ private fun App() {
                                 { roomId = it; route = "ROOM" }, controller::diagnoseChatLogin)
                             HubTab.ME -> MeHub(account, state.voice, { route = "LOGIN" }, { logout = true },
                                 ::openSettings, { importer.launch(arrayOf("*/*")) }, { about = true },
-                                controller::refreshProfile, { route = "AVATAR" },
-                                controller::refreshSyncedIdentities, { controller.selectSyncedIdentity(it) })
+                                controller::refreshProfile, { route = "AVATAR" })
                         }
                     }
                 }

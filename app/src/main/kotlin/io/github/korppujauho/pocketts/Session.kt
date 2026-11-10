@@ -14,6 +14,7 @@ import io.github.korppujauho.pocketts.proto.MyTsVoiceCheck
 import io.github.korppujauho.pocketts.proto.MyTsVoiceIdentity
 import io.github.korppujauho.pocketts.proto.MyTsVoiceStatus
 import io.github.korppujauho.pocketts.proto.MyTsAccount
+import io.github.korppujauho.pocketts.proto.MyTsIdentities
 import io.github.korppujauho.pocketts.proto.MyTsChatTag
 import io.github.korppujauho.pocketts.proto.ServerAddress
 import io.github.korppujauho.pocketts.proto.ServerModel
@@ -369,12 +370,24 @@ object Session : TsClient.Listener {
         CallWatcher.start(app, ::onPhoneCall)
         ConnectionService.start(app, app.getString(R.string.notification_connecting, address))
         worker.execute {
-            val syncedAccount = try { CloudAccountStore(cloudSecretPrefs(app)).identity() } catch (_: Exception) { null }
-            val identity = try {
-                val settings = Settings(app)
-                syncedAccount?.let { settings.cloudIdentity(it.email) } ?: settings.identity()
+            val syncedAccount = try {
+                val store = CloudAccountStore(cloudSecretPrefs(app))
+                val current = store.identity()
+                if (current == null && store.account() != null) {
+                    finish(app.getString(R.string.identity_cloud_unavailable)); return@execute
+                }
+                current
             } catch (_: Exception) {
-                finish(app.getString(R.string.identity_unreadable))
+                finish(app.getString(R.string.identity_unreadable)); return@execute
+            }
+            val identity = try {
+                if (syncedAccount == null) Settings(app).identity()
+                else MyTsIdentities().onlyIdentity(syncedAccount)
+            } catch (e: CloudFailure) {
+                finish(app.getString(if (e.code == "IDENTITY_AMBIGUOUS") R.string.identity_cloud_ambiguous else R.string.identity_cloud_unavailable))
+                return@execute
+            } catch (_: Exception) {
+                finish(app.getString(if (syncedAccount == null) R.string.identity_unreadable else R.string.identity_cloud_unavailable))
                 return@execute
             }
             val target = ServerAddress.resolve(typed, AndroidDns, ServerAddress.MyTeamSpeakNicknames) { AppLog.log(it) }

@@ -77,7 +77,6 @@ class CloudAccountController(
     private var profileJob: Job? = null
     private var syncedIdentityJob: Job? = null
     private val syncedIdentityGeneration = java.util.concurrent.atomic.AtomicLong()
-    @Volatile private var syncedIdentityEntries: Pair<MyTsAccount.Session, List<MyTsIdentities.Entry>>? = null
     private val contactGeneration = java.util.concurrent.atomic.AtomicLong()
     private val bookmarkGeneration = java.util.concurrent.atomic.AtomicLong()
     private val profileGeneration = java.util.concurrent.atomic.AtomicLong()
@@ -342,7 +341,7 @@ class CloudAccountController(
         } finally { mutable.update { it.copy(avatarBusy = false) } }
     }
     private fun cancelAccountLoads() {
-        syncedIdentityGeneration.incrementAndGet(); syncedIdentityJob?.cancel(); syncedIdentityEntries = null
+        syncedIdentityGeneration.incrementAndGet(); syncedIdentityJob?.cancel()
         contactGeneration.incrementAndGet(); bookmarkGeneration.incrementAndGet(); profileGeneration.incrementAndGet()
         contactsJob?.cancel(); bookmarksJob?.cancel(); profileJob?.cancel()
     }
@@ -357,16 +356,7 @@ class CloudAccountController(
             try {
                 val entries = MyTsIdentities(http).read(current)
                 if (!currentRequest()) return@launch
-                syncedIdentityEntries = current to entries
-                val settings = Settings(app)
-                var selected = settings.cloudIdentity(current.email)
-                // A single synchronized identity has no ambiguity. Preserve the local identity in its own slot.
-                if (selected == null && entries.size == 1 && current.email.isNotBlank() && currentRequest()) {
-                    settings.saveCloudIdentity(current.email, entries.single().identity)
-                    selected = entries.single().identity
-                }
-                val selectedUid = selected?.let { java.util.Base64.getEncoder().encodeToString(
-                    java.security.MessageDigest.getInstance("SHA-256").digest(it.publicKeyString.toByteArray(Charsets.US_ASCII))) }.orEmpty()
+                val selectedUid = entries.singleOrNull()?.ts6Uid.orEmpty()
                 mutable.update { if (!currentRequest()) it else it.copy(syncedIdentities = entries.map { entry ->
                     SyncedIdentity(entry.id, entry.name, entry.nickname, entry.ts6Uid)
                 }, selectedSyncedUid = selectedUid, syncedIdentityError = null) }
@@ -375,16 +365,6 @@ class CloudAccountController(
             catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(syncedIdentityError = "IDENTITY_INVALID_REPLY") } }
             finally { if (currentRequest()) mutable.update { it.copy(syncedIdentityLoading = false) } }
         }
-    }
-
-    fun selectSyncedIdentity(id: String) = operation {
-        val current = identity ?: throw CloudFailure("MYTS_103")
-        val cached = syncedIdentityEntries
-        val entry = cached?.takeIf { it.first === current }?.second?.singleOrNull { it.id == id }
-            ?: throw CloudFailure("IDENTITY_NOT_FOUND")
-        if (current.email.isBlank()) throw CloudFailure("IDENTITY_ACCOUNT_MISSING")
-        Settings(app).saveCloudIdentity(current.email, entry.identity)
-        mutable.update { it.copy(selectedSyncedUid = entry.ts6Uid, notice = "账号身份已选定，下次连接服务器时使用。原有本机身份已保留。") }
     }
 
     private fun loadBookmarks() {
@@ -579,7 +559,7 @@ class CloudAccountController(
         readEvents.clear()
         mutable.value = State()
     }
-    fun close() { syncedIdentityEntries = null; scope.cancel() }
+    fun close() { scope.cancel() }
 
     private fun cloudOperation(showBusy: Boolean = true, block: suspend () -> Unit) =
         operation(showBusy, cloud = true, block = block)
