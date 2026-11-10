@@ -584,8 +584,10 @@
     <!-- The identity -->
     <string name="identity_not_valid">That isn\'t a TeamSpeak identity.</string>
     <string name="identity_unreadable">The saved identity can\'t be opened on this phone. Import yours in Settings › Advanced › TeamSpeak identity, or make a new one there.</string>
-    <string name="identity_cloud_ambiguous">Cannot determine your Windows identity. Sync the identity used on Windows and ensure your account has exactly one synchronized identity.</string>
+    <string name="identity_cloud_ambiguous">The account does not have exactly one synced identity named defult. Check its name and sync status in the official client.</string>
     <string name="identity_cloud_unavailable">Could not sync the account identity. Check the connection and sign in again.</string>
+    <string name="identity_cloud_in_use">Signed-in connections use the synced identity named defult.</string>
+    <string name="identity_cloud_level_required">The server requires identity security level %1$d. Raise and sync the defult identity in the official client, then retry.</string>
     <string name="identity_export_unreadable">The identity can\'t be read, so it can\'t be saved.</string>
     <string name="file_not_written">That file couldn\'t be written.</string>
     <string name="file_not_opened">That file can\'t be opened.</string>

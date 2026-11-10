@@ -356,7 +356,7 @@ class CloudAccountController(
             try {
                 val entries = MyTsIdentities(http).read(current)
                 if (!currentRequest()) return@launch
-                val selectedUid = entries.singleOrNull()?.ts6Uid.orEmpty()
+                val selectedUid = MyTsIdentities.defaultEntry(entries)?.ts6Uid.orEmpty()
                 mutable.update { if (!currentRequest()) it else it.copy(syncedIdentities = entries.map { entry ->
                     SyncedIdentity(entry.id, entry.name, entry.nickname, entry.ts6Uid)
                 }, selectedSyncedUid = selectedUid, syncedIdentityError = null) }

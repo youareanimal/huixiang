@@ -370,21 +370,21 @@ object Session : TsClient.Listener {
         CallWatcher.start(app, ::onPhoneCall)
         ConnectionService.start(app, app.getString(R.string.notification_connecting, address))
         worker.execute {
+            var hasStoredAccount = false
             val syncedAccount = try {
                 val store = CloudAccountStore(cloudSecretPrefs(app))
                 val current = store.identity()
-                if (current == null && store.account() != null) {
-                    finish(app.getString(R.string.identity_cloud_unavailable)); return@execute
-                }
+                hasStoredAccount = current != null || store.account() != null
                 current
             } catch (_: Exception) {
                 finish(app.getString(R.string.identity_unreadable)); return@execute
             }
             val identity = try {
-                if (syncedAccount == null) Settings(app).identity()
-                else MyTsIdentities().onlyIdentity(syncedAccount)
+                resolveVoiceIdentity(syncedAccount, hasStoredAccount,
+                    accountIdentity = { MyTsIdentities().defaultIdentity(it) },
+                    guestIdentity = { Settings(app).identity() })
             } catch (e: CloudFailure) {
-                finish(app.getString(if (e.code == "IDENTITY_AMBIGUOUS") R.string.identity_cloud_ambiguous else R.string.identity_cloud_unavailable))
+                finish(app.getString(if (e.code == "IDENTITY_DEFAULT_UNAVAILABLE") R.string.identity_cloud_ambiguous else R.string.identity_cloud_unavailable))
                 return@execute
             } catch (_: Exception) {
                 finish(app.getString(if (syncedAccount == null) R.string.identity_unreadable else R.string.identity_cloud_unavailable))

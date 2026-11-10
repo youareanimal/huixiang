@@ -12,9 +12,13 @@ class MyTsIdentities(private val http: CloudTransport = HttpsCloudTransport) {
         override fun toString() = "MyTsIdentity(redacted)"
     }
 
-    /** Never guess between several account identities or silently create a new one. */
-    fun onlyIdentity(session: MyTsAccount.Session): Identity =
-        read(session).singleOrNull()?.identity ?: throw CloudFailure("IDENTITY_AMBIGUOUS")
+    /** The account must contain exactly one identity with the explicitly configured name. */
+    fun defaultIdentity(session: MyTsAccount.Session): Identity =
+        defaultEntry(read(session))?.identity ?: throw CloudFailure("IDENTITY_DEFAULT_UNAVAILABLE")
+
+    companion object {
+        fun defaultEntry(entries: List<Entry>): Entry? = entries.filter { it.name == "defult" }.singleOrNull()
+    }
 
     fun read(session: MyTsAccount.Session): List<Entry> {
         val key = session.syncKey ?: throw CloudFailure(session.bookmarkKeyError ?: "IDENTITY_KEY_REQUIRED")
