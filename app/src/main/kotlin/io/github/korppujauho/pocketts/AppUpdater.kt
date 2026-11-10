@@ -253,13 +253,21 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
         val archive = pm.getPackageArchiveInfo(file.path, PackageManager.GET_SIGNING_CERTIFICATES)
             ?: throw UpdateProblem("无法读取安装包，请重新下载。")
         val installed = pm.getPackageInfo(app.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        fun signers(info: android.content.pm.PackageInfo) = info.signingInfo?.apkContentsSigners?.map {
-            MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).toList()
-        }?.toSet().orEmpty()
         if (archive.packageName != app.packageName || archive.longVersionCode != release.code || release.code <= installed.longVersionCode)
             throw UpdateProblem("安装包与当前应用或更新版本不匹配。")
-        if (signers(installed).isEmpty() || signers(archive) != signers(installed))
-            throw UpdateProblem("安装包签名不匹配，已停止安装。")
+        @Suppress("DEPRECATION")
+        val signatureResult = ApkSignatureCheck.compare(archive, installed) {
+            val candidate = pm.getPackageArchiveInfo(file.path, PackageManager.GET_SIGNATURES)
+            val current = pm.getPackageInfo(app.packageName, PackageManager.GET_SIGNATURES)
+            if (candidate == null || candidate.packageName != app.packageName || candidate.longVersionCode != release.code ||
+                current.packageName != app.packageName || current.longVersionCode != installed.longVersionCode)
+                null to null else candidate to current
+        }
+        when (signatureResult) {
+            ApkSignatureCheck.Result.MATCH -> Unit
+            ApkSignatureCheck.Result.MISMATCH -> throw UpdateProblem("安装包签名不匹配，已停止安装。")
+            ApkSignatureCheck.Result.UNAVAILABLE -> throw UpdateProblem("无法读取安装包或已安装应用的签名，请使用浏览器下载并通过系统安装器更新。")
+        }
     }
     /** Called from the visible Activity only after the person taps Install. */
     fun install(activity: android.app.Activity) {
