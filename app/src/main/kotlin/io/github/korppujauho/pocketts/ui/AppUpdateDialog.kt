@@ -32,6 +32,7 @@ fun AppUpdateDialog(state: AppUpdater.State, onDismiss: () -> Unit, onCheck: () 
             }
             Desc("切换后点击检查更新。连接失败会尝试备用源，安装包仍校验哈希和签名。")
             state.activeSource?.let { Text("当前来源：${it.label}", color = Ts.brand) }
+            state.sourceNotice?.let { Text(it, color = Ts.muted) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("自动检查新版本", color = Ts.text)
                 Switch(state.automatic, onCheckedChange = onAutomatic)

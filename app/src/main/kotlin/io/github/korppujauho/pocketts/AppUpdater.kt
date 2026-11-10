@@ -87,7 +87,8 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
     data class State(val release: UpdateFeed.Release? = null, val checking: Boolean = false, val checked: Boolean = false,
         val downloading: Boolean = false, val received: Long = 0, val ready: Boolean = false,
         val error: String? = null, val automatic: Boolean = true, val dismissed: Long = 0,
-        val source: UpdateFeed.Source = UpdateFeed.Source.PI, val activeSource: UpdateFeed.Source? = null)
+        val source: UpdateFeed.Source = UpdateFeed.Source.PI, val activeSource: UpdateFeed.Source? = null,
+        val sourceNotice: String? = null)
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences("huixiang-updates", Context.MODE_PRIVATE)
     private val directory = File(app.cacheDir, "updates")
@@ -126,15 +127,16 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
     fun source(value: UpdateFeed.Source) {
         if (job?.isActive == true || value == mutable.value.source) return
         prefs.edit().putString("source", value.name).apply()
-        mutable.update { it.copy(source = value, activeSource = null, release = null, checked = false, ready = false, error = null) }
+        mutable.update { it.copy(source = value, activeSource = null, sourceNotice = null, release = null, checked = false, ready = false, error = null) }
     }
     fun dismiss() { val code = mutable.value.release?.code ?: return
         prefs.edit().putLong("dismissed", code).apply(); mutable.update { it.copy(dismissed = code) }
     }
     fun check() = run {
-        mutable.update { it.copy(checking = true, error = null) }
+        mutable.update { it.copy(checking = true, error = null, sourceNotice = null) }
         var last: Exception? = null
-        for (source in orderedSources(mutable.value.source)) {
+        val preferred = mutable.value.source
+        for (source in orderedSources(preferred)) {
             try {
                 mutable.update { it.copy(activeSource = source) }
                 val (text, release) = readRelease(source)
@@ -142,6 +144,11 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
                 val temp = File(directory, "latest.tmp"); temp.writeText(text)
                 check(temp.renameTo(cachedFeed)) { "无法保存更新信息" }
                 offer(release)
+                if (source != preferred) mutable.update { it.copy(
+                    sourceNotice = "${preferred.label}暂时不可用，已尝试${source.label}。",
+                    error = if (release.code <= BuildConfig.VERSION_CODE)
+                        "备用源没有提供更新，暂时无法确认是否为最新版本。" else null,
+                ) }
                 prefs.edit().putLong("checked", System.currentTimeMillis()).apply()
                 return@run
             } catch (e: CancellationException) { throw e }
@@ -180,7 +187,8 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
                 ?: throw UpdateProblem("更新源无效，请重新检查更新。")
             for (source in orderedSources(first)) {
                 try {
-                    mutable.update { it.copy(activeSource = source, received = 0) }
+                    mutable.update { it.copy(activeSource = source, received = 0,
+                        sourceNotice = if (source != first) "${first.label}下载失败，正在尝试${source.label}。" else null) }
                     val candidate = if (source == first) release else readRelease(source).second
                     if (!UpdateFeed.sameArtifact(release, candidate)) throw UpdateProblem("备用源的版本或安装包不同，请重新检查更新。")
                     fetch(candidate.artifact.url, source.feedUrl) { c -> c.inputStream.use { input ->
@@ -189,12 +197,13 @@ class AppUpdater(context: Context, dispatcher: CoroutineDispatcher = Dispatchers
                             mutable.update { it.copy(received = received) }
                         }
                     } }
-                    validate(part, release)
                     completed = true; break
                 } catch (e: CancellationException) { throw e }
                 catch (e: Exception) { part.delete(); last = e }
             }
             if (!completed) throw last ?: UpdateProblem("安装包下载失败，请重试。")
+            // An invalid package is not a network failure: keep its specific error and do not switch mirrors.
+            validate(part, release)
             val target = apk(release)
             check(part.renameTo(target)) { "无法保存安装包" }
             directory.listFiles()?.filter { it.extension == "apk" && it != target }?.forEach { it.delete() }
