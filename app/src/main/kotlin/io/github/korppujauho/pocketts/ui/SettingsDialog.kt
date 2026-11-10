@@ -63,6 +63,8 @@ import io.github.korppujauho.pocketts.R
 /** What the settings window needs besides the settings themselves. */
 interface SettingsActions {
     fun save(voice: VoiceSettings, nickname: String)
+    /** Signed-in users use the account identity instead of the local guest identity. */
+    fun hasMyTsAccount(): Boolean = false
     /** The microphone's level (RMS 0 - 1) and whether it counts as "on". */
     fun micLevel(): Pair<Float, Boolean>
     fun micTest(on: Boolean)
@@ -184,7 +186,9 @@ fun SettingsContent(
                     else -> {
                         Advanced(v) { v = it }
                         ChannelPasswordsGroup(actions)
-                        Identity(actions)
+                        if (actions.hasMyTsAccount()) {
+                            Group(stringResource(R.string.identity_title)) { Desc(stringResource(R.string.identity_cloud_in_use)) }
+                        } else Identity(actions)
                     }
                 }
             }

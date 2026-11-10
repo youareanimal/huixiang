@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.*
@@ -383,8 +384,7 @@ private fun App() {
                                 { roomId = it; route = "ROOM" }, controller::diagnoseChatLogin)
                             HubTab.ME -> MeHub(account, state.voice, { route = "LOGIN" }, { logout = true },
                                 ::openSettings, { importer.launch(arrayOf("*/*")) }, { about = true },
-                                controller::refreshProfile, { route = "AVATAR" },
-                                controller::refreshSyncedIdentities, { controller.selectSyncedIdentity(it) })
+                                controller::refreshProfile, { route = "AVATAR" })
                         }
                     }
                 }
@@ -428,11 +428,17 @@ private fun App() {
             }, onDismiss = { pendingLink.value = null })
     }
     if (entered && state.phase == Session.Phase.IDLE && state.neededLevel > 0) {
-        val current = remember { IdentityRaise.level(ctx) }
-        if (current != null) RaiseLevelDialog(current, needed = state.neededLevel,
-            onReached = {
-                entry.nickname(controller.state.value, names.first)?.let { nickname -> route = "VOICE"; Session.connectAgain(nickname) }
-            }, onClose = Session::dismissNeededLevel)
+        if (account.hasAccount) {
+            AlertDialog(onDismissRequest = Session::dismissNeededLevel,
+                text = { Text(stringResource(R.string.identity_cloud_level_required, state.neededLevel)) },
+                confirmButton = { TextButton(onClick = Session::dismissNeededLevel) { Text(stringResource(R.string.close)) } })
+        } else {
+            val current = remember { IdentityRaise.level(ctx) }
+            if (current != null) RaiseLevelDialog(current, needed = state.neededLevel,
+                onReached = {
+                    entry.nickname(controller.state.value, names.first)?.let { nickname -> route = "VOICE"; Session.connectAgain(nickname) }
+                }, onClose = Session::dismissNeededLevel)
+        }
     }
 }
 
@@ -635,6 +641,10 @@ private object SessionActions : ServerActions {
 }
 
 private class AppSettingsActions(private val context: Context) : SettingsActions {
+    override fun hasMyTsAccount(): Boolean = try {
+        val store = CloudAccountStore(cloudSecretPrefs(context))
+        store.identity() != null || store.account() != null
+    } catch (_: Exception) { true }
     override fun save(voice: VoiceSettings, nickname: String) {
         // Turned on: Android's own page to allow it, if not allowed yet
         if (voice.overlayPtt && !Session.state.value.voice.overlayPtt && !TalkOverlay.allowed(context)) {

@@ -27,8 +27,8 @@ class MyTsIdentitiesTest {
         val group = CloudProto.integer(1, 1) + CloudProto.bytes(3, detail) + if (duplicate) CloudProto.bytes(3, detail) else byteArrayOf()
         return CloudProto.integer(1, 301) + CloudProto.bytes(2, group)
     }
-    private fun plaintext(): ByteArray {
-        val identity = CloudProto.text(1, fixtureIdentity.export()) + CloudProto.text(2, "fixture") + CloudProto.text(3, "sample")
+    private fun plaintext(name: String = "fixture"): ByteArray {
+        val identity = CloudProto.text(1, fixtureIdentity.export()) + CloudProto.text(2, name) + CloudProto.text(3, "sample")
         return CloudProto.text(2, fixtureId) + CloudProto.integer(6, 1) + CloudProto.bytes(17, identity)
     }
     private fun reader(response: ByteArray) = MyTsIdentities(CloudTransport { method, url, _, body ->
@@ -58,5 +58,24 @@ class MyTsIdentitiesTest {
     @Test fun refusesMissingKeyWithoutNetworkRequest() {
         val api = MyTsIdentities(CloudTransport { _, _, _, _ -> error("unexpected network") })
         assertFailsWith<CloudFailure> { api.read(MyTsAccount.Session("fixture", "sample")) }
+    }
+    @Test fun automaticIdentityRequiresExactlyOneMatchingName() {
+        val cipher = blob(plaintext("defult"))
+        val identity = reader(response(cipher)).defaultIdentity(session())
+        assertEquals(fixtureIdentity.uid, identity.uid)
+        val empty = CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1))
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(empty).defaultIdentity(session()) }.code)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(response(blob(plaintext("默认")))).defaultIdentity(session()) }.code)
+        val other = "00000000-0000-0000-0000-000000000456"
+        val otherIdentity = Identity.generate(securityLevel = 0)
+        fun otherPlain(name: String) = CloudProto.text(2, other) + CloudProto.integer(6, 1) + CloudProto.bytes(17,
+            CloudProto.text(1, otherIdentity.export()) + CloudProto.text(2, name))
+        val detail1 = CloudProto.text(1, fixtureId) + CloudProto.bytes(3, cipher)
+        fun both(name: String): ByteArray {
+            val detail2 = CloudProto.text(1, other) + CloudProto.bytes(3, blob(otherPlain(name)))
+            return CloudProto.integer(1, 301) + CloudProto.bytes(2, CloudProto.integer(1, 1) + CloudProto.bytes(3, detail2) + CloudProto.bytes(3, detail1))
+        }
+        assertEquals(fixtureIdentity.uid, reader(both("默认")).defaultIdentity(session()).uid)
+        assertEquals("IDENTITY_DEFAULT_UNAVAILABLE", assertFailsWith<CloudFailure> { reader(both("defult")).defaultIdentity(session()) }.code)
     }
 }
