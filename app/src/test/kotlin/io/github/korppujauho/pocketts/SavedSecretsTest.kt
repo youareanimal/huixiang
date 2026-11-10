@@ -155,4 +155,36 @@ class SavedSecretsTest {
         assertTrue(SecretBox.isSealed(prefs("secrets").getString("identity", null)!!))
         assertEquals(fresh.uid, Settings(context).identity().uid)
     }
+    @Test
+    fun syncedIdentityIsEncryptedAccountScopedAndKeepsLocalIdentity() {
+        val settings = Settings(context)
+        val local = settings.identity()
+        val first = Identity.generate(securityLevel = 0)
+        val second = Identity.generate(securityLevel = 0)
+        settings.saveCloudIdentity("Alice@example.com", first)
+        settings.saveCloudIdentity("bob@example.com", second)
+        assertEquals(first.uid, settings.cloudIdentity("alice@example.com")!!.uid)
+        assertEquals(second.uid, settings.cloudIdentity("bob@example.com")!!.uid)
+        assertNull(settings.cloudIdentity("carol@example.com"))
+        assertEquals(local.uid, settings.identity().uid)
+        val cloudValues = prefs("secrets").all.filterKeys { it.startsWith("cloud-identity-") }.values
+        assertEquals(2, cloudValues.size)
+        assertTrue(cloudValues.all { it is String && SecretBox.isSealed(it) })
+        assertFalse(cloudValues.any { it.toString().contains(first.export()) || it.toString().contains(second.export()) })
+    }
+
+    @Test
+    fun syncedIdentityDoesNotFallBackToPlaintextWhenEncryptionFails() {
+        val settings = Settings(context)
+        val before = prefs("secrets").all.toMap()
+        Secrets.box = SecretBox(object : SecretBox.Key {
+            override fun encrypt(plain: ByteArray, aad: ByteArray): ByteArray = throw IllegalStateException("unavailable")
+            override fun decrypt(sealed: ByteArray, aad: ByteArray): ByteArray = throw IllegalStateException("unavailable")
+        })
+        assertThrows(IllegalStateException::class.java) {
+            settings.saveCloudIdentity("alice@example.com", Identity.generate(securityLevel = 0))
+        }
+        assertEquals(before, prefs("secrets").all)
+    }
+
 }

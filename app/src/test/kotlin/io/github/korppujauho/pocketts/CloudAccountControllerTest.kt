@@ -188,7 +188,9 @@ class CloudAccountControllerTest {
             assertTrue(c.state.value.hasAccount)
             assertTrue(c.state.value.bookmarksLoaded)
             assertNull(c.state.value.bookmarkError)
-            assertEquals(3, calls.size)
+            assertEquals(1, calls.count { it.endsWith("/authentication") })
+            assertEquals(2, calls.count { it.endsWith("/synchronization") }) // bookmarks and identities
+            assertEquals(1, calls.count { it.endsWith("/tschat") })
             assertTrue(c.state.value.contactsLoaded)
             assertArrayEquals(ByteArray(32) { it.toByte() }, saved.identity()!!.syncKey)
         } finally { c.close() }

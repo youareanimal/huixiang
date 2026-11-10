@@ -283,7 +283,9 @@ fun MessagesHub(state: CloudAccountController.State, onLogin: () -> Unit, onConn
 @Composable
 fun MeHub(state: CloudAccountController.State, voice: VoiceSettings, onLogin: () -> Unit, onLogout: () -> Unit,
     onSettings: (Int) -> Unit, onImport: () -> Unit, onAbout: () -> Unit,
-    onRefreshProfile: () -> Unit = {}, onAvatar: () -> Unit = {}) {
+    onRefreshProfile: () -> Unit = {}, onAvatar: () -> Unit = {},
+    onRefreshIdentities: () -> Unit = {}, onSelectIdentity: (String) -> Unit = {}) {
+    var identityDialog by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         HubTopBar("我的", "按你的方式，尽情开聊")
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -292,6 +294,7 @@ fun MeHub(state: CloudAccountController.State, voice: VoiceSettings, onLogin: ()
                 else BrandHero("HEY, ECHO!", "你好，访客", "登录，带上你的书签和好友。")
             }
             if (state.hasAccount) item { HubRow("修改头像", "账号头像 · 当前服务器头像", Icons.Rounded.AddAPhoto, onAvatar) }
+            if (state.hasAccount) item { HubRow("账号同步身份", if (state.selectedSyncedUid.isBlank()) "选择与其他设备共用的身份" else "已选择 · ${state.selectedSyncedUid.take(10)}…", Icons.Rounded.Fingerprint, { identityDialog = true; onRefreshIdentities() }) }
             item { HubRow(if (state.hasAccount) "切换或重新验证账号" else "登录 TeamSpeak 账号", "账号登录与语音身份独立", Icons.Rounded.AccountCircle, onLogin) }
             state.error?.let { code -> item { HubError("账号操作未完成，可重新尝试。", code) } }
             item { SectionLabel("把声音调成你的样子") }
@@ -306,6 +309,23 @@ fun MeHub(state: CloudAccountController.State, voice: VoiceSettings, onLogin: ()
             if (state.hasAccount) item { TextButton(onClick = onLogout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("退出本机账号", color = Ts.red) } }
         }
     }
+    if (identityDialog) AlertDialog(
+        onDismissRequest = { identityDialog = false },
+        title = { Text("选择账号身份") },
+        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+            Text("选择与 Windows 客户端相同的身份。所选身份将在下次连接时生效，本机原有身份会保留。")
+            if (state.syncedIdentityLoading) Text("正在同步…")
+            state.syncedIdentityError?.let { Text("身份暂时无法同步（$it），请刷新重试。") }
+            if (!state.syncedIdentityLoading && state.syncedIdentityError == null && state.syncedIdentities.isEmpty()) Text("账号没有可用的同步身份。")
+            state.syncedIdentities.forEach { item ->
+                TextButton(onClick = { onSelectIdentity(item.id); identityDialog = false }, modifier = Modifier.fillMaxWidth()) {
+                    Text((item.name.ifBlank { "未命名身份" }) + " · " + item.ts6Uid.take(10) + if (item.ts6Uid == state.selectedSyncedUid) "（已选择）" else "")
+                }
+            }
+        } },
+        confirmButton = { TextButton(onClick = onRefreshIdentities) { Text("刷新") } },
+        dismissButton = { TextButton(onClick = { identityDialog = false }) { Text("关闭") } },
+    )
 }
 
 @Composable
