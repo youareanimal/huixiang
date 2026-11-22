@@ -400,7 +400,7 @@ class CloudAccountControllerTest {
             c.diagnoseAccountConnection()
             val report = c.state.value.accountDiagnostic.orEmpty()
             assertTrue(report.contains("已失效（认证接口状态 103）"))
-            assertTrue(report.contains("好友接口：失败（CONTACTS_3） · 会话已失效"))
+            assertTrue(report.contains("好友接口：失败（CONTACTS_3） · 好友接口报告会话过期"))
             assertTrue(c.state.value.sessionExpired)
         } finally { c.close() }
     }
