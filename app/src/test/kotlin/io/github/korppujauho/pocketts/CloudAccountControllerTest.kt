@@ -321,6 +321,67 @@ class CloudAccountControllerTest {
         } finally { c.close() }
     }
 
+    @Test fun validAuthenticationSessionOverridesStaleSyncAndContactExpiryHints() {
+        val saved = store()
+        val identity = MyTsAccount.Session("fixture-token", "Fixture", ByteArray(32))
+        saved.writeIdentity(identity)
+        var authStatus = MyTsAccount.SESSION_VALID
+        val c = controller(saved, CloudTransport { _, url, _, _ ->
+            when {
+                url.endsWith("/authentication") -> CloudReply(200, byteArrayOf(8, authStatus.toByte()))
+                url.endsWith("/synchronization") -> CloudReply(200,
+                    byteArrayOf(8, MyTsAccount.SYNC_SESSION_EXPIRED.toByte()))
+                url.endsWith("/tschat") -> CloudReply(200,
+                    byteArrayOf(18, 2, 8, MyTsAccount.TSCHAT_SESSION_EXPIRED.toByte()))
+                else -> CloudReply(503, byteArrayOf())
+            }
+        })
+        try {
+            assertTrue(c.state.value.hasAccount)
+            assertEquals("BOOKMARK_SYNC_102", c.state.value.bookmarkError)
+            assertEquals("CONTACTS_3", c.state.value.contactError)
+            assertEquals(true, c.state.value.confirmedSessionValid)
+            assertFalse(c.state.value.hasExpiredSession)
+            assertEquals("fixture-token", saved.identity()!!.token)
+
+            // The next expiry hint must be checked again: the previous valid result is not permanent.
+            authStatus = MyTsAccount.SESSION_INVALID
+            c.refreshContacts()
+            assertEquals(false, c.state.value.confirmedSessionValid)
+            assertTrue(c.state.value.hasExpiredSession)
+            assertEquals("fixture-token", saved.identity()!!.token)
+        } finally { c.close() }
+    }
+
+    @Test fun failedSessionVerificationKeepsExpiryHintUntilDiagnosticConfirmsValidity() {
+        val saved = store()
+        saved.writeIdentity(MyTsAccount.Session("fixture-token", "Fixture", ByteArray(32)))
+        var authenticationAvailable = false
+        val c = controller(saved, CloudTransport { _, url, _, _ ->
+            when {
+                url.endsWith("/authentication") ->
+                    if (authenticationAvailable) CloudReply(200, byteArrayOf(8, MyTsAccount.SESSION_VALID.toByte()))
+                    else CloudReply(503, byteArrayOf())
+                url.endsWith("/synchronization") ->
+                    CloudReply(200, byteArrayOf(8, MyTsAccount.SYNC_SESSION_EXPIRED.toByte()))
+                url.endsWith("/tschat") ->
+                    CloudReply(200, byteArrayOf(18, 2, 8, MyTsAccount.TSCHAT_SESSION_EXPIRED.toByte()))
+                else -> CloudReply(503, byteArrayOf())
+            }
+        })
+        try {
+            assertNull(c.state.value.confirmedSessionValid)
+            assertTrue(c.state.value.hasExpiredSession)
+            authenticationAvailable = true
+            c.diagnoseAccountConnection()
+            assertEquals(true, c.state.value.confirmedSessionValid)
+            assertFalse(c.state.value.sessionExpired)
+            assertFalse(c.state.value.hasExpiredSession)
+            assertTrue(c.state.value.accountDiagnostic.orEmpty().contains("有效（认证接口状态 102）"))
+            assertEquals("CONTACTS_3", c.state.value.contactError)
+        } finally { c.close() }
+    }
+
     @Test fun diagnosticsReportAuthenticationAndTschatExpiryCodes() {
         val saved = store()
         saved.writeIdentity(MyTsAccount.Session("fixture-token", "Fixture"))
@@ -339,7 +400,7 @@ class CloudAccountControllerTest {
             c.diagnoseAccountConnection()
             val report = c.state.value.accountDiagnostic.orEmpty()
             assertTrue(report.contains("已失效（认证接口状态 103）"))
-            assertTrue(report.contains("好友接口：失败（CONTACTS_3） · 会话已失效"))
+            assertTrue(report.contains("好友接口：失败（CONTACTS_3） · 好友接口报告会话过期"))
             assertTrue(c.state.value.sessionExpired)
         } finally { c.close() }
     }

@@ -51,6 +51,14 @@ class SessionExpiredUiTest {
         assertEquals(0, refreshes)
     }
 
+    @Test fun validAuthenticationSessionKeepsAccountCardSignedInDespiteOldErrors() {
+        compose.setContent { PocketTsTheme {
+            MeHub(expired.copy(confirmedSessionValid = true), VoiceSettings(), {}, {}, {}, {}, {})
+        } }
+        compose.onNodeWithText("账号已登录").assertIsDisplayed()
+        compose.onNodeWithText("登录已过期，请重新验证").assertDoesNotExist()
+    }
+
     @Test fun accountCardShowsAnExpiredLoginInsteadOfTheGreenSignedInLabel() {
         compose.setContent { PocketTsTheme { MeHub(expired, VoiceSettings(), {}, {}, {}, {}, {}) } }
         compose.onNodeWithText("登录已过期，请重新验证").assertIsDisplayed()

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.korppujauho.pocketts.CloudAccountController
+import io.github.korppujauho.pocketts.hasExpiredSession
 import io.github.korppujauho.pocketts.BuildConfig
 import io.github.korppujauho.pocketts.R
 import io.github.korppujauho.pocketts.proto.MatrixCloud
@@ -117,7 +118,9 @@ fun CloudAccountHome(
     }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(state.username.ifBlank { "TeamSpeak 账号" }, color = Ts.bright, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Text("TeamSpeak 账号已登录 · " + if (state.cloudConnected) "云聊天已连接" else "云聊天未连接", color = Ts.muted, fontSize = 12.sp)
+        Text((if (state.hasExpiredSession) "TeamSpeak 账号需要重新验证" else "TeamSpeak 账号已登录") +
+            " · " + if (state.cloudConnected) "云聊天已连接" else "云聊天未连接",
+            color = Ts.muted, fontSize = 12.sp)
         Text("${stringResource(R.string.app_name)} ${BuildConfig.VERSION_NAME}", color = Ts.muted, fontSize = 11.sp)
         Row {
             TextButton(enabled = !state.busy, onClick = onOpenLogin) { Text("重新登录", color = Ts.brand) }
@@ -157,7 +160,9 @@ fun CloudAccountHome(
                     "BOOKMARK_KDF_UNAVAILABLE" -> "账号已登录，但手机无法派生书签解密密钥（BOOKMARK_KDF_UNAVAILABLE）。需要检查加密服务兼容性。"
                     "BOOKMARK_CRYPTO_UNAVAILABLE" -> "账号已登录，但手机加密服务无法完成书签解锁（BOOKMARK_CRYPTO_UNAVAILABLE）。需要检查设备兼容性。"
                     "BOOKMARK_CHECKSUM" -> "服务器书签完整性校验失败，已保留上次读取的书签。"
-                    "BOOKMARK_SYNC_102" -> "账号会话已过期，请重新登录以刷新服务器书签。"
+                    "BOOKMARK_SYNC_102" -> if (state.hasExpiredSession)
+                        "账号会话可能已过期，请重新验证账号以刷新服务器书签。"
+                    else "书签同步接口报告会话过期，但官方认证仍有效。请稍后刷新书签。"
                     else -> if (code.startsWith("BOOKMARK_KEY_FORMAT_"))
                         "账号已登录，但书签密钥格式暂不支持（$code）。错误码只包含长度和版本信息，请保留用于排查。"
                         else "服务器书签暂时同步失败（$code）。账号仍保持登录，可点右上角刷新重试。"
