@@ -14,8 +14,8 @@ import kotlinx.coroutines.sync.withPermit
 import java.util.UUID
 
 /**
- * Errors that mean the saved myTeamSpeak session must be replaced by a fresh password login.
- * Authentication, synchronization, and the legacy tschat endpoints use separate status namespaces.
+ * Endpoint-specific expiry hints. Authentication/session must confirm the token is invalid before
+ * these hints can be treated as a definitive reason to log in again.
  */
 internal fun myTsSessionExpired(code: String?): Boolean = code != null && code in setOf(
     "MYTS_103", "BOOKMARK_SYNC_${MyTsAccount.SYNC_SESSION_EXPIRED}",
@@ -25,10 +25,14 @@ internal fun myTsSessionExpired(code: String?): Boolean = code != null && code i
     "MYTS_SIGNED_IDENTIFIER_${MyTsChatTag.SIGNED_IDENTIFIER_SESSION_EXPIRED}",
 )
 
-/** Expiry is sticky while any account endpoint still reports it, even if another cache refresh just succeeded. */
+/** An explicit authentication/session result overrides stale expiry hints from other endpoints. */
 internal val CloudAccountController.State.hasExpiredSession: Boolean
-    get() = sessionExpired || listOf(bookmarkError, contactError, profileError, error, cloudError)
-        .any { myTsSessionExpired(it) }
+    get() = when (confirmedSessionValid) {
+        true -> false
+        false -> true
+        null -> sessionExpired || listOf(bookmarkError, contactError, profileError, error, cloudError)
+            .any { myTsSessionExpired(it) }
+    }
 
 /** Cloud account state is separate from the voice identity. Raw passwords are never persisted. */
 class CloudAccountController(
@@ -46,6 +50,7 @@ class CloudAccountController(
         val restored: Boolean = true,
         val hasAccount: Boolean = false, val username: String = "", val busy: Boolean = false,
         val error: String? = null, val contactError: String? = null, val sessionExpired: Boolean = false,
+        val confirmedSessionValid: Boolean? = null,
         val contacts: List<MyTsAccount.Contact> = emptyList(), val rooms: List<MatrixCloud.Room> = emptyList(),
         val contactsLoaded: Boolean = false, val contactsLoading: Boolean = false,
         val directRooms: Map<String, List<String>> = emptyMap(), val sent: Int = 0, val authRevision: Int = 0,
@@ -76,6 +81,7 @@ class CloudAccountController(
     private var contactsJob: Job? = null
     private var bookmarksJob: Job? = null
     private var profileJob: Job? = null
+    private var sessionCheckJob: Job? = null
     private var syncedIdentityJob: Job? = null
     private val syncedIdentityGeneration = java.util.concurrent.atomic.AtomicLong()
     private val contactGeneration = java.util.concurrent.atomic.AtomicLong()
@@ -184,6 +190,28 @@ class CloudAccountController(
         mutable.update { it.copy(rooms = snapshot.rooms, directRooms = snapshot.directRooms, cloudError = null) }
     }
 
+    /**
+     * Synchronization and tschat can report expiry even when central authentication still accepts
+     * the token. Check the actual session status before asking the user to log in again.
+     * Validation errors leave the hint in place and never delete saved credentials.
+     */
+    private fun verifySessionExpiry(current: MyTsAccount.Session, code: String) {
+        if (!myTsSessionExpired(code) || sessionCheckJob?.isActive == true) return
+        sessionCheckJob = scope.launch {
+            try {
+                val valid = when (MyTsAccount(http).sessionStatus(current)) {
+                    MyTsAccount.SESSION_VALID -> true
+                    MyTsAccount.SESSION_INVALID -> false
+                    else -> return@launch
+                }
+                if (identity === current) mutable.update {
+                    it.copy(confirmedSessionValid = valid, sessionExpired = !valid)
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Preserve the hint until a later check succeeds. */ }
+        }
+    }
+
     private suspend fun loadContacts() {
         val current = identity
         if (current == null) { mutable.update { it.copy(contactError = "MYTS_103") }; return }
@@ -209,8 +237,11 @@ class CloudAccountController(
             }
             if (currentRequest()) try { store.writeContacts(current, mutable.value.contacts) } catch (_: Exception) { }
         } catch (e: CancellationException) { throw e }
-        catch (e: CloudFailure) { if (currentRequest()) mutable.update {
-            it.copy(contactError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        catch (e: CloudFailure) { if (currentRequest()) {
+            mutable.update { it.copy(contactError = e.code,
+                sessionExpired = it.sessionExpired || myTsSessionExpired(e.code),
+                confirmedSessionValid = if (myTsSessionExpired(e.code)) null else it.confirmedSessionValid) }
+            verifySessionExpiry(current, e.code)
         } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(contactError = "CONTACTS_INVALID_REPLY") } }
         finally { if (currentRequest()) mutable.update { it.copy(contactsLoading = false) } }
@@ -249,10 +280,12 @@ class CloudAccountController(
                 val report = mutableListOf("本地账号 Session：已保存")
                 fun elapsed(start: Long) = ((System.nanoTime() - start) / 1_000_000L).coerceAtLeast(0L)
                 var expired = false
+                var authStatus: Long? = null
 
                 val sessionStart = System.nanoTime()
                 try {
                     val status = auth.sessionStatus(current)
+                    authStatus = status
                     expired = status == MyTsAccount.SESSION_INVALID
                     val result = when (status) {
                         MyTsAccount.SESSION_VALID -> "有效（认证接口状态 102）"
@@ -297,7 +330,18 @@ class CloudAccountController(
                 } else {
                     "聊天凭据请求：本次未调用（诊断不会重复创建聊天账号）"
                 }
-                mutable.update { it.copy(accountDiagnostic = report.joinToString("\n"), sessionExpired = expired) }
+                mutable.update { it.copy(accountDiagnostic = report.joinToString("\n"),
+                    confirmedSessionValid = when (authStatus) {
+                        MyTsAccount.SESSION_VALID -> true
+                        MyTsAccount.SESSION_INVALID -> false
+                        else -> null
+                    },
+                    sessionExpired = when (authStatus) {
+                        MyTsAccount.SESSION_VALID -> false
+                        MyTsAccount.SESSION_INVALID -> true
+                        else -> it.sessionExpired || expired
+                    },
+                ) }
             } finally {
                 mutable.update { it.copy(accountDiagnosing = false) }
             }
@@ -318,8 +362,11 @@ class CloudAccountController(
             store.writeProfile(current, profile)
             mutable.update { if (!currentRequest()) it else it.copy(email = profile.email.ifBlank { it.email }, avatarUrl = profile.avatarUrl,
                 username = profile.username.ifBlank { it.username }, profileError = null, sessionExpired = false) }
-        } catch (e: CloudFailure) { if (currentRequest()) mutable.update {
-            it.copy(profileError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        } catch (e: CloudFailure) { if (currentRequest()) {
+            mutable.update { it.copy(profileError = e.code,
+                sessionExpired = it.sessionExpired || myTsSessionExpired(e.code),
+                confirmedSessionValid = if (myTsSessionExpired(e.code)) null else it.confirmedSessionValid) }
+            verifySessionExpiry(current, e.code)
         } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(profileError = "PROFILE_UNAVAILABLE") } }
         finally { if (currentRequest()) mutable.update { it.copy(profileLoading = false) } }
@@ -345,6 +392,7 @@ class CloudAccountController(
         syncedIdentityGeneration.incrementAndGet(); syncedIdentityJob?.cancel()
         contactGeneration.incrementAndGet(); bookmarkGeneration.incrementAndGet(); profileGeneration.incrementAndGet()
         contactsJob?.cancel(); bookmarksJob?.cancel(); profileJob?.cancel()
+        sessionCheckJob?.cancel()
     }
 
     fun refreshSyncedIdentities() {
@@ -392,8 +440,11 @@ class CloudAccountController(
             if (!currentRequest()) return
             store.writeBookmarks(current, items)
             mutable.update { it.copy(bookmarks = items, bookmarksLoaded = true, bookmarkError = null, sessionExpired = false) }
-        } catch (e: CloudFailure) { if (currentRequest()) mutable.update {
-            it.copy(bookmarkError = e.code, sessionExpired = it.sessionExpired || myTsSessionExpired(e.code))
+        } catch (e: CloudFailure) { if (currentRequest()) {
+            mutable.update { it.copy(bookmarkError = e.code,
+                sessionExpired = it.sessionExpired || myTsSessionExpired(e.code),
+                confirmedSessionValid = if (myTsSessionExpired(e.code)) null else it.confirmedSessionValid) }
+            verifySessionExpiry(current, e.code)
         } }
         catch (_: Exception) { if (currentRequest()) mutable.update { it.copy(bookmarkError = "LOCAL_STORE") } }
         finally { if (currentRequest()) mutable.update { it.copy(bookmarksLoading = false) } }
@@ -584,11 +635,16 @@ class CloudAccountController(
             if (showBusy) mutable.update { if (cloud) it.copy(busy = true, cloudError = null) else it.copy(busy = true, error = null) }
             try { block() }
             catch (e: CancellationException) { throw e }
-            catch (e: CloudFailure) { mutable.update {
-                val expired = it.sessionExpired || myTsSessionExpired(e.code)
-                if (cloud) it.copy(cloudError = e.code, sessionExpired = expired)
-                else it.copy(error = e.code, sessionExpired = expired)
-            } }
+            catch (e: CloudFailure) {
+                mutable.update {
+                    val hint = myTsSessionExpired(e.code)
+                    val expired = it.sessionExpired || hint
+                    val confirmed = if (hint) null else it.confirmedSessionValid
+                    if (cloud) it.copy(cloudError = e.code, sessionExpired = expired, confirmedSessionValid = confirmed)
+                    else it.copy(error = e.code, sessionExpired = expired, confirmedSessionValid = confirmed)
+                }
+                identity?.let { verifySessionExpiry(it, e.code) }
+            }
             catch (_: Exception) { mutable.update { if (cloud) it.copy(cloudError = "LOCAL_STORE") else it.copy(error = "LOCAL_STORE") } }
             finally { mutable.update { it.copy(busy = false, restored = true) } }
         } }
