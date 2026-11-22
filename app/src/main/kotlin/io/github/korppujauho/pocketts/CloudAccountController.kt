@@ -311,7 +311,7 @@ class CloudAccountController(
                 } catch (e: CloudFailure) {
                     expired = expired || myTsSessionExpired(e.code)
                     report += "好友接口：失败（${e.code}）" +
-                        (if (myTsSessionExpired(e.code)) " · 会话已失效" else "") +
+                        (if (myTsSessionExpired(e.code)) " · 好友接口报告会话过期" else "") +
                         " · ${elapsed(contactsStart)}ms"
                 } catch (_: Exception) {
                     report += "好友接口：失败（CONTACTS_INVALID_REPLY） · ${elapsed(contactsStart)}ms"
